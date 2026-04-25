@@ -17,9 +17,19 @@
       </label>
     </div>
 
-    <div class="freshness-bar" id="freshnessBar">
-      <span class="freshness-dot"></span>
-      <span id="freshnessText">Loading...</span>
+    <div class="source-bar" id="sourceBar">
+      <div class="source-bar-left">
+        <button class="source-trigger" id="sourceTrigger">
+          <span class="source-dot"></span>
+          <span class="source-name" id="sourceName">Loading...</span>
+          <span class="source-chevron">&#9662;</span>
+        </button>
+        <span class="source-time" id="sourceTime"></span>
+      </div>
+      <button class="source-reload" id="sourceReload" title="Refresh rates">
+        <span class="reload-icon">&#8635;</span>
+      </button>
+      <div class="source-dropdown" id="sourceDropdown"></div>
     </div>
 
     <div class="rate-cards" id="rateCards">
@@ -28,6 +38,11 @@
 
     <div class="converter">
       <div class="converter-header">Quick Convert</div>
+      <div class="converter-selects">
+        <select id="converterFrom" class="converter-select"></select>
+        <span class="converter-arrow">&rarr;</span>
+        <select id="converterTo" class="converter-select"></select>
+      </div>
       <input type="text" id="converterInput" class="converter-input" placeholder="Type amount...">
       <div id="converterResult" class="converter-result"></div>
     </div>
