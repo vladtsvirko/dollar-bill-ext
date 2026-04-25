@@ -4,9 +4,8 @@ const customRatesGrid = document.getElementById('customRatesGrid');
 const siteModeRadios = document.querySelectorAll('input[name="siteMode"]');
 const whitelistSection = document.getElementById('whitelistSection');
 const whitelistEl = document.getElementById('whitelist');
-const saveBtn = document.getElementById('saveBtn');
-const saveStatus = document.getElementById('saveStatus');
 const ambiguousPatternsEl = document.getElementById('ambiguousPatterns');
+const saveToast = document.getElementById('saveToast');
 
 // Source chips
 const sourceChips = document.getElementById('sourceChips');
@@ -30,8 +29,61 @@ const editPatterns = document.getElementById('editPatterns');
 const saveCurrencyBtn = document.getElementById('saveCurrencyBtn');
 const cancelCurrencyBtn = document.getElementById('cancelCurrencyBtn');
 
+// Quick site add
+const addCurrentSiteBtn = document.getElementById('addCurrentSiteBtn');
+
 let currentSettings = null;
-let editingCurrency = null; // null = new, string = editing existing code
+let editingCurrency = null;
+let autoSaveTimer = null;
+
+// ---- Auto-save ----
+
+function showSaveToast() {
+  saveToast.classList.add('show');
+  clearTimeout(autoSaveTimer);
+  autoSaveTimer = setTimeout(() => saveToast.classList.remove('show'), 1500);
+}
+
+async function autoSave() {
+  if (!currentSettings) return;
+  if (currentSettings.sourceCurrencies.length === 0) return;
+  if (currentSettings.targetCurrencies.length === 0) return;
+
+  // Read custom rates from grid
+  const customRates = {};
+  customRatesGrid.querySelectorAll('input[data-pair]').forEach((input) => {
+    const pair = input.dataset.pair;
+    const val = input.value.trim();
+    if (val) {
+      const num = parseFloat(val);
+      if (!isNaN(num)) customRates[pair] = num;
+    }
+  });
+
+  currentSettings.ambiguousPatterns = ambiguousPatternsEl.value
+    .split('\n')
+    .map((s) => s.trim())
+    .filter(Boolean);
+  currentSettings.rateSource = getRadioValue(rateSourceRadios) || 'nbrb';
+  currentSettings.customRates = customRates;
+  currentSettings.siteMode = getRadioValue(siteModeRadios) || 'all';
+  currentSettings.whitelist = whitelistEl.value
+    .split('\n')
+    .map((s) => s.trim())
+    .filter(Boolean);
+
+  await RatesUtil.saveSettings(currentSettings);
+  showSaveToast();
+}
+
+// Debounced auto-save: saves 600ms after last change
+let saveDebounce = null;
+function scheduleAutoSave() {
+  clearTimeout(saveDebounce);
+  saveDebounce = setTimeout(autoSave, 600);
+}
+
+// ---- Radio helpers ----
 
 function setRadioValue(radios, value) {
   for (const r of radios) r.checked = r.value === value;
@@ -45,10 +97,71 @@ function getRadioValue(radios) {
 function updateVisibility() {
   customRatesSection.style.display = getRadioValue(rateSourceRadios) === 'custom' ? 'block' : 'none';
   whitelistSection.style.display = getRadioValue(siteModeRadios) === 'whitelist' ? 'block' : 'none';
+  scheduleAutoSave();
 }
 
 for (const r of rateSourceRadios) r.addEventListener('change', updateVisibility);
 for (const r of siteModeRadios) r.addEventListener('change', updateVisibility);
+
+// ---- Drag-to-reorder ----
+
+function setupDragReorder(container, field) {
+  let draggedEl = null;
+
+  container.addEventListener('dragstart', (e) => {
+    const chip = e.target.closest('.chip');
+    if (!chip) return;
+    draggedEl = chip;
+    chip.classList.add('dragging');
+    e.dataTransfer.effectAllowed = 'move';
+  });
+
+  container.addEventListener('dragend', (e) => {
+    const chip = e.target.closest('.chip');
+    if (chip) chip.classList.remove('dragging');
+    draggedEl = null;
+    container.querySelectorAll('.chip').forEach((c) => c.classList.remove('drag-over'));
+  });
+
+  container.addEventListener('dragover', (e) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    const chip = e.target.closest('.chip');
+    if (chip && chip !== draggedEl) {
+      container.querySelectorAll('.chip').forEach((c) => c.classList.remove('drag-over'));
+      chip.classList.add('drag-over');
+    }
+  });
+
+  container.addEventListener('dragleave', (e) => {
+    const chip = e.target.closest('.chip');
+    if (chip) chip.classList.remove('drag-over');
+  });
+
+  container.addEventListener('drop', (e) => {
+    e.preventDefault();
+    const target = e.target.closest('.chip');
+    if (!target || !draggedEl || target === draggedEl) return;
+
+    const code = draggedEl.dataset.code;
+    const targetCode = target.dataset.code;
+    const list = currentSettings[field];
+    const fromIdx = list.indexOf(code);
+    const toIdx = list.indexOf(targetCode);
+    if (fromIdx === -1 || toIdx === -1) return;
+
+    list.splice(fromIdx, 1);
+    list.splice(toIdx, 0, code);
+
+    // Re-render the chip list
+    const renderFn = field === 'sourceCurrencies' ? renderSourceChips : renderTargetChips;
+    renderFn();
+    scheduleAutoSave();
+  });
+}
+
+setupDragReorder(sourceChips, 'sourceCurrencies');
+setupDragReorder(targetChips, 'targetCurrencies');
 
 // ---- Source/Target chip rendering ----
 
@@ -56,7 +169,7 @@ function renderChips(container, list, onRemove) {
   container.innerHTML = list.map((code) => {
     const cur = currentSettings.currencies[code];
     const label = cur ? `${code} (${cur.name})` : code;
-    return `<span class="chip" data-code="${code}">${label}<button class="chip-remove" data-code="${code}" title="Remove">&times;</button></span>`;
+    return `<span class="chip" draggable="true" data-code="${code}">${label}<button class="chip-remove" data-code="${code}" title="Remove">&times;</button></span>`;
   }).join('');
   container.querySelectorAll('.chip-remove').forEach((btn) => {
     btn.addEventListener('click', () => onRemove(btn.dataset.code));
@@ -84,6 +197,8 @@ function createChipRenderer(containerEl, selectEl, field) {
       render();
       populateDropdown(selectEl, currentSettings[field]);
       renderCustomRatesGrid();
+      renderPreview();
+      scheduleAutoSave();
     });
     populateDropdown(selectEl, list);
   }
@@ -99,6 +214,8 @@ addSourceBtn.addEventListener('click', () => {
   currentSettings.sourceCurrencies.push(code);
   renderSourceChips();
   renderCustomRatesGrid();
+  renderPreview();
+  scheduleAutoSave();
 });
 
 addTargetBtn.addEventListener('click', () => {
@@ -107,7 +224,46 @@ addTargetBtn.addEventListener('click', () => {
   currentSettings.targetCurrencies.push(code);
   renderTargetChips();
   renderCustomRatesGrid();
+  renderPreview();
+  scheduleAutoSave();
 });
+
+// ---- Preview Panel ----
+
+function renderPreview() {
+  const previewContent = document.getElementById('previewContent');
+  if (!previewContent || !currentSettings) return;
+
+  const sources = currentSettings.sourceCurrencies;
+  const targets = currentSettings.targetCurrencies;
+  const currencies = currentSettings.currencies;
+
+  if (sources.length === 0 || targets.length === 0) {
+    previewContent.innerHTML = '<span style="color:#999">Add source and target currencies to see a preview.</span>';
+    return;
+  }
+
+  // Show up to 2 example prices
+  const examples = [];
+  for (let i = 0; i < Math.min(sources.length, 2); i++) {
+    const srcCode = sources[i];
+    const srcCur = currencies[srcCode] || {};
+    const symbol = srcCur.symbol || srcCode;
+    const amount = 100;
+    let html = `<span class="preview-price">${amount} ${srcCode}</span>`;
+
+    for (const tc of targets) {
+      const tcCur = currencies[tc] || {};
+      const tcSymbol = tcCur.symbol || tc;
+      // Use a placeholder conversion rate for preview
+      const converted = (amount * (1 + targets.indexOf(tc) * 0.3)).toFixed(2);
+      html += ` <span class="db-pill">${tcSymbol}${converted}</span>`;
+    }
+    examples.push(html);
+  }
+
+  previewContent.innerHTML = examples.join('<br>');
+}
 
 // ---- Currency Library ----
 
@@ -139,7 +295,6 @@ function renderCurrencyLibrary() {
   });
 }
 
-
 function openCurrencyEditor(code) {
   editingCurrency = code || null;
   if (code && currentSettings.currencies[code]) {
@@ -169,6 +324,8 @@ function deleteCurrency(code) {
   renderTargetChips();
   renderCurrencyLibrary();
   renderCustomRatesGrid();
+  renderPreview();
+  scheduleAutoSave();
 }
 
 addCurrencyBtn.addEventListener('click', () => openCurrencyEditor(null));
@@ -208,6 +365,8 @@ saveCurrencyBtn.addEventListener('click', () => {
   renderSourceChips();
   renderTargetChips();
   renderCustomRatesGrid();
+  renderPreview();
+  scheduleAutoSave();
 });
 
 // ---- Custom Rates Grid ----
@@ -216,7 +375,6 @@ function renderCustomRatesGrid() {
   const sources = currentSettings.sourceCurrencies;
   const targets = currentSettings.targetCurrencies;
   const cr = currentSettings.customRates || {};
-  const currencies = currentSettings.currencies;
 
   if (sources.length === 0 || targets.length === 0) {
     customRatesGrid.innerHTML = '<p class="hint">Add source and target currencies first.</p>';
@@ -233,6 +391,11 @@ function renderCustomRatesGrid() {
   }
   html += '</div>';
   customRatesGrid.innerHTML = html;
+
+  // Auto-save when custom rate inputs change
+  customRatesGrid.querySelectorAll('input[data-pair]').forEach((input) => {
+    input.addEventListener('input', scheduleAutoSave);
+  });
 }
 
 // ---- Domain Overrides ----
@@ -259,9 +422,34 @@ function renderDomainOverrides(map) {
       const domain = btn.dataset.domain;
       delete currentSettings.domainCurrencyMap[domain];
       renderDomainOverrides(currentSettings.domainCurrencyMap);
+      scheduleAutoSave();
     });
   });
 }
+
+// ---- Quick site add ----
+
+addCurrentSiteBtn.addEventListener('click', async () => {
+  try {
+    const [tab] = await chrome.tabs.query({ active: true, lastFocusedWindow: true });
+    if (!tab || !tab.url) return;
+    const url = new URL(tab.url);
+    const domain = url.hostname;
+    const lines = whitelistEl.value.split('\n').map((s) => s.trim()).filter(Boolean);
+    if (!lines.includes(domain)) {
+      lines.push(domain);
+      whitelistEl.value = lines.join('\n');
+      scheduleAutoSave();
+    }
+  } catch {
+    // Not in tab context (e.g. opened directly) — ignore
+  }
+});
+
+// ---- Auto-save on text changes ----
+
+ambiguousPatternsEl.addEventListener('input', scheduleAutoSave);
+whitelistEl.addEventListener('input', scheduleAutoSave);
 
 // ---- Load ----
 
@@ -282,48 +470,7 @@ async function loadSettings() {
 
   renderDomainOverrides(currentSettings.domainCurrencyMap);
   updateVisibility();
+  renderPreview();
 }
-
-// ---- Save ----
-
-saveBtn.addEventListener('click', async () => {
-  if (currentSettings.sourceCurrencies.length === 0) {
-    alert('Please add at least one source currency.');
-    return;
-  }
-  if (currentSettings.targetCurrencies.length === 0) {
-    alert('Please add at least one target currency.');
-    return;
-  }
-
-  // Read custom rates from grid
-  const customRates = {};
-  customRatesGrid.querySelectorAll('input[data-pair]').forEach((input) => {
-    const pair = input.dataset.pair;
-    const val = input.value.trim();
-    if (val) {
-      const num = parseFloat(val);
-      if (!isNaN(num)) customRates[pair] = num;
-    }
-  });
-
-  currentSettings.ambiguousPatterns = ambiguousPatternsEl.value
-    .split('\n')
-    .map((s) => s.trim())
-    .filter(Boolean);
-  currentSettings.rateSource = getRadioValue(rateSourceRadios) || 'nbrb';
-  currentSettings.customRates = customRates;
-  currentSettings.siteMode = getRadioValue(siteModeRadios) || 'all';
-  currentSettings.whitelist = whitelistEl.value
-    .split('\n')
-    .map((s) => s.trim())
-    .filter(Boolean);
-
-  await RatesUtil.saveSettings(currentSettings);
-
-  saveStatus.textContent = 'Saved!';
-  saveStatus.classList.add('show');
-  setTimeout(() => saveStatus.classList.remove('show'), 2000);
-});
 
 loadSettings();

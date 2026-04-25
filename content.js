@@ -208,33 +208,56 @@
 
     if (matches.length === 0) return;
 
-    const parts = [];
+    const fragment = document.createDocumentFragment();
     let lastIndex = 0;
+    let hasConversion = false;
+
     for (const m of matches) {
       if (m.index < lastIndex) continue;
-      parts.push(text.slice(lastIndex, m.index + m.length));
 
-      const conversions = [];
+      // Text before the match
+      if (m.index > lastIndex) {
+        fragment.appendChild(document.createTextNode(text.slice(lastIndex, m.index)));
+      }
+
+      // The original price text
+      const originalText = text.slice(m.index, m.index + m.length);
+      fragment.appendChild(document.createTextNode(originalText));
+
+      // Create a pill for each target currency
       for (const tc of targetCurrencies) {
         const converted = RatesUtil.convert(m.amount, m.currency, tc, rates);
         if (converted !== null && converted > 0) {
-          conversions.push(formatConverted(converted, tc));
+          hasConversion = true;
+          const pill = document.createElement('span');
+          pill.className = 'db-pill';
+          pill.textContent = formatConverted(converted, tc);
+
+          const curInfo = currentSettings.currencies[tc];
+          const symbol = curInfo ? curInfo.symbol : tc;
+          const rate = rates[m.currency] && rates[m.currency][tc];
+          pill.setAttribute('data-db-tooltip',
+            `${m.amount.toFixed(2)} ${m.currency} \u2192 ${symbol}${converted.toFixed(2)} ${tc}` +
+            (rate ? ` (1 ${m.currency} = ${rate.toFixed(4)} ${tc})` : '')
+          );
+
+          fragment.appendChild(pill);
         }
       }
 
-      if (conversions.length > 0) {
-        parts.push(` (${conversions.join(' / ')})`);
-      }
       lastIndex = m.index + m.length;
     }
-    parts.push(text.slice(lastIndex));
 
-    const newText = parts.join('');
-    if (newText !== text) {
-      const span = document.createElement('span');
-      span.setAttribute(INJECTED_ATTR, 'true');
-      span.textContent = newText;
-      parent.replaceChild(span, textNode);
+    // Remaining text after last match
+    if (lastIndex < text.length) {
+      fragment.appendChild(document.createTextNode(text.slice(lastIndex)));
+    }
+
+    if (hasConversion) {
+      const container = document.createElement('span');
+      container.setAttribute(INJECTED_ATTR, 'true');
+      container.appendChild(fragment);
+      parent.replaceChild(container, textNode);
     }
   }
 

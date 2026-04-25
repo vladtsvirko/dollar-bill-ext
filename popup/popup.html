@@ -6,23 +6,35 @@
 </head>
 <body>
   <div class="popup">
-    <h1 class="title">Dollar Bill</h1>
-
-    <div class="toggle-row">
-      <label class="toggle-label">
+    <div class="header">
+      <div class="header-left">
+        <span class="logo">$</span>
+        <span class="title">Dollar Bill</span>
+      </div>
+      <label class="toggle-switch">
         <input type="checkbox" id="enabled">
-        <span>Enabled</span>
+        <span class="toggle-slider"></span>
       </label>
     </div>
 
-    <div class="rates-section" id="ratesSection">
-      <div class="rate-header">Current rates</div>
-      <div id="rateList" class="rate-list">Loading...</div>
-      <button id="refreshBtn" class="btn btn-sm">Refresh rates</button>
+    <div class="freshness-bar" id="freshnessBar">
+      <span class="freshness-dot"></span>
+      <span id="freshnessText">Loading...</span>
+    </div>
+
+    <div class="rate-cards" id="rateCards">
+      <div class="rate-card-skeleton">Loading rates...</div>
+    </div>
+
+    <div class="converter">
+      <div class="converter-header">Quick Convert</div>
+      <input type="text" id="converterInput" class="converter-input" placeholder="Type amount...">
+      <div id="converterResult" class="converter-result"></div>
     </div>
 
     <div class="footer">
-      <a href="#" id="settingsLink">Settings</a>
+      <div class="site-indicator" id="siteIndicator"></div>
+      <a href="#" id="settingsLink" class="settings-link">Settings</a>
     </div>
   </div>
   <script src="../lib/rates.js"></script>

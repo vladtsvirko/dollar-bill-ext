@@ -9,9 +9,26 @@
   <div class="options">
     <h1>Dollar Bill Settings</h1>
 
+    <!-- Preview Panel -->
+    <section class="section preview-section">
+      <h2><span class="section-icon">&#128065;</span> Live Preview</h2>
+      <p class="hint">How converted prices will look on web pages.</p>
+      <div class="preview-mock">
+        <div class="preview-site-bar">
+          <span class="preview-dot preview-dot-red"></span>
+          <span class="preview-dot preview-dot-yellow"></span>
+          <span class="preview-dot preview-dot-green"></span>
+          <span class="preview-url">example.com</span>
+        </div>
+        <div class="preview-content" id="previewContent">
+          <span class="preview-price">100 BYN</span>
+        </div>
+      </div>
+    </section>
+
     <!-- Source Currencies -->
     <section class="section">
-      <h2>Source Currencies</h2>
+      <h2><span class="section-icon">&#128176;</span> Source Currencies</h2>
       <p class="hint">Currencies to detect on web pages.</p>
       <div id="sourceChips" class="chip-list"></div>
       <div class="add-row">
@@ -22,7 +39,7 @@
 
     <!-- Target Currencies -->
     <section class="section">
-      <h2>Target Currencies</h2>
+      <h2><span class="section-icon">&#127919;</span> Target Currencies</h2>
       <p class="hint">Currencies to convert prices into.</p>
       <div id="targetChips" class="chip-list"></div>
       <div class="add-row">
@@ -33,7 +50,7 @@
 
     <!-- Currency Library -->
     <section class="section">
-      <h2>Currency Library</h2>
+      <h2><span class="section-icon">&#128218;</span> Currency Library</h2>
       <p class="hint">Manage known currencies, their detection patterns, and symbols.</p>
       <div id="currencyLibrary"></div>
       <button id="addCurrencyBtn" class="btn btn-sm" style="margin-top:8px">+ Add Currency</button>
@@ -56,18 +73,27 @@
 
     <!-- Ambiguous Patterns -->
     <section class="section">
-      <h2>Ambiguous Patterns</h2>
-      <p class="hint">Patterns that could match multiple currencies (e.g. "руб.", "р."). Resolved by TLD or picker.</p>
+      <h2><span class="section-icon">&#10068;</span> Ambiguous Patterns</h2>
+      <p class="hint">Patterns that could match multiple currencies (e.g. "rub.", "r."). Resolved by TLD or picker.</p>
       <textarea id="ambiguousPatterns" rows="4"></textarea>
     </section>
 
     <!-- Rate Source -->
     <section class="section">
-      <h2>Exchange Rate Source</h2>
-      <div class="radio-group">
-        <label><input type="radio" name="rateSource" value="nbrb"> National Bank of Belarus</label>
-        <label><input type="radio" name="rateSource" value="ecb"> European Central Bank</label>
-        <label><input type="radio" name="rateSource" value="custom"> Custom rates</label>
+      <h2><span class="section-icon">&#128200;</span> Exchange Rate Source</h2>
+      <div class="toggle-group">
+        <label class="toggle-option">
+          <input type="radio" name="rateSource" value="nbrb">
+          <span class="toggle-option-label">National Bank of Belarus</span>
+        </label>
+        <label class="toggle-option">
+          <input type="radio" name="rateSource" value="ecb">
+          <span class="toggle-option-label">European Central Bank</span>
+        </label>
+        <label class="toggle-option">
+          <input type="radio" name="rateSource" value="custom">
+          <span class="toggle-option-label">Custom rates</span>
+        </label>
       </div>
       <div id="customRatesSection" class="custom-rates" style="display:none;">
         <h3>Custom Exchange Rates</h3>
@@ -77,28 +103,33 @@
 
     <!-- Site Filtering -->
     <section class="section">
-      <h2>Site Filtering</h2>
-      <div class="radio-group">
-        <label><input type="radio" name="siteMode" value="all"> Auto-scan all websites</label>
-        <label><input type="radio" name="siteMode" value="whitelist"> Only scan whitelisted sites</label>
+      <h2><span class="section-icon">&#127760;</span> Site Filtering</h2>
+      <div class="toggle-group">
+        <label class="toggle-option">
+          <input type="radio" name="siteMode" value="all">
+          <span class="toggle-option-label">Auto-scan all websites</span>
+        </label>
+        <label class="toggle-option">
+          <input type="radio" name="siteMode" value="whitelist">
+          <span class="toggle-option-label">Only scan whitelisted sites</span>
+        </label>
       </div>
       <div id="whitelistSection" style="display:none;">
         <p class="hint">One domain per line (e.g. onliner.by, kvitka.by)</p>
         <textarea id="whitelist" rows="5" placeholder="onliner.by&#10;kvitka.by"></textarea>
+        <button id="addCurrentSiteBtn" class="btn btn-sm" style="margin-top:6px">+ Add current site</button>
       </div>
     </section>
 
     <!-- Domain Overrides -->
     <section class="section" id="domainOverridesSection" style="display:none;">
-      <h2>Domain Currency Overrides</h2>
+      <h2><span class="section-icon">&#128279;</span> Domain Currency Overrides</h2>
       <p class="hint">Websites where you chose a base currency for ambiguous prices. Remove to reset.</p>
       <div id="domainOverridesList" class="domain-list"></div>
     </section>
 
-    <div class="actions">
-      <button id="saveBtn" class="btn btn-primary">Save Settings</button>
-      <span id="saveStatus" class="save-status"></span>
-    </div>
+    <!-- Auto-save toast -->
+    <div id="saveToast" class="save-toast">Saved</div>
   </div>
   <script src="../lib/rates.js"></script>
   <script src="options.js"></script>

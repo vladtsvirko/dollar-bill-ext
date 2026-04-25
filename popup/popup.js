@@ -1,11 +1,25 @@
 const enabledEl = document.getElementById('enabled');
-const rateListEl = document.getElementById('rateList');
-const refreshBtn = document.getElementById('refreshBtn');
+const rateCardsEl = document.getElementById('rateCards');
+const freshnessText = document.getElementById('freshnessText');
+const converterInput = document.getElementById('converterInput');
+const converterResult = document.getElementById('converterResult');
+const siteIndicator = document.getElementById('siteIndicator');
 const settingsLink = document.getElementById('settingsLink');
 
-function renderRates(rates, settings) {
-  if (!rates) {
-    rateListEl.textContent = 'No rates available';
+function formatFreshness(timestamp) {
+  if (!timestamp) return 'No data';
+  const diffMs = Date.now() - timestamp;
+  const diffMin = Math.floor(diffMs / 60000);
+  if (diffMin < 1) return 'Updated just now';
+  if (diffMin < 60) return `Updated ${diffMin} min ago`;
+  const diffHr = Math.floor(diffMin / 60);
+  if (diffHr < 24) return `Updated ${diffHr}h ago`;
+  return 'Updated over a day ago';
+}
+
+function renderRateCards(rates, settings) {
+  if (!rates || !rates.timestamp) {
+    rateCardsEl.innerHTML = '<div class="rate-card-skeleton">No rates available</div>';
     return;
   }
 
@@ -13,20 +27,70 @@ function renderRates(rates, settings) {
   const targets = settings.targetCurrencies || [];
   const currencies = settings.currencies || {};
 
-  const rows = [];
+  const cards = [];
   for (const from of sources) {
     const fromRates = rates[from];
     if (!fromRates) continue;
     for (const to of targets) {
       const rate = fromRates[to];
-      if (rate != null) {
-        const info = currencies[to];
-        const symbol = info ? info.symbol : to;
-        rows.push(`<div class="rate-row"><span>1 ${from} =</span><span>${symbol}${rate.toFixed(4)}</span></div>`);
+      if (rate == null) continue;
+      const fromCur = currencies[from] || {};
+      const toCur = currencies[to] || {};
+      const fromSymbol = fromCur.symbol || from;
+      const toSymbol = toCur.symbol || to;
+      cards.push(`
+        <div class="rate-card">
+          <div class="rate-card-left">
+            <div class="rate-card-flag">${toSymbol}</div>
+            <div>
+              <div class="rate-card-label">1 ${from} =</div>
+            </div>
+          </div>
+          <div class="rate-card-value">${toSymbol}${rate.toFixed(4)} ${to}</div>
+        </div>
+      `);
+    }
+  }
+
+  rateCardsEl.innerHTML = cards.length
+    ? cards.join('')
+    : '<div class="rate-card-skeleton">No rates available</div>';
+}
+
+function renderConverter(value, rates, settings) {
+  if (!value || isNaN(value) || !rates || !settings) {
+    converterResult.innerHTML = '';
+    return;
+  }
+
+  const amount = parseFloat(value);
+  if (isNaN(amount) || amount === 0) {
+    converterResult.innerHTML = '';
+    return;
+  }
+
+  const sources = settings.sourceCurrencies || [];
+  const targets = settings.targetCurrencies || [];
+  const currencies = settings.currencies || {};
+
+  const lines = [];
+  for (const from of sources) {
+    for (const to of targets) {
+      const converted = RatesUtil.convert(amount, from, to, rates);
+      if (converted !== null) {
+        const toInfo = currencies[to] || {};
+        const symbol = toInfo.symbol || to;
+        lines.push(`
+          <div class="converter-result-line">
+            <span class="converter-result-symbol">${from} \u2192 ${to}</span>
+            <span class="converter-result-value">${symbol}${converted.toFixed(2)}</span>
+          </div>
+        `);
       }
     }
   }
-  rateListEl.innerHTML = rows.length ? rows.join('') : 'No rates available';
+
+  converterResult.innerHTML = lines.join('');
 }
 
 async function loadPopup() {
@@ -36,7 +100,27 @@ async function loadPopup() {
   ]);
 
   enabledEl.checked = settings.enabled;
-  renderRates(rates, settings);
+  renderRateCards(rates, settings);
+  freshnessText.textContent = formatFreshness(rates && rates.timestamp);
+
+  // Site indicator
+  try {
+    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+    if (tab && tab.url) {
+      const url = new URL(tab.url);
+      const host = url.hostname;
+      const isActive = settings.enabled;
+      siteIndicator.textContent = isActive ? `\u2713 ${host}` : `\u2717 ${host}`;
+      siteIndicator.style.color = isActive ? 'var(--db-green)' : '#999';
+    }
+  } catch {
+    siteIndicator.textContent = '';
+  }
+
+  // Converter uses loaded rates/settings
+  converterInput.addEventListener('input', () => {
+    renderConverter(converterInput.value.trim(), rates, settings);
+  });
 }
 
 enabledEl.addEventListener('change', async () => {
@@ -45,20 +129,6 @@ enabledEl.addEventListener('change', async () => {
   });
   settings.enabled = enabledEl.checked;
   await RatesUtil.saveSettings(settings);
-});
-
-refreshBtn.addEventListener('click', async () => {
-  refreshBtn.disabled = true;
-  refreshBtn.textContent = 'Updating...';
-  const rates = await new Promise((resolve) => {
-    chrome.runtime.sendMessage({ type: 'updateRates' }, resolve);
-  });
-  const settings = await new Promise((resolve) => {
-    chrome.runtime.sendMessage({ type: 'getSettings' }, resolve);
-  });
-  renderRates(rates, settings);
-  refreshBtn.disabled = false;
-  refreshBtn.textContent = 'Refresh rates';
 });
 
 settingsLink.addEventListener('click', (e) => {
