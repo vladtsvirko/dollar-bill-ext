@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <div class="popup">
+    <h1 class="title">Dollar Bill</h1>
+
+    <div class="toggle-row">
+      <label class="toggle-label">
+        <input type="checkbox" id="enabled">
+        <span>Enabled</span>
+      </label>
+    </div>
+
+    <div class="rates-section" id="ratesSection">
+      <div class="rate-header">Current rates</div>
+      <div id="rateList" class="rate-list">Loading...</div>
+      <button id="refreshBtn" class="btn btn-sm">Refresh rates</button>
+    </div>
+
+    <div class="footer">
+      <a href="#" id="settingsLink">Settings</a>
+    </div>
+  </div>
+  <script src="../lib/rates.js"></script>
+  <script src="popup.js"></script>
+</body>
+</html>
