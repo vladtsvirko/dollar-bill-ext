@@ -49,14 +49,14 @@ async function autoSave() {
   if (currentSettings.sourceCurrencies.length === 0) return;
   if (currentSettings.targetCurrencies.length === 0) return;
 
-  // Read custom rates from grid
+  // Read custom rates from grid (normalization handled by getCustomRates on read)
   const customRates = {};
   customRatesGrid.querySelectorAll('input[data-pair]').forEach((input) => {
     const pair = input.dataset.pair;
     const val = input.value.trim();
     if (val) {
       const num = parseFloat(val);
-      if (!isNaN(num)) customRates[pair] = num;
+      if (!isNaN(num) && num > 0) customRates[pair] = num;
     }
   });
 
@@ -374,19 +374,31 @@ saveCurrencyBtn.addEventListener('click', () => {
 function renderCustomRatesGrid() {
   const sources = currentSettings.sourceCurrencies;
   const targets = currentSettings.targetCurrencies;
-  const cr = currentSettings.customRates || {};
 
   if (sources.length === 0 || targets.length === 0) {
     customRatesGrid.innerHTML = '<p class="hint">Add source and target currencies first.</p>';
     return;
   }
 
+  // Build normalized rate table from raw customRates, then use formatRateForDisplay
+  const normalizedRates = RatesUtil.getCustomRates(currentSettings);
+
+  const seen = new Set();
   let html = '<div class="grid-inputs">';
   for (const from of sources) {
     for (const to of targets) {
-      const key = `${from}:${to}`;
-      const val = cr[key] != null ? cr[key] : '';
-      html += `<label>1 ${from} = <input type="number" step="0.0001" data-pair="${key}" value="${val}" placeholder="${to}"> ${to}</label>`;
+      if (from === to) continue;
+      const pairKey = [from, to].sort().join(':');
+      if (seen.has(pairKey)) continue;
+      seen.add(pairKey);
+
+      const rateInfo = RatesUtil.formatRateForDisplay(from, to, normalizedRates);
+      const displayFrom = rateInfo ? rateInfo.base : from;
+      const displayTo = rateInfo ? rateInfo.quote : to;
+      const val = rateInfo ? rateInfo.rate : '';
+
+      const inputKey = `${displayFrom}:${displayTo}`;
+      html += `<label>1 ${displayFrom} = <input type="number" step="0.0001" data-pair="${inputKey}" value="${val}" placeholder="${displayTo}"> ${displayTo}</label>`;
     }
   }
   html += '</div>';

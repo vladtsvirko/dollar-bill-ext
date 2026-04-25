@@ -28,25 +28,28 @@ function renderRateCards(rates, settings) {
   const currencies = settings.currencies || {};
 
   const cards = [];
+  const seen = new Set();
   for (const from of sources) {
-    const fromRates = rates[from];
-    if (!fromRates) continue;
     for (const to of targets) {
-      const rate = fromRates[to];
-      if (rate == null) continue;
-      const fromCur = currencies[from] || {};
-      const toCur = currencies[to] || {};
-      const fromSymbol = fromCur.symbol || from;
-      const toSymbol = toCur.symbol || to;
+      if (from === to) continue;
+      const pairKey = [from, to].sort().join(':');
+      if (seen.has(pairKey)) continue;
+      seen.add(pairKey);
+
+      const rateInfo = RatesUtil.formatRateForDisplay(from, to, rates);
+      if (!rateInfo) continue;
+      const baseCur = currencies[rateInfo.base] || {};
+      const quoteCur = currencies[rateInfo.quote] || {};
+      const quoteSymbol = quoteCur.symbol || rateInfo.quote;
       cards.push(`
         <div class="rate-card">
           <div class="rate-card-left">
-            <div class="rate-card-flag">${toSymbol}</div>
+            <div class="rate-card-flag">${quoteSymbol}</div>
             <div>
-              <div class="rate-card-label">1 ${from} =</div>
+              <div class="rate-card-label">1 ${rateInfo.base} =</div>
             </div>
           </div>
-          <div class="rate-card-value">${toSymbol}${rate.toFixed(4)} ${to}</div>
+          <div class="rate-card-value">${quoteSymbol}${rateInfo.rate.toFixed(4)} ${rateInfo.quote}</div>
         </div>
       `);
     }

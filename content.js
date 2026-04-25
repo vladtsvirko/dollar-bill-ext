@@ -235,10 +235,12 @@
 
           const curInfo = currentSettings.currencies[tc];
           const symbol = curInfo ? curInfo.symbol : tc;
-          const rate = rates[m.currency] && rates[m.currency][tc];
+          const rateInfo = RatesUtil.formatRateForDisplay(m.currency, tc, rates);
+          const rateStr = rateInfo
+            ? ` (1 ${rateInfo.base} = ${rateInfo.rate.toFixed(4)} ${rateInfo.quote})`
+            : '';
           pill.setAttribute('data-db-tooltip',
-            `${m.amount.toFixed(2)} ${m.currency} \u2192 ${symbol}${converted.toFixed(2)} ${tc}` +
-            (rate ? ` (1 ${m.currency} = ${rate.toFixed(4)} ${tc})` : '')
+            `${m.amount.toFixed(2)} ${m.currency} \u2192 ${symbol}${converted.toFixed(2)} ${tc}${rateStr}`
           );
 
           fragment.appendChild(pill);
