@@ -30,15 +30,12 @@ function renderRates(rates, settings) {
 }
 
 async function loadPopup() {
-  const settings = await new Promise((resolve) => {
-    chrome.runtime.sendMessage({ type: 'getSettings' }, resolve);
-  });
+  const [settings, rates] = await Promise.all([
+    new Promise((resolve) => chrome.runtime.sendMessage({ type: 'getSettings' }, resolve)),
+    new Promise((resolve) => chrome.runtime.sendMessage({ type: 'getRates' }, resolve)),
+  ]);
 
   enabledEl.checked = settings.enabled;
-
-  const rates = await new Promise((resolve) => {
-    chrome.runtime.sendMessage({ type: 'getRates' }, resolve);
-  });
   renderRates(rates, settings);
 }
 

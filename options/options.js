@@ -121,7 +121,7 @@ function renderCurrencyLibrary() {
           <strong>${code}</strong> ${cur.name} <span class="currency-symbol">${cur.symbol}</span>
           ${cur.tld ? `<span class="currency-tld">TLD: .${cur.tld}</span>` : ''}
         </div>
-        <div class="currency-patterns">${(cur.patterns || []).map((p) => escapeHtml(p)).join('<br>')}</div>
+        <div class="currency-patterns">${(cur.patterns || []).map((p) => RatesUtil.escapeHtml(p)).join('<br>')}</div>
         <div class="currency-card-actions">
           <button class="btn btn-sm btn-link" data-edit="${code}">Edit</button>
           <button class="btn btn-sm btn-link btn-danger" data-delete="${code}">Delete</button>
@@ -139,9 +139,6 @@ function renderCurrencyLibrary() {
   });
 }
 
-function escapeHtml(str) {
-  return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-}
 
 function openCurrencyEditor(code) {
   editingCurrency = code || null;
@@ -251,9 +248,9 @@ function renderDomainOverrides(map) {
   section.style.display = 'block';
   list.innerHTML = entries.map(([domain, currency]) => `
     <div class="domain-row">
-      <span class="domain-name">${domain}</span>
-      <span class="domain-cur">${currency}</span>
-      <button class="domain-remove" data-domain="${domain}" title="Remove">&times;</button>
+      <span class="domain-name">${RatesUtil.escapeHtml(domain)}</span>
+      <span class="domain-cur">${RatesUtil.escapeHtml(currency)}</span>
+      <button class="domain-remove" data-domain="${RatesUtil.escapeHtml(domain)}" title="Remove">&times;</button>
     </div>
   `).join('');
 

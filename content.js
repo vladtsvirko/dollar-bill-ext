@@ -11,10 +11,6 @@
   let currentSettings = null;
   let lastCompiledKey = null;
 
-  function escapeHtml(str) {
-    return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-  }
-
   function compilePatterns(settings) {
     currentSettings = settings;
     // Skip recompilation if settings haven't changed
@@ -56,7 +52,7 @@
     compiledAmbiguous = [];
     for (const pat of settings.ambiguousPatterns || []) {
       try {
-        compiledAmbiguous.push(new RegExp(pat, 'gi'));
+        compiledAmbiguous.push({ regex: new RegExp(pat, 'gi'), currency: null });
       } catch (e) {
         console.warn(`[DollarBill] Invalid ambiguous pattern: ${pat}`, e);
       }
@@ -85,9 +81,9 @@
     let current;
     while ((current = walker.nextNode()) && !found) {
       const text = current.nodeValue;
-      for (const regex of compiledAmbiguous) {
-        regex.lastIndex = 0;
-        if (regex.test(text)) {
+      for (const pattern of compiledAmbiguous) {
+        pattern.regex.lastIndex = 0;
+        if (pattern.regex.test(text)) {
           found = true;
           break;
         }
@@ -110,7 +106,7 @@
     let buttonsHtml = sources.map((code) => {
       const cur = currencies[code];
       const label = cur ? `${code} (${cur.name})` : code;
-      return `<button class="dbp-btn" data-currency="${escapeHtml(code)}">${escapeHtml(label)}</button>`;
+      return `<button class="dbp-btn" data-currency="${RatesUtil.escapeHtml(code)}">${RatesUtil.escapeHtml(label)}</button>`;
     }).join('');
 
     bar.innerHTML = `
@@ -140,8 +136,16 @@
   }
 
   function parseAmount(str) {
-    const cleaned = str.replace(/\s/g, '').replace(',', '.');
-    return parseFloat(cleaned);
+    const s = str.replace(/\s/g, '');
+    const lastComma = s.lastIndexOf(',');
+    const lastDot = s.lastIndexOf('.');
+    if (lastComma > lastDot) {
+      return parseFloat(s.replace(/\./g, '').replace(',', '.'));
+    }
+    if (lastDot > lastComma) {
+      return parseFloat(s.replace(/,/g, ''));
+    }
+    return parseFloat(s.replace(',', '.'));
   }
 
   function formatConverted(amount, code) {
@@ -185,8 +189,9 @@
 
     const matches = [];
 
-    // Unambiguous patterns
-    for (const pattern of compiledUnambiguous) {
+    const allPatterns = [...compiledUnambiguous, ...(ambiguousCurrency ? compiledAmbiguous : [])];
+    for (const pattern of allPatterns) {
+      const currency = pattern.currency || ambiguousCurrency;
       let match;
       while ((match = pattern.regex.exec(text)) !== null) {
         const amount = parseAmount(match[1]);
@@ -195,28 +200,10 @@
           index: match.index,
           length: match[0].length,
           amount,
-          currency: pattern.currency,
+          currency,
         });
       }
       pattern.regex.lastIndex = 0;
-    }
-
-    // Ambiguous patterns
-    if (ambiguousCurrency) {
-      for (const regex of compiledAmbiguous) {
-        let match;
-        while ((match = regex.exec(text)) !== null) {
-          const amount = parseAmount(match[1]);
-          if (isNaN(amount) || amount <= 0) continue;
-          matches.push({
-            index: match.index,
-            length: match[0].length,
-            amount,
-            currency: ambiguousCurrency,
-          });
-        }
-        regex.lastIndex = 0;
-      }
     }
 
     if (matches.length === 0) return;
@@ -273,17 +260,14 @@
   }
 
   async function runConversion() {
-    const settings = await new Promise((resolve) => {
-      chrome.runtime.sendMessage({ type: 'getSettings' }, resolve);
-    });
+    const [settings, cachedRates] = await Promise.all([
+      new Promise((resolve) => chrome.runtime.sendMessage({ type: 'getSettings' }, resolve)),
+      new Promise((resolve) => chrome.runtime.sendMessage({ type: 'getRates' }, resolve)),
+    ]);
 
     if (!shouldProcessPage(settings)) return;
 
     compilePatterns(settings);
-
-    const cachedRates = await new Promise((resolve) => {
-      chrome.runtime.sendMessage({ type: 'getRates' }, resolve);
-    });
 
     const rates = getRatesForConversion(settings, cachedRates);
     if (!rates) return;
