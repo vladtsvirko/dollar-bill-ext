@@ -8,6 +8,7 @@ const saveToast = document.getElementById('saveToast');
 const optEnabled = document.getElementById('optEnabled');
 const themeOptions = document.getElementById('themeOptions');
 const timeOptions = document.getElementById('timeOptions');
+const numberOptions = document.getElementById('numberOptions');
 
 // Reload & loaded rates
 const reloadRatesBtn = document.getElementById('reloadRatesBtn');
@@ -148,10 +149,11 @@ function renderLoadedRates(loadedRatesMap) {
     html += `<div class="loaded-rates-meta">${RatesUtil.escapeHtml(sourceName)} &middot; ${entries.length} currencies${age ? ' &middot; ' + RatesUtil.escapeHtml(age) + ' ago' : ''}</div>`;
     html += '<div class="loaded-rates-grid">';
     html += `<div class="loaded-rates-header"><span>Code</span><span>1 ${RatesUtil.escapeHtml(base)} =</span></div>`;
+    const nf = currentSettings ? currentSettings.numberFormat : null;
     for (const [code, rate] of entries) {
       const displayRate = convention === 'direct'
-        ? (rate > 0 ? (1 / rate).toFixed(4) : '&mdash;')
-        : (rate > 0 ? rate.toFixed(4) : '&mdash;');
+        ? (rate > 0 ? RatesUtil.formatNumber(1 / rate, 4, nf) : '&mdash;')
+        : (rate > 0 ? RatesUtil.formatNumber(rate, 4, nf) : '&mdash;');
       html += `<div class="loaded-rates-row"><span class="loaded-rates-code">${RatesUtil.escapeHtml(code)}</span><span class="loaded-rates-value">${displayRate}</span></div>`;
     }
     html += '</div>';
@@ -249,6 +251,28 @@ timeOptions.addEventListener('click', async (e) => {
   showSaveToast();
 });
 
+// ---- Number format selector ----
+
+function renderNumberFormatSelector() {
+  const saved = currentSettings ? currentSettings.numberFormat : null;
+  const activeValue = saved === null ? '' : saved;
+  numberOptions.querySelectorAll('.time-opt').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.numValue === activeValue);
+  });
+}
+
+numberOptions.addEventListener('click', async (e) => {
+  const btn = e.target.closest('.time-opt');
+  if (!btn) return;
+  const value = btn.dataset.numValue;
+  currentSettings.numberFormat = value === '' ? null : value;
+  renderNumberFormatSelector();
+  renderPreview();
+  renderLoadedRates(currentLoadedRates);
+  await RatesUtil.saveSettings(currentSettings);
+  showSaveToast();
+});
+
 // Listen for theme changes from popup
 chrome.storage.onChanged.addListener((changes, area) => {
   if (area === 'local' && changes.dollarbill_settings) {
@@ -264,6 +288,12 @@ chrome.storage.onChanged.addListener((changes, area) => {
       currentSettings.timeFormat = newSettings.timeFormat;
       if (oldTimeFormat !== newSettings.timeFormat) {
         renderTimeFormatSelector();
+      }
+      const oldNumberFormat = currentSettings.numberFormat;
+      currentSettings.numberFormat = newSettings.numberFormat;
+      if (oldNumberFormat !== newSettings.numberFormat) {
+        renderNumberFormatSelector();
+        renderPreview();
       }
     }
   }
@@ -480,11 +510,12 @@ function renderPreview() {
     const amount = 100;
     let html = `<span class="preview-price">${amount} ${srcCode}</span>`;
 
+    const nf = currentSettings ? currentSettings.numberFormat : null;
     for (const tc of sourceMap[srcCode]) {
       const tcCur = currencies[tc] || {};
       const tcSymbol = tcCur.symbol || tc;
-      const converted = (amount * (1 + Math.random() * 0.5)).toFixed(2);
-      html += ` <span class="db-pill">${tcSymbol}${converted}</span>`;
+      const converted = amount * (1 + Math.random() * 0.5);
+      html += ` <span class="db-pill">${tcSymbol}${RatesUtil.formatNumber(converted, 2, nf)}</span>`;
     }
     examples.push(html);
   }
@@ -690,9 +721,10 @@ function renderCustomRatesGrid() {
 
     const inputKey = `${displayFrom}:${displayTo}`;
     const reverseInputKey = `${displayTo}:${displayFrom}`;
+    const nf = currentSettings ? currentSettings.numberFormat : null;
     const conflictData = conflicts[inputKey] || conflicts[reverseInputKey];
     const conflictTag = conflictData
-      ? ` <span style="color:#d4a017;font-size:11px" title="Conflicting rates: ${Object.entries(conflictData).map(([s, r]) => RatesUtil.getSourceDisplayName(s) + ': ' + r.toFixed(4)).join(', ')}">&#9888; ${RatesUtil.getSourceDisplayName(RatesUtil.getActiveSourceForPair(inputKey, reverseInputKey, currentSettings, currentRates))}</span>`
+      ? ` <span style="color:#d4a017;font-size:11px" title="Conflicting rates: ${Object.entries(conflictData).map(([s, r]) => RatesUtil.getSourceDisplayName(s) + ': ' + RatesUtil.formatNumber(r, 4, nf)).join(', ')}">&#9888; ${RatesUtil.getSourceDisplayName(RatesUtil.getActiveSourceForPair(inputKey, reverseInputKey, currentSettings, currentRates))}</span>`
       : '';
 
     html += `<label>1 ${displayFrom} = <input type="number" step="0.0001" data-pair="${inputKey}" value="${val}" placeholder="${displayTo}"> ${displayTo}${conflictTag}</label>`;
@@ -773,6 +805,7 @@ async function loadSettings() {
   applyTheme(getEffectiveTheme());
   renderThemeSelector();
   renderTimeFormatSelector();
+  renderNumberFormatSelector();
 
   // Enabled toggle
   optEnabled.checked = currentSettings.enabled !== false;

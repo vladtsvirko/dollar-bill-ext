@@ -166,7 +166,7 @@
     if (!currentSettings || !currentSettings.currencies) return '';
     const info = currentSettings.currencies[code];
     if (!info) return '';
-    return `${info.symbol}${amount.toFixed(2)}`;
+    return `${info.symbol}${RatesUtil.formatNumber(amount, 2, currentSettings.numberFormat)}`;
   }
 
   function shouldProcessPage(settings) {
@@ -260,8 +260,9 @@
 
           const curInfo = currentSettings.currencies[tc];
           const symbol = curInfo ? curInfo.symbol : tc;
+          const nf = currentSettings.numberFormat;
           let rateStr = dispInfo
-            ? ` (1 ${dispInfo.base} = ${dispInfo.rate.toFixed(4)} ${dispInfo.quote})`
+            ? ` (1 ${dispInfo.base} = ${RatesUtil.formatNumber(dispInfo.rate, 4, nf)} ${dispInfo.quote})`
             : '';
 
           if (hasConflict) {
@@ -275,7 +276,7 @@
           }
 
           pill.setAttribute('data-db-tooltip',
-            `${m.amount.toFixed(2)} ${m.currency} \u2192 ${symbol}${converted.toFixed(2)} ${tc}${rateStr}`
+            `${RatesUtil.formatNumber(m.amount, 2, nf)} ${m.currency} \u2192 ${symbol}${RatesUtil.formatNumber(converted, 2, nf)} ${tc}${rateStr}`
           );
 
           fragment.appendChild(pill);

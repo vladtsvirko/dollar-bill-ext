@@ -461,10 +461,11 @@ function renderConverter(value, cachedRates, settings) {
   const toInfo = (settings.currencies || {})[to] || {};
   const symbol = toInfo.symbol || to;
 
+  const nf = settings.numberFormat;
   converterResult.innerHTML = `
     <div class="converter-result-line">
       <span class="converter-result-symbol">${from} \u2192 ${to}</span>
-      <span class="converter-result-value">${symbol}${converted.toFixed(2)}</span>
+      <span class="converter-result-value">${symbol}${RatesUtil.formatNumber(converted, 2, nf)}</span>
     </div>
   `;
 }
