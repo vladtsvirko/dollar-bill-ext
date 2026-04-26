@@ -8,6 +8,7 @@ const ambiguousPatternsEl = document.getElementById('ambiguousPatterns');
 const saveToast = document.getElementById('saveToast');
 const optEnabled = document.getElementById('optEnabled');
 const themeOptions = document.getElementById('themeOptions');
+const timeOptions = document.getElementById('timeOptions');
 
 // Conversion pairs
 const pairChips = document.getElementById('pairChips');
@@ -31,8 +32,56 @@ const cancelCurrencyBtn = document.getElementById('cancelCurrencyBtn');
 const addCurrentSiteBtn = document.getElementById('addCurrentSiteBtn');
 
 let currentSettings = null;
+let currentRates = null;
+let currentFetchStatus = null;
 let editingCurrency = null;
 let autoSaveTimer = null;
+
+// ---- Fetch Status ----
+
+function renderFetchStatus(fetchStatus, rates) {
+  const dot = document.getElementById('fetchStatusDot');
+  const title = document.getElementById('fetchStatusTitle');
+  const details = document.getElementById('fetchStatusDetails');
+
+  const state = RatesUtil.getFetchState(fetchStatus, rates);
+
+  if (state === 'error') {
+    dot.className = 'fetch-status-dot fetch-status-dot-error';
+    title.textContent = 'Fetch failed';
+    title.className = 'fetch-status-title fetch-status-title-error';
+  } else if (state === 'stale') {
+    dot.className = 'fetch-status-dot fetch-status-dot-stale';
+    title.textContent = (fetchStatus && fetchStatus.lastFetchTime) ? 'Rates are stale' : 'No fetch data';
+    title.className = 'fetch-status-title';
+  } else {
+    dot.className = 'fetch-status-dot fetch-status-dot-ok';
+    title.textContent = 'Up to date';
+    title.className = 'fetch-status-title';
+  }
+
+  const rows = [];
+  if (fetchStatus && fetchStatus.lastFetchTime) {
+    rows.push(['Last fetch attempt', RatesUtil.formatTimestamp(fetchStatus.lastFetchTime, currentSettings.timeFormat, 'Never')]);
+  }
+  if (fetchStatus && fetchStatus.lastSuccessTime) {
+    rows.push(['Last successful fetch', RatesUtil.formatTimestamp(fetchStatus.lastSuccessTime, currentSettings.timeFormat, 'Never')]);
+  }
+  if (rates && rates.timestamp) {
+    rows.push(['Cache age', RatesUtil.formatCacheAge(rates)]);
+    rows.push(['Cache timestamp', RatesUtil.formatTimestamp(rates.timestamp, currentSettings.timeFormat, 'Never')]);
+  }
+  if (fetchStatus && fetchStatus.lastError) {
+    rows.push(['Error', fetchStatus.lastError]);
+    if (fetchStatus.consecutiveFailures > 1) {
+      rows.push(['Consecutive failures', fetchStatus.consecutiveFailures]);
+    }
+  }
+
+  details.innerHTML = rows.map(([label, value]) =>
+    `<div class="fetch-status-row"><span class="fetch-status-label">${RatesUtil.escapeHtml(label)}</span><span class="fetch-status-value">${RatesUtil.escapeHtml(value)}</span></div>`
+  ).join('');
+}
 
 // ---- Theme ----
 
@@ -78,16 +127,42 @@ themeOptions.addEventListener('click', async (e) => {
   showSaveToast();
 });
 
+// ---- Time format selector ----
+
+function renderTimeFormatSelector() {
+  const saved = currentSettings ? currentSettings.timeFormat : null;
+  const activeValue = saved === null ? '' : saved;
+  timeOptions.querySelectorAll('.time-opt').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.timeValue === activeValue);
+  });
+}
+
+timeOptions.addEventListener('click', async (e) => {
+  const btn = e.target.closest('.time-opt');
+  if (!btn) return;
+  const value = btn.dataset.timeValue;
+  currentSettings.timeFormat = value === '' ? null : value;
+  renderTimeFormatSelector();
+  renderFetchStatus(currentFetchStatus, currentRates);
+  await RatesUtil.saveSettings(currentSettings);
+  showSaveToast();
+});
+
 // Listen for theme changes from popup
 chrome.storage.onChanged.addListener((changes, area) => {
-  if (area === 'sync' && changes.settings) {
-    const newSettings = changes.settings.newValue;
+  if (area === 'local' && changes.dollarbill_settings) {
+    const newSettings = changes.dollarbill_settings.newValue;
     if (newSettings && currentSettings) {
       const oldTheme = currentSettings.theme;
       currentSettings.theme = newSettings.theme;
       if (oldTheme !== newSettings.theme) {
         applyTheme(getEffectiveTheme());
         renderThemeSelector();
+      }
+      const oldTimeFormat = currentSettings.timeFormat;
+      currentSettings.timeFormat = newSettings.timeFormat;
+      if (oldTimeFormat !== newSettings.timeFormat) {
+        renderTimeFormatSelector();
       }
     }
   }
@@ -505,9 +580,15 @@ whitelistEl.addEventListener('input', scheduleAutoSave);
 async function loadSettings() {
   currentSettings = await RatesUtil.getSettings();
 
+  [currentRates, currentFetchStatus] = await Promise.all([
+    RatesUtil.getCachedRates(),
+    RatesUtil.getFetchStatus(),
+  ]);
+
   // Apply theme
   applyTheme(getEffectiveTheme());
   renderThemeSelector();
+  renderTimeFormatSelector();
 
   // Enabled toggle
   optEnabled.checked = currentSettings.enabled !== false;
@@ -520,6 +601,7 @@ async function loadSettings() {
 
   setRadioValue(rateSourceRadios, currentSettings.rateSource);
   renderCustomRatesGrid();
+  renderFetchStatus(currentFetchStatus, currentRates);
 
   setRadioValue(siteModeRadios, currentSettings.siteMode);
   whitelistEl.value = (currentSettings.whitelist || []).join('\n');

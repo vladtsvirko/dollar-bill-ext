@@ -257,6 +257,19 @@ body {
   height: 5px;
   border-radius: 50%;
   background: var(--accent);
+  flex-shrink: 0;
+}
+
+.source-dot-ok {
+  background: var(--accent);
+}
+
+.source-dot-stale {
+  background: #d4a017;
+}
+
+.source-dot-error {
+  background: #c44;
 }
 
 .source-chevron {
@@ -317,6 +330,29 @@ body {
 }
 
 .source-dropdown.open {
+  display: block;
+}
+
+.source-tooltip {
+  display: none;
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 16px;
+  right: 16px;
+  background: var(--bg-app);
+  border: 1px solid var(--border-default);
+  border-radius: var(--db-radius);
+  box-shadow: var(--shadow-dropdown);
+  padding: 8px 10px;
+  font-size: 11px;
+  color: var(--text-secondary);
+  line-height: 1.5;
+  z-index: 101;
+  font-family: var(--db-mono);
+  white-space: nowrap;
+}
+
+.source-tooltip.show {
   display: block;
 }
 

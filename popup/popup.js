@@ -5,6 +5,8 @@ const sourceNameEl = document.getElementById('sourceName');
 const sourceTimeEl = document.getElementById('sourceTime');
 const sourceReload = document.getElementById('sourceReload');
 const sourceDropdown = document.getElementById('sourceDropdown');
+const sourceDot = document.getElementById('sourceDot');
+const sourceTooltip = document.getElementById('sourceTooltip');
 const converterFrom = document.getElementById('converterFrom');
 const converterTo = document.getElementById('converterTo');
 const converterInput = document.getElementById('converterInput');
@@ -72,19 +74,45 @@ window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () 
 
 // --- Timestamp formatting ---
 
-function formatTimestamp(timestamp) {
-  if (!timestamp) return '';
-  const d = new Date(timestamp);
-  return d.toLocaleString(undefined, {
-    month: 'short', day: 'numeric',
-    hour: '2-digit', minute: '2-digit',
-  });
-}
-
 function getSourceDisplayName(sourceId) {
   const source = RatesUtil.RATE_SOURCES[sourceId];
   return source ? source.name : sourceId;
 }
+
+// --- Fetch status ---
+
+function renderFetchStatus(fetchStatus, rates) {
+  const state = RatesUtil.getFetchState(fetchStatus, rates);
+  sourceDot.className = 'source-dot source-dot-' + state;
+
+  const lines = [];
+  if (fetchStatus && fetchStatus.lastFetchTime) {
+    lines.push('Last fetch: ' + RatesUtil.formatTimestamp(fetchStatus.lastFetchTime, currentSettings.timeFormat));
+  }
+  if (fetchStatus && fetchStatus.lastSuccessTime) {
+    lines.push('Last success: ' + RatesUtil.formatTimestamp(fetchStatus.lastSuccessTime, currentSettings.timeFormat));
+  }
+  if (rates && rates.timestamp) {
+    lines.push('Cache age: ' + RatesUtil.formatCacheAge(rates));
+  }
+  if (fetchStatus && fetchStatus.lastError) {
+    lines.push('Error: ' + fetchStatus.lastError);
+    if (fetchStatus.consecutiveFailures > 1) {
+      lines.push('Failed ' + fetchStatus.consecutiveFailures + ' times in a row');
+    }
+  }
+  if (lines.length === 0) {
+    lines.push('No fetch data yet');
+  }
+  sourceTooltip.innerHTML = lines.map(l => RatesUtil.escapeHtml(l)).join('<br>');
+}
+
+sourceTrigger.addEventListener('mouseenter', () => {
+  sourceTooltip.classList.add('show');
+});
+sourceTrigger.addEventListener('mouseleave', () => {
+  sourceTooltip.classList.remove('show');
+});
 
 // --- Source dropdown ---
 
@@ -147,18 +175,18 @@ sourceDropdown.addEventListener('click', async (e) => {
 async function refreshRates() {
   sourceReload.classList.add('loading');
   try {
-    const rates = await new Promise((resolve) => {
+    const { rates, fetchStatus } = await new Promise((resolve) => {
       chrome.runtime.sendMessage({ type: 'updateRates' }, resolve);
     });
     if (rates) {
       currentRates = rates;
-      currentRates.timestamp = rates.timestamp;
       renderRateCards(currentRates, currentSettings);
       renderSourceTimestamp(currentRates);
       if (converterInput.value.trim()) {
         renderConverter(converterInput.value.trim(), currentRates, currentSettings);
       }
     }
+    renderFetchStatus(fetchStatus, rates || currentRates);
   } finally {
     sourceReload.classList.remove('loading');
   }
@@ -167,7 +195,7 @@ async function refreshRates() {
 sourceReload.addEventListener('click', refreshRates);
 
 function renderSourceTimestamp(rates) {
-  sourceTimeEl.textContent = formatTimestamp(rates && rates.timestamp);
+  sourceTimeEl.textContent = RatesUtil.formatTimestamp(rates && rates.timestamp, currentSettings.timeFormat);
 }
 
 // --- Rate cards ---
@@ -385,9 +413,10 @@ converterTo.addEventListener('change', () => {
 // --- Main load ---
 
 async function loadPopup() {
-  const [settings, rates] = await Promise.all([
+  const [settings, rates, fetchStatus] = await Promise.all([
     new Promise((resolve) => chrome.runtime.sendMessage({ type: 'getSettings' }, resolve)),
     new Promise((resolve) => chrome.runtime.sendMessage({ type: 'getRates' }, resolve)),
+    new Promise((resolve) => chrome.runtime.sendMessage({ type: 'getFetchStatus' }, resolve)),
   ]);
 
   currentSettings = settings;
@@ -399,6 +428,7 @@ async function loadPopup() {
   renderThemeSegmented();
   renderSourceDropdown(settings);
   renderSourceTimestamp(rates);
+  renderFetchStatus(fetchStatus, rates);
   renderRateCards(rates, settings);
   renderPairChips(settings);
   populateConverterSelects(settings);

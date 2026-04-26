@@ -348,6 +348,38 @@ h3 {
   font-weight: 600;
 }
 
+/* ---- Time format selector ---- */
+
+.time-options {
+  display: flex;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.time-opt {
+  padding: 5px 12px;
+  border: 2px solid var(--border-default);
+  border-radius: 8px;
+  background: transparent;
+  cursor: pointer;
+  font-family: var(--db-font);
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  transition: all 0.2s ease;
+}
+
+.time-opt:hover {
+  border-color: var(--text-tertiary);
+}
+
+.time-opt.active {
+  border-color: var(--db-green);
+  background: var(--db-green-light);
+  color: var(--db-green);
+  font-weight: 600;
+}
+
 /* ---- Toggle group ---- */
 
 .toggle-group {
@@ -648,6 +680,66 @@ h3 {
   margin-top: 8px;
   display: flex;
   gap: 8px;
+}
+
+/* Fetch status panel */
+.fetch-status-panel {
+  margin-top: 12px;
+  padding: 10px 12px;
+  background: var(--bg-card);
+  border-radius: var(--db-radius);
+  border: 1px solid var(--border-card);
+}
+
+.fetch-status-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.fetch-status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.fetch-status-dot-ok { background: var(--db-green); }
+.fetch-status-dot-stale { background: #d4a017; }
+.fetch-status-dot-error { background: #c44; }
+
+.fetch-status-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.fetch-status-title-error {
+  color: #c44;
+}
+
+.fetch-status-details {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.fetch-status-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  font-size: 12px;
+}
+
+.fetch-status-label {
+  color: var(--text-tertiary);
+}
+
+.fetch-status-value {
+  color: var(--text-secondary);
+  font-family: var(--db-mono);
+  font-size: 11px;
 }
 
 /* Custom rates */
