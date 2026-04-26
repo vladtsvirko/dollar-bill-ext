@@ -7,56 +7,63 @@
 
   let compiledUnambiguous = [];
   let compiledAmbiguous = [];
-  let tldCurrencyMap = {};
+  let compiledDomainMap = null; // precomputed domain -> currency for O(1) lookup
   let currentSettings = null;
   let lastCompiledKey = null;
 
   function compilePatterns(settings) {
     currentSettings = settings;
     const sources = RatesUtil.getSourceCurrencies(settings);
-    // Skip recompilation if settings haven't changed
-    const key = JSON.stringify(sources) +
-                JSON.stringify(settings.currencies) +
-                JSON.stringify(settings.ambiguousPatterns);
+    const key = JSON.stringify(sources) + JSON.stringify(settings.currencies);
     if (key === lastCompiledKey) return;
     lastCompiledKey = key;
 
     const currencies = settings.currencies || {};
+    const identifierOwners = RatesUtil.buildIdentifierOwnerMap(currencies);
 
-    // Build unambiguous patterns from currency definitions
+    // Build unambiguous patterns from unique identifiers
     compiledUnambiguous = [];
     for (const code of sources) {
       const cur = currencies[code];
-      if (!cur || !cur.patterns) continue;
-      for (const pat of cur.patterns) {
-        try {
-          compiledUnambiguous.push({
-            regex: new RegExp(pat, 'gi'),
-            currency: code,
-          });
-        } catch (e) {
-          console.warn(`[DollarBill] Invalid pattern for ${code}: ${pat}`, e);
+      if (!cur || !cur.identifiers) continue;
+      for (const id of cur.identifiers) {
+        const norm = id.trim().toLowerCase();
+        const owners = identifierOwners[norm];
+        if (!owners || owners.length !== 1) continue;
+        const patterns = RatesUtil.buildPatternsFromIdentifiers([id]);
+        for (const pat of patterns) {
+          try {
+            compiledUnambiguous.push({ regex: new RegExp(pat, 'gi'), currency: code });
+          } catch (e) {
+            console.warn(`[DollarBill] Invalid pattern for ${code}: ${pat}`, e);
+          }
         }
       }
     }
 
-    // Build TLD map from currency definitions
-    tldCurrencyMap = {};
-    for (const [code, cur] of Object.entries(currencies)) {
-      if (cur.tld) {
-        tldCurrencyMap[cur.tld] = code;
+    // Build ambiguous patterns from shared identifiers
+    compiledAmbiguous = [];
+    for (const [norm, entries] of Object.entries(identifierOwners)) {
+      if (entries.length <= 1) continue;
+      const patterns = RatesUtil.buildPatternsFromIdentifiers([entries[0].originalId]);
+      for (const pat of patterns) {
+        try {
+          compiledAmbiguous.push({ regex: new RegExp(pat, 'gi'), currency: null });
+        } catch (e) {
+          console.warn(`[DollarBill] Invalid ambiguous pattern: ${pat}`, e);
+        }
       }
     }
 
-    // Build ambiguous patterns
-    compiledAmbiguous = [];
-    for (const pat of settings.ambiguousPatterns || []) {
-      try {
-        compiledAmbiguous.push({ regex: new RegExp(pat, 'gi'), currency: null });
-      } catch (e) {
-        console.warn(`[DollarBill] Invalid ambiguous pattern: ${pat}`, e);
+    // Precompute domain lookup map for O(1) resolveAmbiguousCurrency
+    compiledDomainMap = [];
+    for (const [code, cur] of Object.entries(currencies)) {
+      for (const domain of (cur.domains || [])) {
+        compiledDomainMap.push({ domain: domain.toLowerCase(), code });
       }
     }
+    // Sort longest-first so first match wins (most specific)
+    compiledDomainMap.sort((a, b) => b.domain.length - a.domain.length);
   }
 
   function resolveAmbiguousCurrency(settings) {
@@ -64,8 +71,15 @@
     if (settings.domainCurrencyMap && settings.domainCurrencyMap[host]) {
       return settings.domainCurrencyMap[host];
     }
-    const tld = host.split('.').pop().toLowerCase();
-    return tldCurrencyMap[tld] || null;
+    // Use precomputed domain map
+    for (const { domain, code } of compiledDomainMap) {
+      if (domain.startsWith('.')) {
+        if (host.endsWith(domain)) return code;
+      } else {
+        if (host === domain || host.endsWith('.' + domain)) return code;
+      }
+    }
+    return null;
   }
 
   function hasAmbiguousMatches(node) {
@@ -189,8 +203,9 @@
 
     const matches = [];
 
-    const allPatterns = [...compiledUnambiguous, ...(ambiguousCurrency ? compiledAmbiguous : [])];
-    for (const pattern of allPatterns) {
+    const allPatterns = compiledUnambiguous;
+    for (let pi = 0; pi < allPatterns.length + (ambiguousCurrency ? compiledAmbiguous.length : 0); pi++) {
+      const pattern = pi < allPatterns.length ? allPatterns[pi] : compiledAmbiguous[pi - allPatterns.length];
       const currency = pattern.currency || ambiguousCurrency;
       let match;
       while ((match = pattern.regex.exec(text)) !== null) {

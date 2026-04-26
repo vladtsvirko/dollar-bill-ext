@@ -162,19 +162,24 @@
     <!-- Currency Library -->
     <section class="section">
       <h2><span class="section-icon">&#128218;</span> Currency Library</h2>
-      <p class="hint">Manage known currencies, their detection patterns, and symbols.</p>
+      <p class="hint">Manage known currencies, their identifiers, and symbols.</p>
       <div id="currencyLibrary"></div>
       <button id="addCurrencyBtn" class="btn btn-sm" style="margin-top:8px">+ Add Currency</button>
       <div id="currencyEditor" class="currency-editor" style="display:none">
         <div class="editor-row">
-          <label>Code <input type="text" id="editCode" placeholder="USD" class="short-input"></label>
+          <label>ISO Code <input type="text" id="editCode" placeholder="USD" class="short-input"></label>
           <label>Name <input type="text" id="editName" placeholder="US Dollar"></label>
           <label>Symbol <input type="text" id="editSymbol" placeholder="$" class="short-input"></label>
         </div>
-        <label>TLD <input type="text" id="editTld" placeholder="by" class="short-input"> (leave empty if none)</label>
-        <label class="block-label">Patterns (one regex per line):
-          <textarea id="editPatterns" rows="4" placeholder="(\d[\d\s]*(?:[.,]\d{1,2})?)\s*(?:USD|\$)"></textarea>
-        </label>
+        <label>Domains <input type="text" id="editDomains" placeholder=".by, .бел" class="long-input"> (domains likely to use this currency, comma-separated)</label>
+        <div class="block-label">
+          <span>Identifiers</span>
+          <div id="editIdentifiers" class="identifier-list"></div>
+          <div class="add-identifier-row">
+            <input type="text" id="addIdentifierInput" placeholder="e.g. BYN, Br, бел. руб.">
+            <button id="addIdentifierBtn" class="btn btn-sm">Add</button>
+          </div>
+        </div>
         <div class="editor-actions">
           <button id="saveCurrencyBtn" class="btn btn-primary btn-sm">Save Currency</button>
           <button id="cancelCurrencyBtn" class="btn btn-sm">Cancel</button>
@@ -205,12 +210,6 @@
     <!-- Advanced -->
     <section class="section">
       <h2><span class="section-icon">&#128295;</span> Advanced</h2>
-
-      <div class="advanced-subsection">
-        <h3>Ambiguous Patterns</h3>
-        <p class="hint">Patterns that could match multiple currencies (e.g. "rub.", "r."). Resolved by TLD or picker.</p>
-        <textarea id="ambiguousPatterns" rows="4"></textarea>
-      </div>
 
       <div id="domainOverridesSection" style="display:none;" class="advanced-subsection">
         <h3>Domain Currency Overrides</h3>

@@ -4,7 +4,6 @@ const customRatesGrid = document.getElementById('customRatesGrid');
 const siteModeRadios = document.querySelectorAll('input[name="siteMode"]');
 const whitelistSection = document.getElementById('whitelistSection');
 const whitelistEl = document.getElementById('whitelist');
-const ambiguousPatternsEl = document.getElementById('ambiguousPatterns');
 const saveToast = document.getElementById('saveToast');
 const optEnabled = document.getElementById('optEnabled');
 const themeOptions = document.getElementById('themeOptions');
@@ -33,10 +32,13 @@ const currencyEditor = document.getElementById('currencyEditor');
 const editCode = document.getElementById('editCode');
 const editName = document.getElementById('editName');
 const editSymbol = document.getElementById('editSymbol');
-const editTld = document.getElementById('editTld');
-const editPatterns = document.getElementById('editPatterns');
+const editDomains = document.getElementById('editDomains');
+const editIdentifiers = document.getElementById('editIdentifiers');
+const addIdentifierInput = document.getElementById('addIdentifierInput');
+const addIdentifierBtn = document.getElementById('addIdentifierBtn');
 const saveCurrencyBtn = document.getElementById('saveCurrencyBtn');
 const cancelCurrencyBtn = document.getElementById('cancelCurrencyBtn');
+let editingIdentifiers = [];
 
 // Quick site add
 const addCurrentSiteBtn = document.getElementById('addCurrentSiteBtn');
@@ -298,10 +300,6 @@ async function autoSave() {
     }
   });
 
-  currentSettings.ambiguousPatterns = ambiguousPatternsEl.value
-    .split('\n')
-    .map((s) => s.trim())
-    .filter(Boolean);
   currentSettings.rateSources = getCheckboxValues(rateSourceBoxes);
   currentSettings.customRates = customRates;
   currentSettings.siteMode = getRadioValue(siteModeRadios) || 'all';
@@ -498,15 +496,26 @@ function renderPreview() {
 
 function renderCurrencyLibrary() {
   const currencies = currentSettings.currencies;
+  const conflicts = RatesUtil.detectIdentifierConflicts(currencies);
+  const conflictIdentifiers = new Set(conflicts.map(c => c.identifier));
+
   let html = '';
   for (const [code, cur] of Object.entries(currencies).sort()) {
+    const domainStr = (cur.domains || []).join(', ') || 'none';
+    const idChips = (cur.identifiers || []).map(id => {
+      const norm = id.trim().toLowerCase();
+      const isShared = conflictIdentifiers.has(norm);
+      const cls = isShared ? 'identifier-chip identifier-chip-shared' : 'identifier-chip';
+      const example = `100 ${id}`;
+      return `<span class="${cls}" title="${RatesUtil.escapeHtml(example)}">${RatesUtil.escapeHtml(id)}</span>`;
+    }).join('');
     html += `
       <div class="currency-card">
         <div class="currency-card-header">
-          <strong>${code}</strong> ${cur.name} <span class="currency-symbol">${cur.symbol}</span>
-          ${cur.tld ? `<span class="currency-tld">TLD: .${cur.tld}</span>` : ''}
+          <strong>${code}</strong> ${RatesUtil.escapeHtml(cur.name)} <span class="currency-symbol">${RatesUtil.escapeHtml(cur.symbol)}</span>
+          <span class="currency-domains">${RatesUtil.escapeHtml(domainStr)}</span>
         </div>
-        <div class="currency-patterns">${(cur.patterns || []).map((p) => RatesUtil.escapeHtml(p)).join('<br>')}</div>
+        <div class="currency-identifiers">${idChips || '<span class="no-identifiers">No identifiers</span>'}</div>
         <div class="currency-card-actions">
           <button class="btn btn-sm btn-link" data-edit="${code}">Edit</button>
           <button class="btn btn-sm btn-link btn-danger" data-delete="${code}">Delete</button>
@@ -514,6 +523,24 @@ function renderCurrencyLibrary() {
       </div>
     `;
   }
+
+  // Show conflict warnings
+  if (conflicts.length > 0) {
+    html += '<div class="conflict-warnings">';
+    html += '<h3>Identifier Conflicts</h3>';
+    for (const c of conflicts) {
+      const domainInfo = c.currencies.map(code => {
+        const cur = currencies[code];
+        const domains = (cur.domains || []).join(', ') || 'no domains';
+        return `<strong>${code}</strong> on ${RatesUtil.escapeHtml(domains)}`;
+      }).join('; ');
+      html += `<div class="conflict-item">
+        <span class="conflict-identifier">"${RatesUtil.escapeHtml(c.identifier)}"</span> is shared by ${c.currencies.join(', ')}. Resolution: ${domainInfo}
+      </div>`;
+    }
+    html += '</div>';
+  }
+
   currencyLibrary.innerHTML = html;
 
   currencyLibrary.querySelectorAll('[data-edit]').forEach((btn) => {
@@ -524,6 +551,37 @@ function renderCurrencyLibrary() {
   });
 }
 
+function renderEditorIdentifiers() {
+  editIdentifiers.innerHTML = editingIdentifiers.map((id, i) => {
+    const example = `100 ${id}`;
+    return `<span class="identifier-chip" title="${RatesUtil.escapeHtml(example)}">
+      ${RatesUtil.escapeHtml(id)}
+      <button class="identifier-remove" data-idx="${i}" title="Remove">&times;</button>
+    </span>`;
+  }).join('');
+  editIdentifiers.querySelectorAll('.identifier-remove').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      editingIdentifiers.splice(parseInt(btn.dataset.idx), 1);
+      renderEditorIdentifiers();
+    });
+  });
+}
+
+addIdentifierBtn.addEventListener('click', () => {
+  const val = addIdentifierInput.value.trim();
+  if (!val) return;
+  editingIdentifiers.push(val);
+  addIdentifierInput.value = '';
+  renderEditorIdentifiers();
+});
+
+addIdentifierInput.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') {
+    e.preventDefault();
+    addIdentifierBtn.click();
+  }
+});
+
 function openCurrencyEditor(code) {
   editingCurrency = code || null;
   if (code && currentSettings.currencies[code]) {
@@ -532,16 +590,17 @@ function openCurrencyEditor(code) {
     editCode.disabled = true;
     editName.value = cur.name || '';
     editSymbol.value = cur.symbol || '';
-    editTld.value = cur.tld || '';
-    editPatterns.value = (cur.patterns || []).join('\n');
+    editDomains.value = (cur.domains || []).join(', ');
+    editingIdentifiers = [...(cur.identifiers || [])];
   } else {
     editCode.value = '';
     editCode.disabled = false;
     editName.value = '';
     editSymbol.value = '';
-    editTld.value = '';
-    editPatterns.value = '';
+    editDomains.value = '';
+    editingIdentifiers = [];
   }
+  renderEditorIdentifiers();
   currencyEditor.style.display = 'block';
 }
 
@@ -572,20 +631,26 @@ saveCurrencyBtn.addEventListener('click', () => {
     alert('Currency already exists. Edit it instead.');
     return;
   }
-  const patterns = editPatterns.value.split('\n').map((s) => s.trim()).filter(Boolean);
+  if (editingIdentifiers.length === 0) {
+    alert('Add at least one identifier.');
+    return;
+  }
+  // Validate identifiers compile to valid regex
+  const patterns = RatesUtil.buildPatternsFromIdentifiers(editingIdentifiers);
   for (const pat of patterns) {
     try {
       new RegExp(pat);
     } catch {
-      alert(`Invalid regex pattern:\n${pat}\n\nPlease fix it before saving.`);
+      alert(`Invalid identifier pattern:\n${pat}\n\nCheck for special characters.`);
       return;
     }
   }
+  const domains = editDomains.value.split(',').map(s => s.trim()).filter(Boolean);
   currentSettings.currencies[code] = {
     name: editName.value.trim() || code,
     symbol: editSymbol.value.trim() || code,
-    patterns,
-    tld: editTld.value.trim() || null,
+    identifiers: [...editingIdentifiers],
+    domains,
   };
   currencyEditor.style.display = 'none';
   editingCurrency = null;
@@ -691,7 +756,6 @@ addCurrentSiteBtn.addEventListener('click', async () => {
 
 // ---- Auto-save on text changes ----
 
-ambiguousPatternsEl.addEventListener('input', scheduleAutoSave);
 whitelistEl.addEventListener('input', scheduleAutoSave);
 
 // ---- Load ----
@@ -716,8 +780,6 @@ async function loadSettings() {
   renderPairChips();
   populatePairDropdowns();
   renderCurrencyLibrary();
-
-  ambiguousPatternsEl.value = (currentSettings.ambiguousPatterns || []).join('\n');
 
   setCheckboxValues(rateSourceBoxes, currentSettings.rateSources || []);
   renderCustomRatesGrid();

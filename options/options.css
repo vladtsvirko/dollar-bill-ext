@@ -621,18 +621,122 @@ h3 {
   font-size: 13px;
 }
 
-.currency-tld {
+.currency-domains {
   font-size: 11px;
   color: var(--text-tertiary);
   margin-left: 8px;
+  font-family: var(--db-mono);
 }
 
-.currency-patterns {
+.currency-identifiers {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 4px;
+}
+
+.identifier-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 2px 8px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-card);
+  border-radius: 4px;
+  font-size: 12px;
+  font-family: var(--db-mono);
+  color: var(--text-secondary);
+}
+
+.identifier-chip-shared {
+  border-color: #d4a017;
+  background: rgba(212, 160, 23, 0.08);
+}
+
+.no-identifiers {
+  font-size: 12px;
+  color: var(--text-tertiary);
+  font-style: italic;
+}
+
+.identifier-remove {
+  background: none;
+  border: none;
+  color: var(--text-tertiary);
+  font-size: 14px;
+  cursor: pointer;
+  padding: 0 2px;
+  line-height: 1;
+}
+
+.identifier-remove:hover {
+  color: #c33;
+}
+
+.identifier-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 6px;
+  margin-bottom: 6px;
+  min-height: 28px;
+}
+
+.add-identifier-row {
+  display: flex;
+  gap: 6px;
+}
+
+.add-identifier-row input {
+  flex: 1;
+  padding: 4px 8px;
+  border: 1px solid var(--border-input);
+  border-radius: 4px;
+  font-size: 13px;
+  background: var(--bg-input);
+  color: var(--text-primary);
+}
+
+.long-input {
+  width: 100%;
+  padding: 4px 8px;
+  border: 1px solid var(--border-input);
+  border-radius: 4px;
+  font-size: 13px;
+  background: var(--bg-input);
+  color: var(--text-primary);
+}
+
+.currency-editor > label {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 13px;
+}
+
+/* Conflict warnings */
+.conflict-warnings {
+  margin-top: 12px;
+  padding: 10px 12px;
+  background: rgba(212, 160, 23, 0.06);
+  border: 1px solid rgba(212, 160, 23, 0.2);
+  border-radius: 6px;
+}
+
+.conflict-warnings h3 {
+  color: #b8860b;
+  margin-bottom: 6px;
+}
+
+.conflict-item {
   font-size: 12px;
   color: var(--text-secondary);
-  font-family: monospace;
-  line-height: 1.4;
-  word-break: break-all;
+  margin-bottom: 4px;
+  line-height: 1.5;
+}
+
+.conflict-identifier {
+  font-family: var(--db-mono);
+  font-weight: 600;
 }
 
 .currency-card-actions {
