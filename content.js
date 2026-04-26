@@ -33,7 +33,7 @@
         const patterns = RatesUtil.buildPatternsFromIdentifiers([id]);
         for (const pat of patterns) {
           try {
-            compiledUnambiguous.push({ regex: new RegExp(pat, 'gi'), currency: code });
+            compiledUnambiguous.push({ regex: new RegExp(pat, 'giu'), currency: code });
           } catch (e) {
             console.warn(`[DollarBill] Invalid pattern for ${code}: ${pat}`, e);
           }
@@ -48,7 +48,7 @@
       const patterns = RatesUtil.buildPatternsFromIdentifiers([entries[0].originalId]);
       for (const pat of patterns) {
         try {
-          compiledAmbiguous.push({ regex: new RegExp(pat, 'gi'), currency: null });
+          compiledAmbiguous.push({ regex: new RegExp(pat, 'giu'), currency: null });
         } catch (e) {
           console.warn(`[DollarBill] Invalid ambiguous pattern: ${pat}`, e);
         }
