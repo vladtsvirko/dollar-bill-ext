@@ -107,7 +107,12 @@
 
     <!-- Rate Source -->
     <section class="section">
-      <h2><span class="section-icon">&#128200;</span> Exchange Rate Source</h2>
+      <div class="section-header-row">
+        <h2><span class="section-icon">&#128200;</span> Exchange Rate Source</h2>
+        <button id="reloadRatesBtn" class="btn btn-sm btn-reload" title="Reload rates from selected source">
+          <span class="reload-icon">&#8635;</span> Reload
+        </button>
+      </div>
       <div class="toggle-group">
         <label class="toggle-option">
           <input type="radio" name="rateSource" value="nbrb">
@@ -124,6 +129,15 @@
           <span class="fetch-status-title" id="fetchStatusTitle">Unknown</span>
         </div>
         <div id="fetchStatusDetails" class="fetch-status-details"></div>
+      </div>
+      <div id="loadedRatesSection" class="loaded-rates-section">
+        <button id="toggleLoadedRates" class="loaded-rates-toggle">
+          <span id="loadedRatesToggleLabel">Show loaded rates</span>
+          <span class="loaded-rates-chevron" id="loadedRatesChevron">&#9662;</span>
+        </button>
+        <div id="loadedRatesContent" class="loaded-rates-content" style="display:none">
+          <div id="loadedRatesList" class="loaded-rates-list"></div>
+        </div>
       </div>
       <div id="customRatesSection" class="custom-rates">
         <h3>Custom Rate Overrides</h3>

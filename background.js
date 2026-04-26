@@ -52,8 +52,11 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
     updateRates().then(async (result) => {
       const fetchStatus = await RatesUtil.getFetchStatus();
       if (result.success) {
-        const rates = await RatesUtil.getCachedRates();
-        sendResponse({ rates, fetchStatus });
+        const [rates, loadedRates] = await Promise.all([
+          RatesUtil.getCachedRates(),
+          RatesUtil.getLoadedRates(),
+        ]);
+        sendResponse({ rates, fetchStatus, loadedRates });
       } else {
         sendResponse({ rates: null, fetchStatus });
       }
@@ -66,6 +69,10 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
   }
   if (msg.type === 'getFetchStatus') {
     RatesUtil.getFetchStatus().then(sendResponse);
+    return true;
+  }
+  if (msg.type === 'getLoadedRates') {
+    RatesUtil.getLoadedRates().then(sendResponse);
     return true;
   }
 });

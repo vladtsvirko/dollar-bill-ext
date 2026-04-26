@@ -10,6 +10,16 @@ const optEnabled = document.getElementById('optEnabled');
 const themeOptions = document.getElementById('themeOptions');
 const timeOptions = document.getElementById('timeOptions');
 
+// Reload & loaded rates
+const reloadRatesBtn = document.getElementById('reloadRatesBtn');
+const toggleLoadedRatesBtn = document.getElementById('toggleLoadedRates');
+const loadedRatesContent = document.getElementById('loadedRatesContent');
+const loadedRatesList = document.getElementById('loadedRatesList');
+const loadedRatesToggleLabel = document.getElementById('loadedRatesToggleLabel');
+const loadedRatesChevron = document.getElementById('loadedRatesChevron');
+let loadedRatesExpanded = false;
+let currentLoadedRates = null;
+
 // Conversion pairs
 const pairChips = document.getElementById('pairChips');
 const addPairFrom = document.getElementById('addPairFrom');
@@ -82,6 +92,81 @@ function renderFetchStatus(fetchStatus, rates) {
     `<div class="fetch-status-row"><span class="fetch-status-label">${RatesUtil.escapeHtml(label)}</span><span class="fetch-status-value">${RatesUtil.escapeHtml(value)}</span></div>`
   ).join('');
 }
+
+// ---- Reload Rates ----
+
+async function reloadRates() {
+  reloadRatesBtn.classList.add('loading');
+  reloadRatesBtn.disabled = true;
+  try {
+    const { rates, fetchStatus, loadedRates } = await new Promise((resolve) => {
+      chrome.runtime.sendMessage({ type: 'updateRates' }, resolve);
+    });
+    if (rates) currentRates = rates;
+    if (fetchStatus) currentFetchStatus = fetchStatus;
+    if (loadedRates) currentLoadedRates = loadedRates;
+    renderFetchStatus(currentFetchStatus, currentRates);
+    renderLoadedRates(currentLoadedRates);
+  } finally {
+    reloadRatesBtn.classList.remove('loading');
+    reloadRatesBtn.disabled = false;
+  }
+}
+
+reloadRatesBtn.addEventListener('click', reloadRates);
+
+// ---- Loaded Rates ----
+
+function renderLoadedRates(loadedRates) {
+  if (!loadedRates || !loadedRates.rates) {
+    loadedRatesList.innerHTML = '<p class="hint">No rates loaded yet.</p>';
+    updateLoadedRatesToggleLabel(null);
+    return;
+  }
+
+  const base = loadedRates.base;
+  const convention = loadedRates.convention;
+  const entries = Object.entries(loadedRates.rates)
+    .filter(([code]) => code !== base)
+    .sort((a, b) => a[0].localeCompare(b[0]));
+
+  const sourceName = RatesUtil.getSourceDisplayName(loadedRates.source);
+  const age = loadedRates.timestamp ? RatesUtil.formatCacheAge(loadedRates) : '';
+
+  let html = `<div class="loaded-rates-meta">${RatesUtil.escapeHtml(sourceName)} &middot; ${entries.length} currencies${age ? ' &middot; ' + RatesUtil.escapeHtml(age) + ' ago' : ''}</div>`;
+  html += '<div class="loaded-rates-grid">';
+  html += `<div class="loaded-rates-header"><span>Code</span><span>1 ${RatesUtil.escapeHtml(base)} =</span></div>`;
+  for (const [code, rate] of entries) {
+    const displayRate = convention === 'direct'
+      ? (rate > 0 ? (1 / rate).toFixed(4) : '&mdash;')
+      : (rate > 0 ? rate.toFixed(4) : '&mdash;');
+    html += `<div class="loaded-rates-row"><span class="loaded-rates-code">${RatesUtil.escapeHtml(code)}</span><span class="loaded-rates-value">${displayRate}</span></div>`;
+  }
+  html += '</div>';
+  loadedRatesList.innerHTML = html;
+
+  updateLoadedRatesToggleLabel(loadedRates);
+}
+
+function updateLoadedRatesToggleLabel(loadedRates) {
+  if (loadedRates && loadedRates.rates) {
+    const count = Object.keys(loadedRates.rates).length - 1;
+    loadedRatesToggleLabel.textContent = loadedRatesExpanded
+      ? `Hide loaded rates (${count})`
+      : `Show loaded rates (${count})`;
+  } else {
+    loadedRatesToggleLabel.textContent = loadedRatesExpanded
+      ? 'Hide loaded rates'
+      : 'Show loaded rates';
+  }
+  loadedRatesChevron.style.transform = loadedRatesExpanded ? 'rotate(180deg)' : '';
+}
+
+toggleLoadedRatesBtn.addEventListener('click', () => {
+  loadedRatesExpanded = !loadedRatesExpanded;
+  loadedRatesContent.style.display = loadedRatesExpanded ? 'block' : 'none';
+  updateLoadedRatesToggleLabel(currentLoadedRates);
+});
 
 // ---- Theme ----
 
@@ -239,7 +324,10 @@ function updateVisibility() {
 }
 
 for (const r of siteModeRadios) r.addEventListener('change', updateVisibility);
-for (const r of rateSourceRadios) r.addEventListener('change', scheduleAutoSave);
+for (const r of rateSourceRadios) r.addEventListener('change', async () => {
+  await autoSave();
+  await reloadRates();
+});
 
 // ---- Drag-to-reorder for pairs ----
 
@@ -580,9 +668,10 @@ whitelistEl.addEventListener('input', scheduleAutoSave);
 async function loadSettings() {
   currentSettings = await RatesUtil.getSettings();
 
-  [currentRates, currentFetchStatus] = await Promise.all([
+  [currentRates, currentFetchStatus, currentLoadedRates] = await Promise.all([
     RatesUtil.getCachedRates(),
     RatesUtil.getFetchStatus(),
+    RatesUtil.getLoadedRates(),
   ]);
 
   // Apply theme
@@ -602,6 +691,7 @@ async function loadSettings() {
   setRadioValue(rateSourceRadios, currentSettings.rateSource);
   renderCustomRatesGrid();
   renderFetchStatus(currentFetchStatus, currentRates);
+  renderLoadedRates(currentLoadedRates);
 
   setRadioValue(siteModeRadios, currentSettings.siteMode);
   whitelistEl.value = (currentSettings.whitelist || []).join('\n');
