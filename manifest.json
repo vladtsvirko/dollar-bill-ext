@@ -4,7 +4,18 @@
   "version": "1.0.0",
   "description": "Instantly convert prices on any webpage between your chosen currencies using official central bank rates.",
   "permissions": ["storage", "alarms"],
-  "host_permissions": ["https://*.nbrb.by/*", "https://*.ecb.europa.eu/*"],
+  "host_permissions": [
+    "https://*.nbrb.by/*",
+    "https://*.ecb.europa.eu/*",
+    "https://*.nbp.pl/*",
+    "https://*.bank.gov.ua/*",
+    "https://*.cbr.ru/*",
+    "https://*.cnb.cz/*",
+    "https://*.tcmb.gov.tr/*",
+    "https://*.bankofcanada.ca/*",
+    "https://*.bcb.gov.br/*",
+    "https://*.bankofengland.co.uk/*"
+  ],
   "background": {
     "service_worker": "background.js"
   },

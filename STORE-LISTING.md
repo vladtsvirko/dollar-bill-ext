@@ -10,11 +10,11 @@ Automatically convert prices on any webpage between your chosen currencies using
 
 The extension scans visible text on the pages you visit, detects price amounts and currency symbols, and displays the converted value right next to the original price. You configure which currencies to detect and which to convert into; everything else is automatic.
 
-Exchange rates are fetched from official central bank sources — the National Bank of the Republic of Belarus and the European Central Bank — so you get reliable, up-to-date rates with no middleman. Rates are cached locally and refreshed periodically in the background.
+Exchange rates are fetched from official central bank sources — the National Bank of Belarus, European Central Bank, National Bank of Poland, National Bank of Ukraine, Bank of Russia, Czech National Bank, Central Bank of Turkey, Bank of Canada, Central Bank of Brazil, and the Bank of England — so you get reliable, up-to-date rates with no middleman. Rates are cached locally and refreshed periodically in the background.
 
 **Features:**
 - Inline price conversion on any website
-- Rates from the National Bank of Belarus (NBRB) and European Central Bank (ECB)
+- Rates from 10 central banks: NBRB (Belarus), ECB (EU), NBP (Poland), NBU (Ukraine), CBR (Russia), CNB (Czechia), TCMB (Turkey), BOC (Canada), BCB (Brazil), BOE (UK)
 - Fully configurable conversion pairs (e.g. BYN → USD, EUR → GBP)
 - Custom rate overrides for specific currency pairs
 - Built-in currency library with support for adding your own currencies

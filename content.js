@@ -94,7 +94,7 @@
   function hasAmbiguousMatches(node) {
     if (!node) return false;
     let found = false;
-    const walker = document.createTreeWalker(node, NodeFilter.SHOW_TEXT, { acceptNode });
+    const walker = document.createTreeWalker(node, NodeFilter.SHOW_TEXT, { acceptNode: acceptTextNode });
     let current;
     while ((current = walker.nextNode()) && !found) {
       const text = current.nodeValue;
@@ -313,7 +313,7 @@
 
   function scanNode(node, ratesData, conversionMap, ambiguousCurrency) {
     if (!node) return;
-    const walker = document.createTreeWalker(node, NodeFilter.SHOW_TEXT, { acceptNode });
+    const walker = document.createTreeWalker(node, NodeFilter.SHOW_TEXT, { acceptNode: acceptTextNode });
 
     const textNodes = [];
     let current;
