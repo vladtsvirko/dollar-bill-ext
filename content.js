@@ -1,9 +1,18 @@
 (() => {
   const INJECTED_ATTR = 'data-dollarbill';
   const INJECTED_CLASS = 'dollarbill-converted';
+  const PILL_CLASS = 'db-pill';
 
   // Avoid scanning these elements
   const SKIP_TAGS = new Set(['SCRIPT', 'STYLE', 'INPUT', 'TEXTAREA', 'SELECT', 'NOSCRIPT', 'SVG', 'MATH']);
+
+  function acceptTextNode(n) {
+    if (!n.parentElement || SKIP_TAGS.has(n.parentElement.tagName)) return NodeFilter.FILTER_REJECT;
+    if (n.parentElement.hasAttribute(INJECTED_ATTR)) return NodeFilter.FILTER_REJECT;
+    if (n.parentElement.classList.contains(INJECTED_CLASS)) return NodeFilter.FILTER_REJECT;
+    if (n.parentElement.classList.contains(PILL_CLASS)) return NodeFilter.FILTER_REJECT;
+    return NodeFilter.FILTER_ACCEPT;
+  }
 
   let compiledUnambiguous = [];
   let compiledAmbiguous = [];
@@ -85,13 +94,7 @@
   function hasAmbiguousMatches(node) {
     if (!node) return false;
     let found = false;
-    const walker = document.createTreeWalker(node, NodeFilter.SHOW_TEXT, {
-      acceptNode: (n) => {
-        if (!n.parentElement || SKIP_TAGS.has(n.parentElement.tagName)) return NodeFilter.FILTER_REJECT;
-        if (n.parentElement.hasAttribute(INJECTED_ATTR)) return NodeFilter.FILTER_REJECT;
-        return NodeFilter.FILTER_ACCEPT;
-      },
-    });
+    const walker = document.createTreeWalker(node, NodeFilter.SHOW_TEXT, { acceptNode });
     let current;
     while ((current = walker.nextNode()) && !found) {
       const text = current.nodeValue;
@@ -162,11 +165,17 @@
     return parseFloat(s.replace(',', '.'));
   }
 
-  function formatConverted(amount, code) {
+  function detectPrecision(str) {
+    const lastSep = Math.max(str.lastIndexOf('.'), str.lastIndexOf(','));
+    if (lastSep === -1) return 0;
+    return str.length - lastSep - 1;
+  }
+
+  function formatConverted(amount, code, decimals) {
     if (!currentSettings || !currentSettings.currencies) return '';
     const info = currentSettings.currencies[code];
     if (!info) return '';
-    return `${info.symbol}${RatesUtil.formatNumber(amount, 2, currentSettings.numberFormat)}`;
+    return `${info.symbol}${RatesUtil.formatNumber(amount, decimals, currentSettings.numberFormat)}`;
   }
 
   function shouldProcessPage(settings) {
@@ -215,6 +224,7 @@
           index: match.index,
           length: match[0].length,
           amount,
+          precision: detectPrecision(match[1]),
           currency,
         });
       }
@@ -255,8 +265,10 @@
           const hasConflict = !!conflictData;
           const isResolved = hasConflict && (overrides[pairKey] !== undefined || overrides[reverseKey] !== undefined);
 
-          pill.className = 'db-pill' + (hasConflict && !isResolved ? ' db-pill-conflict' : '');
-          pill.textContent = formatConverted(converted, tc);
+          pill.className = PILL_CLASS + (hasConflict && !isResolved ? ' db-pill-conflict' : '');
+          const dp = Math.max(m.precision, 2);
+
+          pill.textContent = formatConverted(converted, tc, dp);
 
           const curInfo = currentSettings.currencies[tc];
           const symbol = curInfo ? curInfo.symbol : tc;
@@ -276,7 +288,7 @@
           }
 
           pill.setAttribute('data-db-tooltip',
-            `${RatesUtil.formatNumber(m.amount, 2, nf)} ${m.currency} \u2192 ${symbol}${RatesUtil.formatNumber(converted, 2, nf)} ${tc}${rateStr}`
+            `${RatesUtil.formatNumber(m.amount, dp, nf)} ${m.currency} \u2192 ${symbol}${RatesUtil.formatNumber(converted, dp, nf)} ${tc}${rateStr}`
           );
 
           fragment.appendChild(pill);
@@ -301,14 +313,7 @@
 
   function scanNode(node, ratesData, conversionMap, ambiguousCurrency) {
     if (!node) return;
-    const walker = document.createTreeWalker(node, NodeFilter.SHOW_TEXT, {
-      acceptNode: (n) => {
-        if (!n.parentElement || SKIP_TAGS.has(n.parentElement.tagName)) return NodeFilter.FILTER_REJECT;
-        if (n.parentElement.hasAttribute(INJECTED_ATTR)) return NodeFilter.FILTER_REJECT;
-        if (n.parentElement.classList.contains(INJECTED_CLASS)) return NodeFilter.FILTER_REJECT;
-        return NodeFilter.FILTER_ACCEPT;
-      },
-    });
+    const walker = document.createTreeWalker(node, NodeFilter.SHOW_TEXT, { acceptNode });
 
     const textNodes = [];
     let current;
