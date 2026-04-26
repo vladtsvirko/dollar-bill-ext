@@ -11,7 +11,7 @@ const converterInput = document.getElementById('converterInput');
 const converterResult = document.getElementById('converterResult');
 const siteIndicator = document.getElementById('siteIndicator');
 const settingsLink = document.getElementById('settingsLink');
-const themeToggle = document.getElementById('themeToggle');
+const themeSegmented = document.getElementById('themeSegmented');
 const pairChipsEl = document.getElementById('pairChips');
 
 let currentSettings = null;
@@ -33,25 +33,39 @@ function detectSystemTheme() {
   return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
 }
 
-function getTheme() {
-  if (currentSettings && currentSettings.theme) return currentSettings.theme;
-  return detectSystemTheme();
+function getThemeSetting() {
+  return currentSettings && currentSettings.theme ? currentSettings.theme : '';
 }
 
-function setTheme(theme) {
+function getEffectiveTheme() {
+  const setting = getThemeSetting();
+  return setting ? setting : detectSystemTheme();
+}
+
+function setTheme(themeSetting) {
   if (!currentSettings) return;
-  currentSettings.theme = theme;
-  applyTheme(theme);
+  currentSettings.theme = themeSetting || null;
+  applyTheme(getEffectiveTheme());
+  renderThemeSegmented();
   RatesUtil.saveSettings(currentSettings);
 }
 
-themeToggle.addEventListener('click', () => {
-  const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
-  setTheme(isDark ? 'light' : 'dark');
+function renderThemeSegmented() {
+  const active = getThemeSetting();
+  themeSegmented.querySelectorAll('.theme-seg').forEach(btn => {
+    const val = btn.dataset.themeValue;
+    btn.classList.toggle('active', val === active);
+  });
+}
+
+themeSegmented.addEventListener('click', (e) => {
+  const btn = e.target.closest('.theme-seg');
+  if (!btn) return;
+  setTheme(btn.dataset.themeValue);
 });
 
 window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
-  if (!currentSettings || !currentSettings.theme) {
+  if (!getThemeSetting()) {
     applyTheme(detectSystemTheme());
   }
 });
@@ -381,7 +395,8 @@ async function loadPopup() {
 
   enabledEl.checked = settings.enabled;
 
-  applyTheme(getTheme());
+  applyTheme(getEffectiveTheme());
+  renderThemeSegmented();
   renderSourceDropdown(settings);
   renderSourceTimestamp(rates);
   renderRateCards(rates, settings);

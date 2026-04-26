@@ -128,37 +128,48 @@ body {
   letter-spacing: -0.01em;
 }
 
-/* Theme toggle */
-.theme-toggle {
-  width: 28px;
-  height: 28px;
-  border-radius: 50%;
+/* Theme segmented control */
+.theme-segmented {
+  display: inline-flex;
+  align-items: center;
   border: 1px solid var(--border-default);
+  border-radius: 6px;
+  overflow: hidden;
   background: var(--bg-card);
+}
+
+.theme-seg {
+  width: 26px;
+  height: 24px;
+  border: none;
+  background: transparent;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: all 0.2s ease;
-  color: var(--text-secondary);
+  color: var(--text-tertiary);
+  transition: all 0.15s ease;
   padding: 0;
 }
 
-.theme-toggle:hover {
+.theme-seg:hover {
+  color: var(--text-primary);
   background: var(--bg-card-hover);
-  color: var(--text-accent);
-  border-color: var(--accent);
 }
 
-.theme-toggle svg {
-  width: 14px;
-  height: 14px;
+.theme-seg.active {
+  background: var(--accent);
+  color: var(--text-on-accent);
 }
 
-.theme-toggle .icon-moon { display: none; }
-.theme-toggle .icon-sun { display: block; }
-[data-theme="dark"] .theme-toggle .icon-moon { display: block; }
-[data-theme="dark"] .theme-toggle .icon-sun { display: none; }
+.theme-seg.active:hover {
+  background: var(--accent-light);
+}
+
+.theme-seg svg {
+  width: 13px;
+  height: 13px;
+}
 
 /* Toggle switch */
 .toggle-switch {
