@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Dollar Bill - Privacy Policy</title>
+  <style>
+    :root {
+      --db-green: #2d6a2e;
+      --db-green-light: #e8f5e9;
+      --db-radius: 8px;
+      --db-font: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      --db-mono: 'SF Mono', 'Fira Code', 'Consolas', monospace;
+      --bg-app: #f5f5f4;
+      --bg-section: #ffffff;
+      --text-primary: #1a1a1a;
+      --text-secondary: #666;
+      --text-tertiary: #888;
+      --text-accent: #2d6a2e;
+      --border-default: #e8e8e8;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg-app: #0e110e;
+        --bg-section: #171a17;
+        --text-primary: #dce0dc;
+        --text-secondary: #8a908a;
+        --text-tertiary: #5a605a;
+        --text-accent: #5cb85c;
+        --border-default: #262926;
+        --db-green: #5cb85c;
+        --db-green-light: rgba(92,184,92,0.12);
+      }
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: var(--db-font);
+      font-size: 14px;
+      color: var(--text-primary);
+      background: var(--bg-app);
+      line-height: 1.7;
+    }
+
+    .page {
+      max-width: 560px;
+      margin: 0 auto;
+      padding: 32px 20px 60px;
+    }
+
+    .header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 28px;
+      padding-bottom: 20px;
+      border-bottom: 1px solid var(--border-default);
+    }
+
+    .logo {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 36px;
+      height: 36px;
+      border-radius: 8px;
+      background: var(--db-green);
+      color: #fff;
+      font-size: 18px;
+      font-weight: 700;
+      flex-shrink: 0;
+    }
+
+    .header h1 {
+      font-size: 20px;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+    }
+
+    .header-subtitle {
+      font-size: 12px;
+      color: var(--text-tertiary);
+      margin-top: 1px;
+    }
+
+    .section {
+      background: var(--bg-section);
+      border-radius: 10px;
+      padding: 20px;
+      margin-bottom: 10px;
+      border: 1px solid var(--border-default);
+    }
+
+    .section h2 {
+      font-size: 13px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--text-tertiary);
+      margin-bottom: 12px;
+    }
+
+    .section p {
+      color: var(--text-secondary);
+      margin-bottom: 10px;
+    }
+
+    .section p:last-child {
+      margin-bottom: 0;
+    }
+
+    .section ul {
+      color: var(--text-secondary);
+      padding-left: 20px;
+      margin-bottom: 10px;
+    }
+
+    .section ul:last-child {
+      margin-bottom: 0;
+    }
+
+    .section li {
+      margin-bottom: 4px;
+    }
+
+    code {
+      font-family: var(--db-mono);
+      font-size: 12px;
+      background: var(--db-green-light);
+      color: var(--text-accent);
+      padding: 1px 5px;
+      border-radius: 4px;
+    }
+
+    .effective-date {
+      font-size: 12px;
+      color: var(--text-tertiary);
+      margin-bottom: 16px;
+    }
+
+    .back-link {
+      display: inline-block;
+      margin-top: 16px;
+      color: var(--db-green);
+      text-decoration: none;
+      font-size: 13px;
+      font-weight: 500;
+    }
+
+    .back-link:hover {
+      text-decoration: underline;
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <div class="header">
+      <span class="logo">$</span>
+      <div>
+        <h1>Dollar Bill</h1>
+        <div class="header-subtitle">Privacy Policy</div>
+      </div>
+    </div>
+
+    <p class="effective-date">Effective: April 2026</p>
+
+    <div class="section">
+      <h2>Overview</h2>
+      <p>
+        Dollar Bill is a browser extension that converts prices displayed on web pages
+        between currencies you choose. This page explains what data the extension handles
+        and how.
+      </p>
+      <p>
+        <strong style="color: var(--text-primary)">The short version:</strong>
+        Dollar Bill does not collect, transmit, or sell any personal data. All your
+        settings stay on your device.
+      </p>
+    </div>
+
+    <div class="section">
+      <h2>Data We Store</h2>
+      <p>The following information is saved locally on your device using <code>chrome.storage.local</code>:</p>
+      <ul>
+        <li>Your preferences (enabled/disabled state, theme, number format, time format)</li>
+        <li>Configured conversion pairs (e.g. BYN &rarr; USD)</li>
+        <li>Custom currency definitions and rate overrides</li>
+        <li>Domain-currency mappings you set for specific websites</li>
+        <li>Site whitelist (if you restrict scanning to specific domains)</li>
+        <li>Cached exchange rates from the selected rate source</li>
+      </ul>
+      <p>
+        This data never leaves your device. It is not synced to any cloud service
+        and is not accessible to any website or third party.
+      </p>
+    </div>
+
+    <div class="section">
+      <h2>Network Requests</h2>
+      <p>
+        The extension fetches exchange rates from public central-bank APIs. These are
+        the only external requests it makes:
+      </p>
+      <ul>
+        <li><code>api.nbrb.by</code> &mdash; National Bank of the Republic of Belarus</li>
+        <li><code>ecb.europa.eu</code> &mdash; European Central Bank</li>
+      </ul>
+      <p>
+        Requests are made periodically (via the Chrome Alarms API) to keep rates up to
+        date. No personal data, browsing history, or page content is sent with these
+        requests. Only standard HTTP headers are included.
+      </p>
+    </div>
+
+    <div class="section">
+      <h2>What We Do Not Do</h2>
+      <ul>
+        <li>No personal data collection</li>
+        <li>No tracking or analytics</li>
+        <li>No advertising or ad networks</li>
+        <li>No third-party data sharing</li>
+        <li>No cookies</li>
+        <li>No user accounts or sign-ups</li>
+      </ul>
+    </div>
+
+    <div class="section">
+      <h2>Permissions Explained</h2>
+      <p>
+        <code>&lt;all_urls&gt;</code> content script access is required because the
+        extension needs to scan page text for price patterns on any website you visit.
+        It reads only the visible text on the page to find and convert prices &mdash;
+        no form inputs, passwords, or hidden elements are accessed. You can restrict
+        scanning to specific sites via the Site Filtering setting.
+      </p>
+      <p>
+        <code>storage</code> permission is used to save your preferences locally.
+        <code>alarms</code> permission is used to schedule periodic exchange rate updates.
+      </p>
+    </div>
+
+    <div class="section">
+      <h2>Changes</h2>
+      <p>
+        If this policy changes, the updated version will be bundled with a new extension
+        release. We encourage you to review this page periodically.
+      </p>
+    </div>
+
+    <div class="section">
+      <h2>Contact</h2>
+      <p>
+        Questions about this policy can be directed to the extension's Chrome Web Store
+        listing support channel.
+      </p>
+    </div>
+
+    <a href="options/options.html" class="back-link">&larr; Back to Settings</a>
+  </div>
+</body>
+</html>

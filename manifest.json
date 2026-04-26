@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "Dollar Bill",
   "version": "1.0.0",
-  "description": "Converts prices inline on web pages between configurable currencies",
+  "description": "Instantly convert prices on any webpage between your chosen currencies using official central bank rates.",
   "permissions": ["storage", "alarms"],
   "host_permissions": ["https://*.nbrb.by/*", "https://*.ecb.europa.eu/*"],
   "background": {
