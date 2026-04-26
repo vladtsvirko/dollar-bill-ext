@@ -376,27 +376,31 @@ body {
   color: var(--text-accent);
 }
 
-.source-option-radio {
+.source-option-check {
   width: 14px;
   height: 14px;
-  border-radius: 50%;
+  border-radius: 3px;
   border: 2px solid var(--border-default);
   flex-shrink: 0;
   display: flex;
   align-items: center;
   justify-content: center;
+  transition: all 0.15s ease;
 }
 
-.source-option.active .source-option-radio {
+.source-option.active .source-option-check {
   border-color: var(--accent);
+  background: var(--accent);
 }
 
-.source-option.active .source-option-radio::after {
+.source-option.active .source-option-check::after {
   content: '';
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: var(--accent);
+  width: 4px;
+  height: 7px;
+  border: solid var(--text-on-accent);
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg);
+  margin-top: -1px;
 }
 
 /* Rate cards */
@@ -802,4 +806,68 @@ body {
 
 .settings-link:hover {
   text-decoration: underline;
+}
+
+/* Conflict banner */
+.conflict-banner {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  margin: 0 10px;
+  background: rgba(212, 160, 23, 0.1);
+  border: 1px solid rgba(212, 160, 23, 0.25);
+  border-radius: 6px;
+  font-size: 11px;
+  color: #b58a10;
+}
+
+[data-theme="dark"] .conflict-banner {
+  color: #d4a017;
+  background: rgba(212, 160, 23, 0.08);
+  border-color: rgba(212, 160, 23, 0.2);
+}
+
+.conflict-banner-icon {
+  font-size: 13px;
+  flex-shrink: 0;
+}
+
+/* Conflict rate card indicator */
+.rate-card-conflict::before {
+  content: '';
+  position: absolute;
+  left: 2px;
+  top: 8px;
+  bottom: 8px;
+  width: 3px;
+  border-radius: 2px;
+  background: #d4a017;
+}
+
+.rate-card-conflict .rate-input-group {
+  border-bottom-color: #d4a017;
+}
+
+/* Source picker on rate card */
+.rate-source-picker {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: var(--bg-input);
+  border: 1px solid var(--border-default);
+  font-size: 10px;
+  font-weight: 500;
+  color: var(--text-tertiary);
+  cursor: pointer;
+  font-family: var(--db-font);
+  transition: all 0.15s ease;
+  white-space: nowrap;
+}
+
+.rate-source-picker:hover {
+  border-color: var(--accent);
+  color: var(--text-secondary);
 }

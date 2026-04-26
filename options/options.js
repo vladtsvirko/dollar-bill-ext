@@ -1,4 +1,4 @@
-const rateSourceRadios = document.querySelectorAll('input[name="rateSource"]');
+const rateSourceBoxes = document.querySelectorAll('input[name="rateSource"]');
 const customRatesSection = document.getElementById('customRatesSection');
 const customRatesGrid = document.getElementById('customRatesGrid');
 const siteModeRadios = document.querySelectorAll('input[name="siteMode"]');
@@ -81,6 +81,10 @@ function renderFetchStatus(fetchStatus, rates) {
     rows.push(['Cache age', RatesUtil.formatCacheAge(rates)]);
     rows.push(['Cache timestamp', RatesUtil.formatTimestamp(rates.timestamp, currentSettings.timeFormat, 'Never')]);
   }
+  const usedSources = RatesUtil.getUsedSources(rates);
+  if (usedSources.length > 0) {
+    rows.push(['Sources', usedSources.map(id => RatesUtil.getSourceDisplayName(id)).join(', ')]);
+  }
   if (fetchStatus && fetchStatus.lastError) {
     rows.push(['Error', fetchStatus.lastError]);
     if (fetchStatus.consecutiveFailures > 1) {
@@ -117,40 +121,47 @@ reloadRatesBtn.addEventListener('click', reloadRates);
 
 // ---- Loaded Rates ----
 
-function renderLoadedRates(loadedRates) {
-  if (!loadedRates || !loadedRates.rates) {
+function renderLoadedRates(loadedRatesMap) {
+  if (!loadedRatesMap || typeof loadedRatesMap !== 'object' || Object.keys(loadedRatesMap).length === 0) {
     loadedRatesList.innerHTML = '<p class="hint">No rates loaded yet.</p>';
     updateLoadedRatesToggleLabel(null);
     return;
   }
 
-  const base = loadedRates.base;
-  const convention = loadedRates.convention;
-  const entries = Object.entries(loadedRates.rates)
-    .filter(([code]) => code !== base)
-    .sort((a, b) => a[0].localeCompare(b[0]));
+  let html = '';
+  let totalCount = 0;
 
-  const sourceName = RatesUtil.getSourceDisplayName(loadedRates.source);
-  const age = loadedRates.timestamp ? RatesUtil.formatCacheAge(loadedRates) : '';
+  for (const [sourceId, loadedRates] of Object.entries(loadedRatesMap)) {
+    if (!loadedRates || !loadedRates.rates) continue;
+    const base = loadedRates.base;
+    const convention = loadedRates.convention;
+    const entries = Object.entries(loadedRates.rates)
+      .filter(([code]) => code !== base)
+      .sort((a, b) => a[0].localeCompare(b[0]));
 
-  let html = `<div class="loaded-rates-meta">${RatesUtil.escapeHtml(sourceName)} &middot; ${entries.length} currencies${age ? ' &middot; ' + RatesUtil.escapeHtml(age) + ' ago' : ''}</div>`;
-  html += '<div class="loaded-rates-grid">';
-  html += `<div class="loaded-rates-header"><span>Code</span><span>1 ${RatesUtil.escapeHtml(base)} =</span></div>`;
-  for (const [code, rate] of entries) {
-    const displayRate = convention === 'direct'
-      ? (rate > 0 ? (1 / rate).toFixed(4) : '&mdash;')
-      : (rate > 0 ? rate.toFixed(4) : '&mdash;');
-    html += `<div class="loaded-rates-row"><span class="loaded-rates-code">${RatesUtil.escapeHtml(code)}</span><span class="loaded-rates-value">${displayRate}</span></div>`;
+    totalCount += entries.length;
+    const sourceName = RatesUtil.getSourceDisplayName(sourceId);
+    const age = loadedRates.timestamp ? RatesUtil.formatCacheAge(loadedRates) : '';
+
+    html += `<div class="loaded-rates-meta">${RatesUtil.escapeHtml(sourceName)} &middot; ${entries.length} currencies${age ? ' &middot; ' + RatesUtil.escapeHtml(age) + ' ago' : ''}</div>`;
+    html += '<div class="loaded-rates-grid">';
+    html += `<div class="loaded-rates-header"><span>Code</span><span>1 ${RatesUtil.escapeHtml(base)} =</span></div>`;
+    for (const [code, rate] of entries) {
+      const displayRate = convention === 'direct'
+        ? (rate > 0 ? (1 / rate).toFixed(4) : '&mdash;')
+        : (rate > 0 ? rate.toFixed(4) : '&mdash;');
+      html += `<div class="loaded-rates-row"><span class="loaded-rates-code">${RatesUtil.escapeHtml(code)}</span><span class="loaded-rates-value">${displayRate}</span></div>`;
+    }
+    html += '</div>';
   }
-  html += '</div>';
-  loadedRatesList.innerHTML = html;
 
-  updateLoadedRatesToggleLabel(loadedRates);
+  loadedRatesList.innerHTML = html || '<p class="hint">No rates loaded yet.</p>';
+  updateLoadedRatesToggleLabel({ count: totalCount });
 }
 
-function updateLoadedRatesToggleLabel(loadedRates) {
-  if (loadedRates && loadedRates.rates) {
-    const count = Object.keys(loadedRates.rates).length - 1;
+function updateLoadedRatesToggleLabel(info) {
+  const count = info && info.count;
+  if (count) {
     loadedRatesToggleLabel.textContent = loadedRatesExpanded
       ? `Hide loaded rates (${count})`
       : `Show loaded rates (${count})`;
@@ -165,7 +176,10 @@ function updateLoadedRatesToggleLabel(loadedRates) {
 toggleLoadedRatesBtn.addEventListener('click', () => {
   loadedRatesExpanded = !loadedRatesExpanded;
   loadedRatesContent.style.display = loadedRatesExpanded ? 'block' : 'none';
-  updateLoadedRatesToggleLabel(currentLoadedRates);
+  updateLoadedRatesToggleLabel(currentLoadedRates && Object.keys(currentLoadedRates).length > 0
+    ? { count: Object.values(currentLoadedRates).reduce((sum, lr) => sum + Object.keys(lr.rates || {}).length - 1, 0) }
+    : null
+  );
 });
 
 // ---- Theme ----
@@ -288,7 +302,7 @@ async function autoSave() {
     .split('\n')
     .map((s) => s.trim())
     .filter(Boolean);
-  currentSettings.rateSource = getRadioValue(rateSourceRadios) || 'nbrb';
+  currentSettings.rateSources = getCheckboxValues(rateSourceBoxes);
   currentSettings.customRates = customRates;
   currentSettings.siteMode = getRadioValue(siteModeRadios) || 'all';
   currentSettings.whitelist = whitelistEl.value
@@ -307,7 +321,7 @@ function scheduleAutoSave() {
   saveDebounce = setTimeout(autoSave, 600);
 }
 
-// ---- Radio helpers ----
+// ---- Checkbox/Radio helpers ----
 
 function setRadioValue(radios, value) {
   for (const r of radios) r.checked = r.value === value;
@@ -318,13 +332,23 @@ function getRadioValue(radios) {
   return null;
 }
 
+function setCheckboxValues(boxes, values) {
+  for (const b of boxes) b.checked = values.includes(b.value);
+}
+
+function getCheckboxValues(boxes) {
+  const result = [];
+  for (const b of boxes) if (b.checked) result.push(b.value);
+  return result;
+}
+
 function updateVisibility() {
   whitelistSection.style.display = getRadioValue(siteModeRadios) === 'whitelist' ? 'block' : 'none';
   scheduleAutoSave();
 }
 
 for (const r of siteModeRadios) r.addEventListener('change', updateVisibility);
-for (const r of rateSourceRadios) r.addEventListener('change', async () => {
+for (const b of rateSourceBoxes) b.addEventListener('change', async () => {
   await autoSave();
   await reloadRates();
 });
@@ -450,7 +474,6 @@ function renderPreview() {
     return;
   }
 
-  // Group pairs by source, show up to 2 example sources
   const sourceMap = RatesUtil.buildConversionMap(currentSettings);
 
   const sources = Object.keys(sourceMap).slice(0, 2);
@@ -585,6 +608,8 @@ function renderCustomRatesGrid() {
   }
 
   const normalizedRates = RatesUtil.getCustomRates(currentSettings);
+  const conflicts = RatesUtil.getConflicts(currentRates);
+  const overrides = currentSettings.rateSourceOverrides || {};
 
   const seen = new Set();
   let html = '<div class="grid-inputs">';
@@ -599,7 +624,13 @@ function renderCustomRatesGrid() {
     const val = rateInfo ? rateInfo.rate : '';
 
     const inputKey = `${displayFrom}:${displayTo}`;
-    html += `<label>1 ${displayFrom} = <input type="number" step="0.0001" data-pair="${inputKey}" value="${val}" placeholder="${displayTo}"> ${displayTo}</label>`;
+    const reverseInputKey = `${displayTo}:${displayFrom}`;
+    const conflictData = conflicts[inputKey] || conflicts[reverseInputKey];
+    const conflictTag = conflictData
+      ? ` <span style="color:#d4a017;font-size:11px" title="Conflicting rates: ${Object.entries(conflictData).map(([s, r]) => RatesUtil.getSourceDisplayName(s) + ': ' + r.toFixed(4)).join(', ')}">&#9888; ${RatesUtil.getSourceDisplayName(RatesUtil.getActiveSourceForPair(inputKey, reverseInputKey, currentSettings, currentRates))}</span>`
+      : '';
+
+    html += `<label>1 ${displayFrom} = <input type="number" step="0.0001" data-pair="${inputKey}" value="${val}" placeholder="${displayTo}"> ${displayTo}${conflictTag}</label>`;
   }
   html += '</div>';
   customRatesGrid.innerHTML = html;
@@ -688,7 +719,7 @@ async function loadSettings() {
 
   ambiguousPatternsEl.value = (currentSettings.ambiguousPatterns || []).join('\n');
 
-  setRadioValue(rateSourceRadios, currentSettings.rateSource);
+  setCheckboxValues(rateSourceBoxes, currentSettings.rateSources || []);
   renderCustomRatesGrid();
   renderFetchStatus(currentFetchStatus, currentRates);
   renderLoadedRates(currentLoadedRates);

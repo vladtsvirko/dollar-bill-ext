@@ -31,6 +31,16 @@
   background: rgba(45, 106, 46, 0.2);
 }
 
+/* Conflict pill (unresolved rate conflict between sources) */
+.db-pill-conflict {
+  background: rgba(212, 160, 23, 0.15);
+  color: #b58a10;
+}
+
+.db-pill-conflict:hover {
+  background: rgba(212, 160, 23, 0.25);
+}
+
 /* Tooltip on hover */
 .db-pill::after {
   all: initial;

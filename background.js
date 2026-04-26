@@ -6,7 +6,7 @@ const ALARM_INTERVAL_MIN = 30;
 async function updateRates() {
   try {
     const settings = await RatesUtil.getSettings();
-    await RatesUtil.fetchAndCacheRates(settings.rateSource, settings);
+    await RatesUtil.fetchAndCacheRates(settings.rateSources || ['nbrb'], settings);
     try {
       await RatesUtil.saveFetchStatus({
         lastFetchTime: Date.now(),

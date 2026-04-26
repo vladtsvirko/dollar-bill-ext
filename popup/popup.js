@@ -15,9 +15,12 @@ const siteIndicator = document.getElementById('siteIndicator');
 const settingsLink = document.getElementById('settingsLink');
 const themeSegmented = document.getElementById('themeSegmented');
 const pairChipsEl = document.getElementById('pairChips');
+const conflictBanner = document.getElementById('conflictBanner');
+const conflictBannerText = document.getElementById('conflictBannerText');
 
 let currentSettings = null;
 let currentRates = null;
+let currentConflicts = {};
 
 // --- Theme ---
 
@@ -72,13 +75,6 @@ window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () 
   }
 });
 
-// --- Timestamp formatting ---
-
-function getSourceDisplayName(sourceId) {
-  const source = RatesUtil.RATE_SOURCES[sourceId];
-  return source ? source.name : sourceId;
-}
-
 // --- Fetch status ---
 
 function renderFetchStatus(fetchStatus, rates) {
@@ -114,11 +110,17 @@ sourceTrigger.addEventListener('mouseleave', () => {
   sourceTooltip.classList.remove('show');
 });
 
-// --- Source dropdown ---
+// --- Source dropdown (multi-select) ---
 
 function renderSourceDropdown(settings) {
-  const currentSource = settings.rateSource || 'nbrb';
-  sourceNameEl.textContent = getSourceDisplayName(currentSource);
+  const selectedSources = settings.rateSources || [];
+  if (selectedSources.length === 0) {
+    sourceNameEl.textContent = 'No source';
+  } else if (selectedSources.length === 1) {
+    sourceNameEl.textContent = RatesUtil.getSourceDisplayName(selectedSources[0]);
+  } else {
+    sourceNameEl.textContent = selectedSources.length + ' sources';
+  }
 
   const options = [];
   for (const [id, src] of Object.entries(RatesUtil.RATE_SOURCES)) {
@@ -126,8 +128,8 @@ function renderSourceDropdown(settings) {
   }
 
   sourceDropdown.innerHTML = options.map(opt => `
-    <div class="source-option${opt.id === currentSource ? ' active' : ''}" data-source="${opt.id}">
-      <span class="source-option-radio"></span>
+    <div class="source-option${selectedSources.includes(opt.id) ? ' active' : ''}" data-source="${opt.id}">
+      <span class="source-option-check"></span>
       <span>${RatesUtil.escapeHtml(opt.name)}</span>
     </div>
   `).join('');
@@ -157,14 +159,17 @@ sourceDropdown.addEventListener('click', async (e) => {
   const option = e.target.closest('.source-option');
   if (!option) return;
   const sourceId = option.dataset.source;
-  if (sourceId === currentSettings.rateSource) {
-    toggleDropdown(true);
-    return;
+  const sources = currentSettings.rateSources || [];
+  const idx = sources.indexOf(sourceId);
+
+  if (idx >= 0) {
+    sources.splice(idx, 1);
+  } else {
+    sources.push(sourceId);
   }
 
-  currentSettings.rateSource = sourceId;
+  currentSettings.rateSources = sources;
   await RatesUtil.saveSettings(currentSettings);
-  toggleDropdown(true);
   renderSourceDropdown(currentSettings);
 
   await refreshRates();
@@ -180,6 +185,8 @@ async function refreshRates() {
     });
     if (rates) {
       currentRates = rates;
+      currentConflicts = RatesUtil.getConflicts(rates);
+      renderConflictBanner();
       renderRateCards(currentRates, currentSettings);
       renderSourceTimestamp(currentRates);
       if (converterInput.value.trim()) {
@@ -196,6 +203,23 @@ sourceReload.addEventListener('click', refreshRates);
 
 function renderSourceTimestamp(rates) {
   sourceTimeEl.textContent = RatesUtil.formatTimestamp(rates && rates.timestamp, currentSettings.timeFormat);
+}
+
+// --- Conflict banner ---
+
+function renderConflictBanner() {
+  const unresolvedCount = Object.keys(currentConflicts).filter(pairKey => {
+    return !RatesUtil.isConflictResolved(pairKey, currentSettings, currentRates);
+  }).length;
+
+  if (unresolvedCount > 0) {
+    conflictBanner.style.display = 'flex';
+    conflictBannerText.textContent = unresolvedCount === 1
+      ? '1 rate has conflicting values between sources'
+      : unresolvedCount + ' rates have conflicting values between sources';
+  } else {
+    conflictBanner.style.display = 'none';
+  }
 }
 
 // --- Rate cards ---
@@ -246,13 +270,25 @@ function renderRateCards(cachedRates, settings) {
       settings.customRates[reversePairKey] != null
     );
 
+    // Check for conflict on this pair
+    const conflictData = currentConflicts[customPairKey] || currentConflicts[reversePairKey];
+    const isConflict = !!conflictData;
+
+    // Determine which source is currently used
+    let sourceTag = '';
+    if (isConflict) {
+      const activeSource = RatesUtil.getActiveSourceForPair(customPairKey, reversePairKey, settings, cachedRates);
+      sourceTag = `<span class="rate-source-picker" data-pair="${customPairKey}" title="Click to change source">${RatesUtil.escapeHtml(RatesUtil.getSourceDisplayName(activeSource))}</span>`;
+    }
+
     cards.push(`
-      <div class="rate-card${hasOverride ? ' rate-card-custom' : ''}" data-pair="${customPairKey}">
+      <div class="rate-card${hasOverride ? ' rate-card-custom' : ''}${isConflict && !hasOverride ? ' rate-card-conflict' : ''}" data-pair="${customPairKey}">
         <div class="rate-card-left">
           <div class="rate-card-flag">${RatesUtil.escapeHtml(baseSymbol)}</div>
           <div class="rate-card-label">1 <code>${rateInfo.base}</code> =</div>
         </div>
         <div class="rate-card-right">
+          ${sourceTag}
           <div class="rate-input-group">
             <input class="rate-card-value-input" type="text"
               value="${rateInfo.rate.toFixed(4)}"
@@ -276,6 +312,36 @@ function renderRateCards(cachedRates, settings) {
   rateCardsEl.querySelectorAll('.rate-card-reset').forEach(btn => {
     btn.addEventListener('click', handleCustomRateReset);
   });
+
+  rateCardsEl.querySelectorAll('.rate-source-picker').forEach(el => {
+    el.addEventListener('click', handleSourcePickerClick);
+  });
+}
+
+async function handleSourcePickerClick(e) {
+  const el = e.currentTarget;
+  const customPairKey = el.dataset.pair;
+  const conflictData = currentConflicts[customPairKey];
+  if (!conflictData) return;
+
+  const sourceIds = Object.keys(conflictData);
+  const currentOverride = (currentSettings.rateSourceOverrides || {})[customPairKey];
+  const usedSources = RatesUtil.getUsedSources(currentRates);
+
+  // Cycle to next source
+  const currentIdx = currentOverride
+    ? sourceIds.indexOf(currentOverride)
+    : sourceIds.indexOf(usedSources[0]);
+  const nextIdx = (currentIdx + 1) % sourceIds.length;
+  const nextSource = sourceIds[nextIdx];
+
+  if (!currentSettings.rateSourceOverrides) currentSettings.rateSourceOverrides = {};
+  currentSettings.rateSourceOverrides[customPairKey] = nextSource;
+  await RatesUtil.saveSettings(currentSettings);
+
+  invalidateEffectiveRates();
+  renderRateCards(currentRates, currentSettings);
+  renderConflictBanner();
 }
 
 async function handleCustomRateChange(e) {
@@ -421,6 +487,7 @@ async function loadPopup() {
 
   currentSettings = settings;
   currentRates = rates;
+  currentConflicts = RatesUtil.getConflicts(rates);
 
   enabledEl.checked = settings.enabled;
 
@@ -429,6 +496,7 @@ async function loadPopup() {
   renderSourceDropdown(settings);
   renderSourceTimestamp(rates);
   renderFetchStatus(fetchStatus, rates);
+  renderConflictBanner();
   renderRateCards(rates, settings);
   renderPairChips(settings);
   populateConverterSelects(settings);

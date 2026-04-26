@@ -171,10 +171,16 @@
   }
 
   function getRatesForConversion(settings, cachedRates) {
-    return RatesUtil.getEffectiveRates(settings, cachedRates);
+    return {
+      rates: RatesUtil.getEffectiveRates(settings, cachedRates),
+      conflicts: RatesUtil.getConflicts(cachedRates),
+      usedSources: RatesUtil.getUsedSources(cachedRates),
+      overrides: settings.rateSourceOverrides || {},
+    };
   }
 
-  function processTextNode(textNode, rates, conversionMap, ambiguousCurrency) {
+  function processTextNode(textNode, ratesData, conversionMap, ambiguousCurrency) {
+    const { rates, conflicts, usedSources, overrides } = ratesData;
     const text = textNode.nodeValue;
     if (!text || text.length < 2) return;
 
@@ -225,15 +231,34 @@
         if (converted !== null && converted > 0) {
           hasConversion = true;
           const pill = document.createElement('span');
-          pill.className = 'db-pill';
+
+          // Check for conflict on this pair
+          const dispInfo = RatesUtil.formatRateForDisplay(m.currency, tc, rates);
+          const pairKey = dispInfo ? `${dispInfo.base}:${dispInfo.quote}` : null;
+          const reverseKey = dispInfo ? `${dispInfo.quote}:${dispInfo.base}` : null;
+          const conflictData = (pairKey && conflicts[pairKey]) || (reverseKey && conflicts[reverseKey]);
+          const hasConflict = !!conflictData;
+          const isResolved = hasConflict && (overrides[pairKey] !== undefined || overrides[reverseKey] !== undefined);
+
+          pill.className = 'db-pill' + (hasConflict && !isResolved ? ' db-pill-conflict' : '');
           pill.textContent = formatConverted(converted, tc);
 
           const curInfo = currentSettings.currencies[tc];
           const symbol = curInfo ? curInfo.symbol : tc;
-          const rateInfo = RatesUtil.formatRateForDisplay(m.currency, tc, rates);
-          const rateStr = rateInfo
-            ? ` (1 ${rateInfo.base} = ${rateInfo.rate.toFixed(4)} ${rateInfo.quote})`
+          let rateStr = dispInfo
+            ? ` (1 ${dispInfo.base} = ${dispInfo.rate.toFixed(4)} ${dispInfo.quote})`
             : '';
+
+          if (hasConflict) {
+            const activeSource = overrides[pairKey] || overrides[reverseKey] || usedSources[0] || '';
+            const sourceName = RatesUtil.getSourceDisplayName(activeSource);
+            if (!isResolved) {
+              rateStr += ` [CONFLICT — using ${sourceName}]`;
+            } else {
+              rateStr += ` [Source: ${sourceName}]`;
+            }
+          }
+
           pill.setAttribute('data-db-tooltip',
             `${m.amount.toFixed(2)} ${m.currency} \u2192 ${symbol}${converted.toFixed(2)} ${tc}${rateStr}`
           );
@@ -258,7 +283,7 @@
     }
   }
 
-  function scanNode(node, rates, conversionMap, ambiguousCurrency) {
+  function scanNode(node, ratesData, conversionMap, ambiguousCurrency) {
     if (!node) return;
     const walker = document.createTreeWalker(node, NodeFilter.SHOW_TEXT, {
       acceptNode: (n) => {
@@ -275,7 +300,7 @@
       textNodes.push(current);
     }
     for (const tn of textNodes) {
-      processTextNode(tn, rates, conversionMap, ambiguousCurrency);
+      processTextNode(tn, ratesData, conversionMap, ambiguousCurrency);
     }
   }
 
@@ -289,12 +314,12 @@
 
     compilePatterns(settings);
 
-    const rates = getRatesForConversion(settings, cachedRates);
-    if (!rates) return;
+    const ratesData = getRatesForConversion(settings, cachedRates);
+    if (!ratesData || !ratesData.rates) return;
 
     const conversionMap = RatesUtil.buildConversionMap(settings);
     const ambiguousCurrency = resolveAmbiguousCurrency(settings);
-    scanNode(document.body, rates, conversionMap, ambiguousCurrency);
+    scanNode(document.body, ratesData, conversionMap, ambiguousCurrency);
 
     if (!ambiguousCurrency && hasAmbiguousMatches(document.body)) {
       showCurrencyPicker(settings);
@@ -320,13 +345,13 @@
     ]).then(([settings, cachedRates]) => {
       if (!shouldProcessPage(settings)) return;
       compilePatterns(settings);
-      const rates = getRatesForConversion(settings, cachedRates);
-      if (!rates) return;
+      const ratesData = getRatesForConversion(settings, cachedRates);
+      if (!ratesData || !ratesData.rates) return;
       const conversionMap = RatesUtil.buildConversionMap(settings);
       const ambiguousCurrency = resolveAmbiguousCurrency(settings);
       for (const node of nodes) {
         if (node.isConnected) {
-          scanNode(node, rates, conversionMap, ambiguousCurrency);
+          scanNode(node, ratesData, conversionMap, ambiguousCurrency);
         }
       }
     });
