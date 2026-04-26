@@ -58,10 +58,17 @@ function renderFetchStatus(fetchStatus, rates) {
   const details = document.getElementById('fetchStatusDetails');
 
   const state = RatesUtil.getFetchState(fetchStatus, rates);
+  const sourceErrors = currentLoadedRates
+    ? Object.values(currentLoadedRates).filter(lr => lr && lr.error)
+    : [];
 
   if (state === 'error') {
     dot.className = 'fetch-status-dot fetch-status-dot-error';
     title.textContent = 'Fetch failed';
+    title.className = 'fetch-status-title fetch-status-title-error';
+  } else if (sourceErrors.length > 0) {
+    dot.className = 'fetch-status-dot fetch-status-dot-stale';
+    title.textContent = `${sourceErrors.length} source${sourceErrors.length > 1 ? 's' : ''} failed`;
     title.className = 'fetch-status-title fetch-status-title-error';
   } else if (state === 'stale') {
     dot.className = 'fetch-status-dot fetch-status-dot-stale';
@@ -94,6 +101,14 @@ function renderFetchStatus(fetchStatus, rates) {
       rows.push(['Consecutive failures', fetchStatus.consecutiveFailures]);
     }
   }
+  // Show per-source errors from loaded rates
+  if (currentLoadedRates) {
+    for (const [sourceId, lr] of Object.entries(currentLoadedRates)) {
+      if (lr && lr.error) {
+        rows.push([RatesUtil.getSourceDisplayName(sourceId), lr.error]);
+      }
+    }
+  }
 
   details.innerHTML = rows.map(([label, value]) =>
     `<div class="fetch-status-row"><span class="fetch-status-label">${RatesUtil.escapeHtml(label)}</span><span class="fetch-status-value">${RatesUtil.escapeHtml(value)}</span></div>`
@@ -114,6 +129,7 @@ async function reloadRates() {
     if (loadedRates) currentLoadedRates = loadedRates;
     renderFetchStatus(currentFetchStatus, currentRates);
     renderLoadedRates(currentLoadedRates);
+    renderSourceErrors(currentLoadedRates);
   } finally {
     reloadRatesBtn.classList.remove('loading');
     reloadRatesBtn.disabled = false;
@@ -135,6 +151,13 @@ function renderLoadedRates(loadedRatesMap) {
   let totalCount = 0;
 
   for (const [sourceId, loadedRates] of Object.entries(loadedRatesMap)) {
+    const sourceName = RatesUtil.getSourceDisplayName(sourceId);
+
+    if (loadedRates && loadedRates.error) {
+      html += `<div class="loaded-rates-meta loaded-rates-meta-error">${RatesUtil.escapeHtml(sourceName)} &middot; <span class="source-error-text">${RatesUtil.escapeHtml(loadedRates.error)}</span></div>`;
+      continue;
+    }
+
     if (!loadedRates || !loadedRates.rates) continue;
     const base = loadedRates.base;
     const convention = loadedRates.convention;
@@ -143,10 +166,10 @@ function renderLoadedRates(loadedRatesMap) {
       .sort((a, b) => a[0].localeCompare(b[0]));
 
     totalCount += entries.length;
-    const sourceName = RatesUtil.getSourceDisplayName(sourceId);
     const age = loadedRates.timestamp ? RatesUtil.formatCacheAge(loadedRates) : '';
+    const rateDateMeta = loadedRates.rateDate ? ` &middot; rates from ${RatesUtil.escapeHtml(formatRateDate(loadedRates.rateDate))}` : '';
 
-    html += `<div class="loaded-rates-meta">${RatesUtil.escapeHtml(sourceName)} &middot; ${entries.length} currencies${age ? ' &middot; ' + RatesUtil.escapeHtml(age) + ' ago' : ''}</div>`;
+    html += `<div class="loaded-rates-meta">${RatesUtil.escapeHtml(sourceName)} &middot; ${entries.length} currencies${rateDateMeta}${age ? ' &middot; fetched ' + RatesUtil.escapeHtml(age) + ' ago' : ''}</div>`;
     html += '<div class="loaded-rates-grid">';
     html += `<div class="loaded-rates-header"><span>Code</span><span>1 ${RatesUtil.escapeHtml(base)} =</span></div>`;
     const nf = currentSettings ? currentSettings.numberFormat : null;
@@ -161,6 +184,33 @@ function renderLoadedRates(loadedRatesMap) {
 
   loadedRatesList.innerHTML = html || '<p class="hint">No rates loaded yet.</p>';
   updateLoadedRatesToggleLabel({ count: totalCount });
+}
+
+function formatRateDate(rateDate) {
+  if (!rateDate) return '';
+  const d = new Date(rateDate);
+  if (isNaN(d.getTime())) return rateDate;
+  return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+}
+
+function renderSourceErrors(loadedRatesMap) {
+  // Clear all existing error indicators
+  document.querySelectorAll('.source-error-indicator').forEach(el => el.remove());
+
+  if (!loadedRatesMap || typeof loadedRatesMap !== 'object') return;
+
+  for (const [sourceId, loadedRates] of Object.entries(loadedRatesMap)) {
+    if (!loadedRates || !loadedRates.error) continue;
+    const checkbox = document.querySelector(`input[name="rateSource"][value="${CSS.escape(sourceId)}"]`);
+    if (!checkbox) continue;
+    const label = checkbox.closest('.toggle-option');
+    if (!label) continue;
+    const span = document.createElement('span');
+    span.className = 'source-error-indicator';
+    span.title = loadedRates.error;
+    span.textContent = '!';
+    label.appendChild(span);
+  }
 }
 
 function updateLoadedRatesToggleLabel(info) {
@@ -181,7 +231,7 @@ toggleLoadedRatesBtn.addEventListener('click', () => {
   loadedRatesExpanded = !loadedRatesExpanded;
   loadedRatesContent.style.display = loadedRatesExpanded ? 'block' : 'none';
   updateLoadedRatesToggleLabel(currentLoadedRates && Object.keys(currentLoadedRates).length > 0
-    ? { count: Object.values(currentLoadedRates).reduce((sum, lr) => sum + Object.keys(lr.rates || {}).length - 1, 0) }
+    ? { count: Object.values(currentLoadedRates).filter(lr => lr && lr.rates).reduce((sum, lr) => sum + Object.keys(lr.rates).length - 1, 0) }
     : null
   );
 });
@@ -818,6 +868,7 @@ async function loadSettings() {
   renderCustomRatesGrid();
   renderFetchStatus(currentFetchStatus, currentRates);
   renderLoadedRates(currentLoadedRates);
+  renderSourceErrors(currentLoadedRates);
 
   setRadioValue(siteModeRadios, currentSettings.siteMode);
   whitelistEl.value = (currentSettings.whitelist || []).join('\n');

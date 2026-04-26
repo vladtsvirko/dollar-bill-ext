@@ -50,17 +50,13 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
   }
   if (msg.type === 'updateRates') {
     updateRates().then(async (result) => {
-      const fetchStatus = await RatesUtil.getFetchStatus();
-      if (result.success) {
-        const [rates, loadedRates] = await Promise.all([
-          RatesUtil.getCachedRates(),
-          RatesUtil.getLoadedRates(),
-        ]);
-        sendResponse({ rates, fetchStatus, loadedRates });
-      } else {
-        sendResponse({ rates: null, fetchStatus });
-      }
-    }).catch(() => sendResponse({ rates: null, fetchStatus: null }));
+      const [fetchStatus, loadedRates, rates] = await Promise.all([
+        RatesUtil.getFetchStatus(),
+        RatesUtil.getLoadedRates(),
+        result.success ? RatesUtil.getCachedRates() : Promise.resolve(null),
+      ]);
+      sendResponse({ rates, fetchStatus, loadedRates });
+    }).catch(() => sendResponse({ rates: null, fetchStatus: null, loadedRates: null }));
     return true;
   }
   if (msg.type === 'getSettings') {

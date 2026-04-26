@@ -14,7 +14,8 @@
     "https://*.tcmb.gov.tr/*",
     "https://*.bankofcanada.ca/*",
     "https://*.bcb.gov.br/*",
-    "https://*.bankofengland.co.uk/*"
+    "https://*.bankofengland.co.uk/*",
+    "https://api.frankfurter.app/*"
   ],
   "background": {
     "service_worker": "background.js"
