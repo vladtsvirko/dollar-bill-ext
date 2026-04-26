@@ -13,15 +13,15 @@
 
   function compilePatterns(settings) {
     currentSettings = settings;
+    const sources = RatesUtil.getSourceCurrencies(settings);
     // Skip recompilation if settings haven't changed
-    const key = JSON.stringify(settings.sourceCurrencies) +
+    const key = JSON.stringify(sources) +
                 JSON.stringify(settings.currencies) +
                 JSON.stringify(settings.ambiguousPatterns);
     if (key === lastCompiledKey) return;
     lastCompiledKey = key;
 
     const currencies = settings.currencies || {};
-    const sources = settings.sourceCurrencies || [];
 
     // Build unambiguous patterns from currency definitions
     compiledUnambiguous = [];
@@ -97,7 +97,7 @@
     if (existing) return;
 
     const host = location.hostname;
-    const sources = settings.sourceCurrencies || [];
+    const sources = RatesUtil.getSourceCurrencies(settings);
     const currencies = settings.currencies || {};
 
     const bar = document.createElement('div');
@@ -171,16 +171,10 @@
   }
 
   function getRatesForConversion(settings, cachedRates) {
-    if (settings.rateSource === 'custom') {
-      return RatesUtil.getCustomRates(settings);
-    }
-    if (cachedRates && RatesUtil.isCacheValid(cachedRates)) {
-      return cachedRates;
-    }
-    return null;
+    return RatesUtil.getEffectiveRates(settings, cachedRates);
   }
 
-  function processTextNode(textNode, rates, targetCurrencies, ambiguousCurrency) {
+  function processTextNode(textNode, rates, conversionMap, ambiguousCurrency) {
     const text = textNode.nodeValue;
     if (!text || text.length < 2) return;
 
@@ -224,8 +218,9 @@
       const originalText = text.slice(m.index, m.index + m.length);
       fragment.appendChild(document.createTextNode(originalText));
 
-      // Create a pill for each target currency
-      for (const tc of targetCurrencies) {
+      // Create a pill for each target currency configured for this source
+      const targets = conversionMap[m.currency] || [];
+      for (const tc of targets) {
         const converted = RatesUtil.convert(m.amount, m.currency, tc, rates);
         if (converted !== null && converted > 0) {
           hasConversion = true;
@@ -263,7 +258,7 @@
     }
   }
 
-  function scanNode(node, rates, targetCurrencies, ambiguousCurrency) {
+  function scanNode(node, rates, conversionMap, ambiguousCurrency) {
     if (!node) return;
     const walker = document.createTreeWalker(node, NodeFilter.SHOW_TEXT, {
       acceptNode: (n) => {
@@ -280,7 +275,7 @@
       textNodes.push(current);
     }
     for (const tn of textNodes) {
-      processTextNode(tn, rates, targetCurrencies, ambiguousCurrency);
+      processTextNode(tn, rates, conversionMap, ambiguousCurrency);
     }
   }
 
@@ -297,8 +292,9 @@
     const rates = getRatesForConversion(settings, cachedRates);
     if (!rates) return;
 
+    const conversionMap = RatesUtil.buildConversionMap(settings);
     const ambiguousCurrency = resolveAmbiguousCurrency(settings);
-    scanNode(document.body, rates, settings.targetCurrencies, ambiguousCurrency);
+    scanNode(document.body, rates, conversionMap, ambiguousCurrency);
 
     if (!ambiguousCurrency && hasAmbiguousMatches(document.body)) {
       showCurrencyPicker(settings);
@@ -326,10 +322,11 @@
       compilePatterns(settings);
       const rates = getRatesForConversion(settings, cachedRates);
       if (!rates) return;
+      const conversionMap = RatesUtil.buildConversionMap(settings);
       const ambiguousCurrency = resolveAmbiguousCurrency(settings);
       for (const node of nodes) {
         if (node.isConnected) {
-          scanNode(node, rates, settings.targetCurrencies, ambiguousCurrency);
+          scanNode(node, rates, conversionMap, ambiguousCurrency);
         }
       }
     });

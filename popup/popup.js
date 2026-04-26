@@ -11,9 +11,52 @@ const converterInput = document.getElementById('converterInput');
 const converterResult = document.getElementById('converterResult');
 const siteIndicator = document.getElementById('siteIndicator');
 const settingsLink = document.getElementById('settingsLink');
+const themeToggle = document.getElementById('themeToggle');
+const pairChipsEl = document.getElementById('pairChips');
 
 let currentSettings = null;
 let currentRates = null;
+
+// --- Theme ---
+
+const RESET_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>';
+
+function applyTheme(theme) {
+  if (theme === 'dark') {
+    document.documentElement.setAttribute('data-theme', 'dark');
+  } else {
+    document.documentElement.removeAttribute('data-theme');
+  }
+}
+
+function detectSystemTheme() {
+  return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+}
+
+function getTheme() {
+  if (currentSettings && currentSettings.theme) return currentSettings.theme;
+  return detectSystemTheme();
+}
+
+function setTheme(theme) {
+  if (!currentSettings) return;
+  currentSettings.theme = theme;
+  applyTheme(theme);
+  RatesUtil.saveSettings(currentSettings);
+}
+
+themeToggle.addEventListener('click', () => {
+  const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+  setTheme(isDark ? 'light' : 'dark');
+});
+
+window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
+  if (!currentSettings || !currentSettings.theme) {
+    applyTheme(detectSystemTheme());
+  }
+});
+
+// --- Timestamp formatting ---
 
 function formatTimestamp(timestamp) {
   if (!timestamp) return '';
@@ -25,7 +68,6 @@ function formatTimestamp(timestamp) {
 }
 
 function getSourceDisplayName(sourceId) {
-  if (sourceId === 'custom') return 'Custom';
   const source = RatesUtil.RATE_SOURCES[sourceId];
   return source ? source.name : sourceId;
 }
@@ -40,7 +82,6 @@ function renderSourceDropdown(settings) {
   for (const [id, src] of Object.entries(RatesUtil.RATE_SOURCES)) {
     options.push({ id, name: src.name });
   }
-  options.push({ id: 'custom', name: 'Custom' });
 
   sourceDropdown.innerHTML = options.map(opt => `
     <div class="source-option${opt.id === currentSource ? ' active' : ''}" data-source="${opt.id}">
@@ -83,19 +124,8 @@ sourceDropdown.addEventListener('click', async (e) => {
   await RatesUtil.saveSettings(currentSettings);
   toggleDropdown(true);
   renderSourceDropdown(currentSettings);
-  renderRateCards(currentRates, currentSettings);
-  populateConverterSelects(currentSettings);
 
-  // Trigger rate refresh for non-custom sources
-  if (sourceId !== 'custom') {
-    await refreshRates();
-  } else {
-    // For custom, rebuild rates from customRates
-    currentRates = RatesUtil.getCustomRates(currentSettings);
-    currentRates.timestamp = Date.now();
-    renderRateCards(currentRates, currentSettings);
-    renderSourceTimestamp(currentRates);
-  }
+  await refreshRates();
 });
 
 // --- Reload button ---
@@ -108,9 +138,9 @@ async function refreshRates() {
     });
     if (rates) {
       currentRates = rates;
+      currentRates.timestamp = rates.timestamp;
       renderRateCards(currentRates, currentSettings);
       renderSourceTimestamp(currentRates);
-      // Re-run converter if there's a value
       if (converterInput.value.trim()) {
         renderConverter(converterInput.value.trim(), currentRates, currentSettings);
       }
@@ -128,74 +158,82 @@ function renderSourceTimestamp(rates) {
 
 // --- Rate cards ---
 
-function renderRateCards(rates, settings) {
-  if (!rates || !rates.timestamp) {
+let effectiveRatesCache = null;
+let effectiveRatesInput = null;
+
+function getEffectiveRates(settings, cachedRates) {
+  const key = cachedRates && cachedRates.timestamp;
+  if (effectiveRatesCache && effectiveRatesInput === key) return effectiveRatesCache;
+  effectiveRatesCache = RatesUtil.getEffectiveRates(settings, cachedRates);
+  effectiveRatesInput = key;
+  return effectiveRatesCache;
+}
+
+function invalidateEffectiveRates() {
+  effectiveRatesCache = null;
+  effectiveRatesInput = null;
+}
+
+function renderRateCards(cachedRates, settings) {
+  const rates = getEffectiveRates(settings, cachedRates);
+
+  const pairs = settings.conversionPairs || [];
+  const currencies = settings.currencies || {};
+
+  if (pairs.length === 0 || !rates || Object.keys(rates).length === 0) {
     rateCardsEl.innerHTML = '<div class="rate-card-skeleton">No rates available</div>';
     return;
   }
 
-  const sources = settings.sourceCurrencies || [];
-  const targets = settings.targetCurrencies || [];
-  const currencies = settings.currencies || {};
-  const isCustom = settings.rateSource === 'custom';
-
   const cards = [];
   const seen = new Set();
-  for (const from of sources) {
-    for (const to of targets) {
-      if (from === to) continue;
-      const pairKey = [from, to].sort().join(':');
-      if (seen.has(pairKey)) continue;
-      seen.add(pairKey);
+  for (const pair of pairs) {
+    const pairKey = [pair.from, pair.to].sort().join(':');
+    if (seen.has(pairKey)) continue;
+    seen.add(pairKey);
 
-      const rateInfo = RatesUtil.formatRateForDisplay(from, to, rates);
-      if (!rateInfo) continue;
-      const baseCur = currencies[rateInfo.base] || {};
-      const quoteCur = currencies[rateInfo.quote] || {};
-      const baseSymbol = baseCur.symbol || rateInfo.base;
-      const quoteSymbol = quoteCur.symbol || rateInfo.quote;
+    const rateInfo = RatesUtil.formatRateForDisplay(pair.from, pair.to, rates);
+    if (!rateInfo) continue;
+    const baseCur = currencies[rateInfo.base] || {};
+    const baseSymbol = baseCur.symbol || rateInfo.base;
 
-      if (isCustom) {
-        const pairKeyCustom = `${rateInfo.base}:${rateInfo.quote}`;
-        cards.push(`
-          <div class="rate-card" data-pair="${pairKeyCustom}">
-            <div class="rate-card-left">
-              <div class="rate-card-flag">${RatesUtil.escapeHtml(baseSymbol)}</div>
-              <div>
-                <div class="rate-card-label">1 ${rateInfo.base} =</div>
-              </div>
-            </div>
+    const customPairKey = `${rateInfo.base}:${rateInfo.quote}`;
+    const reversePairKey = `${rateInfo.quote}:${rateInfo.base}`;
+    const hasOverride = settings.customRates && (
+      settings.customRates[customPairKey] != null ||
+      settings.customRates[reversePairKey] != null
+    );
+
+    cards.push(`
+      <div class="rate-card${hasOverride ? ' rate-card-custom' : ''}" data-pair="${customPairKey}">
+        <div class="rate-card-left">
+          <div class="rate-card-flag">${RatesUtil.escapeHtml(baseSymbol)}</div>
+          <div class="rate-card-label">1 <code>${rateInfo.base}</code> =</div>
+        </div>
+        <div class="rate-card-right">
+          <div class="rate-input-group">
             <input class="rate-card-value-input" type="text"
               value="${rateInfo.rate.toFixed(4)}"
               data-base="${rateInfo.base}" data-quote="${rateInfo.quote}">
+            <span class="rate-input-code">${rateInfo.quote}</span>
           </div>
-        `);
-      } else {
-        cards.push(`
-          <div class="rate-card">
-            <div class="rate-card-left">
-              <div class="rate-card-flag">${RatesUtil.escapeHtml(baseSymbol)}</div>
-              <div>
-                <div class="rate-card-label">1 ${rateInfo.base} =</div>
-              </div>
-            </div>
-            <div class="rate-card-value">${quoteSymbol}${rateInfo.rate.toFixed(4)} ${rateInfo.quote}</div>
-          </div>
-        `);
-      }
-    }
+          ${hasOverride ? `<button class="rate-card-reset" title="Reset to fetched rate" data-base="${rateInfo.base}" data-quote="${rateInfo.quote}">${RESET_SVG}</button>` : ''}
+        </div>
+      </div>
+    `);
   }
 
   rateCardsEl.innerHTML = cards.length
     ? cards.join('')
     : '<div class="rate-card-skeleton">No rates available</div>';
 
-  // Attach listeners for custom rate inputs
-  if (isCustom) {
-    rateCardsEl.querySelectorAll('.rate-card-value-input').forEach(input => {
-      input.addEventListener('change', handleCustomRateChange);
-    });
-  }
+  rateCardsEl.querySelectorAll('.rate-card-value-input').forEach(input => {
+    input.addEventListener('change', handleCustomRateChange);
+  });
+
+  rateCardsEl.querySelectorAll('.rate-card-reset').forEach(btn => {
+    btn.addEventListener('click', handleCustomRateReset);
+  });
 }
 
 async function handleCustomRateChange(e) {
@@ -209,18 +247,60 @@ async function handleCustomRateChange(e) {
   currentSettings.customRates[`${base}:${quote}`] = val;
   await RatesUtil.saveSettings(currentSettings);
 
-  // Rebuild custom rates
-  currentRates = RatesUtil.getCustomRates(currentSettings);
-  currentRates.timestamp = Date.now();
+  invalidateEffectiveRates();
+  renderRateCards(currentRates, currentSettings);
   renderSourceTimestamp(currentRates);
 
-  // Re-run converter
   if (converterInput.value.trim()) {
     renderConverter(converterInput.value.trim(), currentRates, currentSettings);
   }
 }
 
-// --- Quick Convert with currency selectors ---
+async function handleCustomRateReset(e) {
+  const btn = e.currentTarget;
+  const base = btn.dataset.base;
+  const quote = btn.dataset.quote;
+
+  if (!currentSettings.customRates) return;
+  delete currentSettings.customRates[`${base}:${quote}`];
+  await RatesUtil.saveSettings(currentSettings);
+
+  invalidateEffectiveRates();
+  renderRateCards(currentRates, currentSettings);
+  renderSourceTimestamp(currentRates);
+
+  if (converterInput.value.trim()) {
+    renderConverter(converterInput.value.trim(), currentRates, currentSettings);
+  }
+}
+
+// --- Conversion Pairs ---
+
+function renderPairChips(settings) {
+  const pairs = settings.conversionPairs || [];
+  pairChipsEl.innerHTML = pairs.map((p, i) => `
+    <span class="pair-chip">${p.from} <span class="pair-chip-arrow">&rarr;</span> ${p.to}
+      <button class="pair-chip-remove" data-index="${i}" title="Remove pair">&times;</button>
+    </span>
+  `).join('') + '<button class="pair-chip-add" id="addPairPopup" title="Add conversion pair">+</button>';
+
+  pairChipsEl.querySelectorAll('.pair-chip-remove').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const idx = parseInt(btn.dataset.index);
+      currentSettings.conversionPairs.splice(idx, 1);
+      await RatesUtil.saveSettings(currentSettings);
+      renderPairChips(currentSettings);
+      renderRateCards(currentRates, currentSettings);
+      populateConverterSelects(currentSettings);
+    });
+  });
+
+  document.getElementById('addPairPopup').addEventListener('click', () => {
+    chrome.runtime.openOptionsPage();
+  });
+}
+
+// --- Quick Convert ---
 
 function populateConverterSelects(settings) {
   const currencies = settings.currencies || {};
@@ -236,17 +316,16 @@ function populateConverterSelects(settings) {
     ).join('');
   };
 
-  const defaultFrom = settings.sourceCurrencies && settings.sourceCurrencies[0]
-    ? settings.sourceCurrencies[0] : allCodes[0];
-  const defaultTo = settings.targetCurrencies && settings.targetCurrencies[0]
-    ? settings.targetCurrencies[0] : allCodes[allCodes.length > 1 ? 1 : 0];
+  const firstPair = settings.conversionPairs && settings.conversionPairs[0];
+  const defaultFrom = firstPair ? firstPair.from : allCodes[0];
+  const defaultTo = firstPair ? firstPair.to : allCodes[allCodes.length > 1 ? 1 : 0];
 
   converterFrom.innerHTML = makeOptions(allCodes.includes(prevFrom) ? prevFrom : defaultFrom);
   converterTo.innerHTML = makeOptions(allCodes.includes(prevTo) ? prevTo : defaultTo);
 }
 
-function renderConverter(value, rates, settings) {
-  if (!value || isNaN(value) || !rates || !settings) {
+function renderConverter(value, cachedRates, settings) {
+  if (!value || isNaN(value) || !settings) {
     converterResult.innerHTML = '';
     return;
   }
@@ -264,6 +343,7 @@ function renderConverter(value, rates, settings) {
     return;
   }
 
+  const rates = getEffectiveRates(settings, cachedRates);
   const converted = RatesUtil.convert(amount, from, to, rates);
   if (converted === null) {
     converterResult.innerHTML = '';
@@ -300,12 +380,14 @@ async function loadPopup() {
   currentRates = rates;
 
   enabledEl.checked = settings.enabled;
+
+  applyTheme(getTheme());
   renderSourceDropdown(settings);
   renderSourceTimestamp(rates);
   renderRateCards(rates, settings);
+  renderPairChips(settings);
   populateConverterSelects(settings);
 
-  // Site indicator
   try {
     const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
     if (tab && tab.url) {
@@ -313,7 +395,7 @@ async function loadPopup() {
       const host = url.hostname;
       const isActive = settings.enabled;
       siteIndicator.textContent = isActive ? `\u2713 ${host}` : `\u2717 ${host}`;
-      siteIndicator.style.color = isActive ? 'var(--db-green)' : '#999';
+      siteIndicator.style.color = isActive ? 'var(--accent)' : 'var(--text-tertiary)';
     }
   } catch {
     siteIndicator.textContent = '';

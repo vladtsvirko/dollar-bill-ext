@@ -6,16 +6,14 @@ const whitelistSection = document.getElementById('whitelistSection');
 const whitelistEl = document.getElementById('whitelist');
 const ambiguousPatternsEl = document.getElementById('ambiguousPatterns');
 const saveToast = document.getElementById('saveToast');
+const optEnabled = document.getElementById('optEnabled');
+const themeOptions = document.getElementById('themeOptions');
 
-// Source chips
-const sourceChips = document.getElementById('sourceChips');
-const addSourceSelect = document.getElementById('addSourceSelect');
-const addSourceBtn = document.getElementById('addSourceBtn');
-
-// Target chips
-const targetChips = document.getElementById('targetChips');
-const addTargetSelect = document.getElementById('addTargetSelect');
-const addTargetBtn = document.getElementById('addTargetBtn');
+// Conversion pairs
+const pairChips = document.getElementById('pairChips');
+const addPairFrom = document.getElementById('addPairFrom');
+const addPairTo = document.getElementById('addPairTo');
+const addPairBtn = document.getElementById('addPairBtn');
 
 // Currency library
 const currencyLibrary = document.getElementById('currencyLibrary');
@@ -36,6 +34,74 @@ let currentSettings = null;
 let editingCurrency = null;
 let autoSaveTimer = null;
 
+// ---- Theme ----
+
+function detectSystemTheme() {
+  return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+}
+
+function getEffectiveTheme() {
+  if (currentSettings && currentSettings.theme) return currentSettings.theme;
+  return detectSystemTheme();
+}
+
+function applyTheme(theme) {
+  if (theme === 'dark') {
+    document.documentElement.setAttribute('data-theme', 'dark');
+  } else {
+    document.documentElement.removeAttribute('data-theme');
+  }
+}
+
+function renderThemeSelector() {
+  const savedTheme = currentSettings ? currentSettings.theme : null;
+  const activeValue = savedTheme === null ? '' : savedTheme;
+  themeOptions.querySelectorAll('.theme-opt').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.themeValue === activeValue);
+  });
+}
+
+window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
+  if (!currentSettings || !currentSettings.theme) {
+    applyTheme(detectSystemTheme());
+  }
+});
+
+themeOptions.addEventListener('click', async (e) => {
+  const btn = e.target.closest('.theme-opt');
+  if (!btn) return;
+  const value = btn.dataset.themeValue;
+  currentSettings.theme = value === '' ? null : value;
+  applyTheme(getEffectiveTheme());
+  renderThemeSelector();
+  await RatesUtil.saveSettings(currentSettings);
+  showSaveToast();
+});
+
+// Listen for theme changes from popup
+chrome.storage.onChanged.addListener((changes, area) => {
+  if (area === 'sync' && changes.settings) {
+    const newSettings = changes.settings.newValue;
+    if (newSettings && currentSettings) {
+      const oldTheme = currentSettings.theme;
+      currentSettings.theme = newSettings.theme;
+      if (oldTheme !== newSettings.theme) {
+        applyTheme(getEffectiveTheme());
+        renderThemeSelector();
+      }
+    }
+  }
+});
+
+// ---- Enabled toggle ----
+
+optEnabled.addEventListener('change', async () => {
+  if (!currentSettings) return;
+  currentSettings.enabled = optEnabled.checked;
+  await RatesUtil.saveSettings(currentSettings);
+  showSaveToast();
+});
+
 // ---- Auto-save ----
 
 function showSaveToast() {
@@ -46,10 +112,8 @@ function showSaveToast() {
 
 async function autoSave() {
   if (!currentSettings) return;
-  if (currentSettings.sourceCurrencies.length === 0) return;
-  if (currentSettings.targetCurrencies.length === 0) return;
 
-  // Read custom rates from grid (normalization handled by getCustomRates on read)
+  // Read custom rates from grid
   const customRates = {};
   customRatesGrid.querySelectorAll('input[data-pair]').forEach((input) => {
     const pair = input.dataset.pair;
@@ -95,20 +159,19 @@ function getRadioValue(radios) {
 }
 
 function updateVisibility() {
-  customRatesSection.style.display = getRadioValue(rateSourceRadios) === 'custom' ? 'block' : 'none';
   whitelistSection.style.display = getRadioValue(siteModeRadios) === 'whitelist' ? 'block' : 'none';
   scheduleAutoSave();
 }
 
-for (const r of rateSourceRadios) r.addEventListener('change', updateVisibility);
 for (const r of siteModeRadios) r.addEventListener('change', updateVisibility);
+for (const r of rateSourceRadios) r.addEventListener('change', scheduleAutoSave);
 
-// ---- Drag-to-reorder ----
+// ---- Drag-to-reorder for pairs ----
 
-function setupDragReorder(container, field) {
+function setupDragReorder() {
   let draggedEl = null;
 
-  container.addEventListener('dragstart', (e) => {
+  pairChips.addEventListener('dragstart', (e) => {
     const chip = e.target.closest('.chip');
     if (!chip) return;
     draggedEl = chip;
@@ -116,113 +179,95 @@ function setupDragReorder(container, field) {
     e.dataTransfer.effectAllowed = 'move';
   });
 
-  container.addEventListener('dragend', (e) => {
+  pairChips.addEventListener('dragend', (e) => {
     const chip = e.target.closest('.chip');
     if (chip) chip.classList.remove('dragging');
     draggedEl = null;
-    container.querySelectorAll('.chip').forEach((c) => c.classList.remove('drag-over'));
+    pairChips.querySelectorAll('.chip').forEach((c) => c.classList.remove('drag-over'));
   });
 
-  container.addEventListener('dragover', (e) => {
+  pairChips.addEventListener('dragover', (e) => {
     e.preventDefault();
     e.dataTransfer.dropEffect = 'move';
     const chip = e.target.closest('.chip');
     if (chip && chip !== draggedEl) {
-      container.querySelectorAll('.chip').forEach((c) => c.classList.remove('drag-over'));
+      pairChips.querySelectorAll('.chip').forEach((c) => c.classList.remove('drag-over'));
       chip.classList.add('drag-over');
     }
   });
 
-  container.addEventListener('dragleave', (e) => {
+  pairChips.addEventListener('dragleave', (e) => {
     const chip = e.target.closest('.chip');
     if (chip) chip.classList.remove('drag-over');
   });
 
-  container.addEventListener('drop', (e) => {
+  pairChips.addEventListener('drop', (e) => {
     e.preventDefault();
     const target = e.target.closest('.chip');
     if (!target || !draggedEl || target === draggedEl) return;
 
-    const code = draggedEl.dataset.code;
-    const targetCode = target.dataset.code;
-    const list = currentSettings[field];
-    const fromIdx = list.indexOf(code);
-    const toIdx = list.indexOf(targetCode);
-    if (fromIdx === -1 || toIdx === -1) return;
+    const fromIdx = parseInt(draggedEl.dataset.index);
+    const toIdx = parseInt(target.dataset.index);
+    if (isNaN(fromIdx) || isNaN(toIdx)) return;
 
-    list.splice(fromIdx, 1);
-    list.splice(toIdx, 0, code);
+    const pair = currentSettings.conversionPairs.splice(fromIdx, 1)[0];
+    const adjustedToIdx = fromIdx < toIdx ? toIdx - 1 : toIdx;
+    currentSettings.conversionPairs.splice(adjustedToIdx, 0, pair);
 
-    // Re-render the chip list
-    const renderFn = field === 'sourceCurrencies' ? renderSourceChips : renderTargetChips;
-    renderFn();
+    renderPairChips();
     scheduleAutoSave();
   });
 }
 
-setupDragReorder(sourceChips, 'sourceCurrencies');
-setupDragReorder(targetChips, 'targetCurrencies');
+setupDragReorder();
 
-// ---- Source/Target chip rendering ----
+// ---- Pair chip rendering ----
 
-function renderChips(container, list, onRemove) {
-  container.innerHTML = list.map((code) => {
-    const cur = currentSettings.currencies[code];
-    const label = cur ? `${code} (${cur.name})` : code;
-    return `<span class="chip" draggable="true" data-code="${code}">${label}<button class="chip-remove" data-code="${code}" title="Remove">&times;</button></span>`;
+function renderPairChips() {
+  const pairs = currentSettings.conversionPairs || [];
+  pairChips.innerHTML = pairs.map((p, i) => {
+    const fromCur = currentSettings.currencies[p.from];
+    const toCur = currentSettings.currencies[p.to];
+    const fromLabel = fromCur ? `${p.from} (${fromCur.name})` : p.from;
+    const toLabel = toCur ? `${p.to} (${toCur.name})` : p.to;
+    return `<span class="chip" draggable="true" data-from="${p.from}" data-to="${p.to}" data-index="${i}">
+      ${RatesUtil.escapeHtml(fromLabel)} &rarr; ${RatesUtil.escapeHtml(toLabel)}
+      <button class="chip-remove" data-index="${i}" title="Remove">&times;</button>
+    </span>`;
   }).join('');
-  container.querySelectorAll('.chip-remove').forEach((btn) => {
-    btn.addEventListener('click', () => onRemove(btn.dataset.code));
-  });
-}
-
-function populateDropdown(select, exclude) {
-  const currencies = currentSettings.currencies;
-  select.innerHTML = '<option value="">Select...</option>';
-  for (const code of Object.keys(currencies).sort()) {
-    if (!exclude.includes(code)) {
-      const opt = document.createElement('option');
-      opt.value = code;
-      opt.textContent = `${code} - ${currencies[code].name}`;
-      select.appendChild(opt);
-    }
-  }
-}
-
-function createChipRenderer(containerEl, selectEl, field) {
-  function render() {
-    const list = currentSettings[field];
-    renderChips(containerEl, list, (code) => {
-      currentSettings[field] = currentSettings[field].filter((c) => c !== code);
-      render();
-      populateDropdown(selectEl, currentSettings[field]);
+  pairChips.querySelectorAll('.chip-remove').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      currentSettings.conversionPairs.splice(parseInt(btn.dataset.index), 1);
+      renderPairChips();
+      populatePairDropdowns();
       renderCustomRatesGrid();
       renderPreview();
       scheduleAutoSave();
     });
-    populateDropdown(selectEl, list);
-  }
-  return render;
+  });
 }
 
-const renderSourceChips = createChipRenderer(sourceChips, addSourceSelect, 'sourceCurrencies');
-const renderTargetChips = createChipRenderer(targetChips, addTargetSelect, 'targetCurrencies');
+function populatePairDropdowns() {
+  const currencies = currentSettings.currencies;
+  const makeOptions = () => {
+    return '<option value="">Select...</option>' +
+      Object.keys(currencies).sort().map(code =>
+        `<option value="${code}">${code} - ${currencies[code].name}</option>`
+      ).join('');
+  };
+  addPairFrom.innerHTML = makeOptions();
+  addPairTo.innerHTML = makeOptions();
+}
 
-addSourceBtn.addEventListener('click', () => {
-  const code = addSourceSelect.value;
-  if (!code || currentSettings.sourceCurrencies.includes(code)) return;
-  currentSettings.sourceCurrencies.push(code);
-  renderSourceChips();
-  renderCustomRatesGrid();
-  renderPreview();
-  scheduleAutoSave();
-});
-
-addTargetBtn.addEventListener('click', () => {
-  const code = addTargetSelect.value;
-  if (!code || currentSettings.targetCurrencies.includes(code)) return;
-  currentSettings.targetCurrencies.push(code);
-  renderTargetChips();
+addPairBtn.addEventListener('click', () => {
+  const from = addPairFrom.value;
+  const to = addPairTo.value;
+  if (!from || !to || from === to) return;
+  const exists = currentSettings.conversionPairs.some(p => p.from === from && p.to === to);
+  if (exists) return;
+  currentSettings.conversionPairs.push({ from, to });
+  renderPairChips();
+  populatePairDropdowns();
   renderCustomRatesGrid();
   renderPreview();
   scheduleAutoSave();
@@ -234,29 +279,27 @@ function renderPreview() {
   const previewContent = document.getElementById('previewContent');
   if (!previewContent || !currentSettings) return;
 
-  const sources = currentSettings.sourceCurrencies;
-  const targets = currentSettings.targetCurrencies;
+  const pairs = currentSettings.conversionPairs || [];
   const currencies = currentSettings.currencies;
 
-  if (sources.length === 0 || targets.length === 0) {
-    previewContent.innerHTML = '<span style="color:#999">Add source and target currencies to see a preview.</span>';
+  if (pairs.length === 0) {
+    previewContent.innerHTML = '<span style="color:var(--text-tertiary)">Add conversion pairs to see a preview.</span>';
     return;
   }
 
-  // Show up to 2 example prices
+  // Group pairs by source, show up to 2 example sources
+  const sourceMap = RatesUtil.buildConversionMap(currentSettings);
+
+  const sources = Object.keys(sourceMap).slice(0, 2);
   const examples = [];
-  for (let i = 0; i < Math.min(sources.length, 2); i++) {
-    const srcCode = sources[i];
-    const srcCur = currencies[srcCode] || {};
-    const symbol = srcCur.symbol || srcCode;
+  for (const srcCode of sources) {
     const amount = 100;
     let html = `<span class="preview-price">${amount} ${srcCode}</span>`;
 
-    for (const tc of targets) {
+    for (const tc of sourceMap[srcCode]) {
       const tcCur = currencies[tc] || {};
       const tcSymbol = tcCur.symbol || tc;
-      // Use a placeholder conversion rate for preview
-      const converted = (amount * (1 + targets.indexOf(tc) * 0.3)).toFixed(2);
+      const converted = (amount * (1 + Math.random() * 0.5)).toFixed(2);
       html += ` <span class="db-pill">${tcSymbol}${converted}</span>`;
     }
     examples.push(html);
@@ -317,11 +360,10 @@ function openCurrencyEditor(code) {
 }
 
 function deleteCurrency(code) {
-  currentSettings.sourceCurrencies = currentSettings.sourceCurrencies.filter((c) => c !== code);
-  currentSettings.targetCurrencies = currentSettings.targetCurrencies.filter((c) => c !== code);
+  currentSettings.conversionPairs = currentSettings.conversionPairs.filter(p => p.from !== code && p.to !== code);
   delete currentSettings.currencies[code];
-  renderSourceChips();
-  renderTargetChips();
+  renderPairChips();
+  populatePairDropdowns();
   renderCurrencyLibrary();
   renderCustomRatesGrid();
   renderPreview();
@@ -362,8 +404,8 @@ saveCurrencyBtn.addEventListener('click', () => {
   currencyEditor.style.display = 'none';
   editingCurrency = null;
   renderCurrencyLibrary();
-  renderSourceChips();
-  renderTargetChips();
+  renderPairChips();
+  populatePairDropdowns();
   renderCustomRatesGrid();
   renderPreview();
   scheduleAutoSave();
@@ -372,34 +414,29 @@ saveCurrencyBtn.addEventListener('click', () => {
 // ---- Custom Rates Grid ----
 
 function renderCustomRatesGrid() {
-  const sources = currentSettings.sourceCurrencies;
-  const targets = currentSettings.targetCurrencies;
+  const pairs = currentSettings.conversionPairs || [];
 
-  if (sources.length === 0 || targets.length === 0) {
-    customRatesGrid.innerHTML = '<p class="hint">Add source and target currencies first.</p>';
+  if (pairs.length === 0) {
+    customRatesGrid.innerHTML = '<p class="hint">Add conversion pairs first.</p>';
     return;
   }
 
-  // Build normalized rate table from raw customRates, then use formatRateForDisplay
   const normalizedRates = RatesUtil.getCustomRates(currentSettings);
 
   const seen = new Set();
   let html = '<div class="grid-inputs">';
-  for (const from of sources) {
-    for (const to of targets) {
-      if (from === to) continue;
-      const pairKey = [from, to].sort().join(':');
-      if (seen.has(pairKey)) continue;
-      seen.add(pairKey);
+  for (const pair of pairs) {
+    const pairKey = [pair.from, pair.to].sort().join(':');
+    if (seen.has(pairKey)) continue;
+    seen.add(pairKey);
 
-      const rateInfo = RatesUtil.formatRateForDisplay(from, to, normalizedRates);
-      const displayFrom = rateInfo ? rateInfo.base : from;
-      const displayTo = rateInfo ? rateInfo.quote : to;
-      const val = rateInfo ? rateInfo.rate : '';
+    const rateInfo = RatesUtil.formatRateForDisplay(pair.from, pair.to, normalizedRates);
+    const displayFrom = rateInfo ? rateInfo.base : pair.from;
+    const displayTo = rateInfo ? rateInfo.quote : pair.to;
+    const val = rateInfo ? rateInfo.rate : '';
 
-      const inputKey = `${displayFrom}:${displayTo}`;
-      html += `<label>1 ${displayFrom} = <input type="number" step="0.0001" data-pair="${inputKey}" value="${val}" placeholder="${displayTo}"> ${displayTo}</label>`;
-    }
+    const inputKey = `${displayFrom}:${displayTo}`;
+    html += `<label>1 ${displayFrom} = <input type="number" step="0.0001" data-pair="${inputKey}" value="${val}" placeholder="${displayTo}"> ${displayTo}</label>`;
   }
   html += '</div>';
   customRatesGrid.innerHTML = html;
@@ -468,8 +505,15 @@ whitelistEl.addEventListener('input', scheduleAutoSave);
 async function loadSettings() {
   currentSettings = await RatesUtil.getSettings();
 
-  renderSourceChips();
-  renderTargetChips();
+  // Apply theme
+  applyTheme(getEffectiveTheme());
+  renderThemeSelector();
+
+  // Enabled toggle
+  optEnabled.checked = currentSettings.enabled !== false;
+
+  renderPairChips();
+  populatePairDropdowns();
   renderCurrencyLibrary();
 
   ambiguousPatternsEl.value = (currentSettings.ambiguousPatterns || []).join('\n');

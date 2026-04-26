@@ -7,7 +7,74 @@
 </head>
 <body>
   <div class="options">
-    <h1>Dollar Bill Settings</h1>
+    <div class="options-header">
+      <div class="options-header-left">
+        <span class="options-logo">$</span>
+        <div>
+          <h1>Dollar Bill</h1>
+          <p class="options-subtitle">Settings</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- General -->
+    <section class="section">
+      <div class="setting-row">
+        <div class="setting-info">
+          <span class="setting-label">Enabled</span>
+          <span class="setting-desc">Convert prices on web pages</span>
+        </div>
+        <label class="toggle-switch">
+          <input type="checkbox" id="optEnabled">
+          <span class="toggle-slider"></span>
+        </label>
+      </div>
+
+      <div class="setting-row">
+        <div class="setting-info">
+          <span class="setting-label">Appearance</span>
+          <span class="setting-desc">Choose color theme</span>
+        </div>
+        <div class="theme-options" id="themeOptions">
+          <button class="theme-opt" data-theme-value="light" title="Light theme">
+            <div class="theme-opt-preview">
+              <div class="theme-opt-card">
+                <div class="theme-opt-dot"></div>
+                <div class="theme-opt-lines">
+                  <div class="theme-opt-line"></div>
+                  <div class="theme-opt-line short"></div>
+                </div>
+              </div>
+            </div>
+            <span class="theme-opt-label">Light</span>
+          </button>
+          <button class="theme-opt" data-theme-value="dark" title="Dark theme">
+            <div class="theme-opt-preview">
+              <div class="theme-opt-card is-dark">
+                <div class="theme-opt-dot"></div>
+                <div class="theme-opt-lines">
+                  <div class="theme-opt-line"></div>
+                  <div class="theme-opt-line short"></div>
+                </div>
+              </div>
+            </div>
+            <span class="theme-opt-label">Dark</span>
+          </button>
+          <button class="theme-opt" data-theme-value="" title="Follow system preference">
+            <div class="theme-opt-preview">
+              <div class="theme-opt-card is-auto">
+                <div class="theme-opt-dot"></div>
+                <div class="theme-opt-lines">
+                  <div class="theme-opt-line"></div>
+                  <div class="theme-opt-line short"></div>
+                </div>
+              </div>
+            </div>
+            <span class="theme-opt-label">System</span>
+          </button>
+        </div>
+      </div>
+    </section>
 
     <!-- Preview Panel -->
     <section class="section preview-section">
@@ -26,25 +93,36 @@
       </div>
     </section>
 
-    <!-- Source Currencies -->
+    <!-- Rate Source -->
     <section class="section">
-      <h2><span class="section-icon">&#128176;</span> Source Currencies</h2>
-      <p class="hint">Currencies to detect on web pages.</p>
-      <div id="sourceChips" class="chip-list"></div>
-      <div class="add-row">
-        <select id="addSourceSelect"><option value="">Add source...</option></select>
-        <button id="addSourceBtn" class="btn btn-sm">Add</button>
+      <h2><span class="section-icon">&#128200;</span> Exchange Rate Source</h2>
+      <div class="toggle-group">
+        <label class="toggle-option">
+          <input type="radio" name="rateSource" value="nbrb">
+          <span class="toggle-option-label">National Bank of Belarus</span>
+        </label>
+        <label class="toggle-option">
+          <input type="radio" name="rateSource" value="ecb">
+          <span class="toggle-option-label">European Central Bank</span>
+        </label>
+      </div>
+      <div id="customRatesSection" class="custom-rates">
+        <h3>Custom Rate Overrides</h3>
+        <p class="hint">Override specific pair rates regardless of the API source above.</p>
+        <div id="customRatesGrid" class="custom-rates-grid"></div>
       </div>
     </section>
 
-    <!-- Target Currencies -->
+    <!-- Conversion Pairs -->
     <section class="section">
-      <h2><span class="section-icon">&#127919;</span> Target Currencies</h2>
-      <p class="hint">Currencies to convert prices into.</p>
-      <div id="targetChips" class="chip-list"></div>
+      <h2><span class="section-icon">&#128259;</span> Conversion Pairs</h2>
+      <p class="hint">Configure which currencies to detect and convert into. Source currencies are derived automatically.</p>
+      <div id="pairChips" class="chip-list"></div>
       <div class="add-row">
-        <select id="addTargetSelect"><option value="">Add target...</option></select>
-        <button id="addTargetBtn" class="btn btn-sm">Add</button>
+        <select id="addPairFrom"><option value="">From...</option></select>
+        <span class="pair-arrow">&rarr;</span>
+        <select id="addPairTo"><option value="">To...</option></select>
+        <button id="addPairBtn" class="btn btn-sm">Add Pair</button>
       </div>
     </section>
 
@@ -71,36 +149,6 @@
       </div>
     </section>
 
-    <!-- Ambiguous Patterns -->
-    <section class="section">
-      <h2><span class="section-icon">&#10068;</span> Ambiguous Patterns</h2>
-      <p class="hint">Patterns that could match multiple currencies (e.g. "rub.", "r."). Resolved by TLD or picker.</p>
-      <textarea id="ambiguousPatterns" rows="4"></textarea>
-    </section>
-
-    <!-- Rate Source -->
-    <section class="section">
-      <h2><span class="section-icon">&#128200;</span> Exchange Rate Source</h2>
-      <div class="toggle-group">
-        <label class="toggle-option">
-          <input type="radio" name="rateSource" value="nbrb">
-          <span class="toggle-option-label">National Bank of Belarus</span>
-        </label>
-        <label class="toggle-option">
-          <input type="radio" name="rateSource" value="ecb">
-          <span class="toggle-option-label">European Central Bank</span>
-        </label>
-        <label class="toggle-option">
-          <input type="radio" name="rateSource" value="custom">
-          <span class="toggle-option-label">Custom rates</span>
-        </label>
-      </div>
-      <div id="customRatesSection" class="custom-rates" style="display:none;">
-        <h3>Custom Exchange Rates</h3>
-        <div id="customRatesGrid" class="custom-rates-grid"></div>
-      </div>
-    </section>
-
     <!-- Site Filtering -->
     <section class="section">
       <h2><span class="section-icon">&#127760;</span> Site Filtering</h2>
@@ -121,11 +169,21 @@
       </div>
     </section>
 
-    <!-- Domain Overrides -->
-    <section class="section" id="domainOverridesSection" style="display:none;">
-      <h2><span class="section-icon">&#128279;</span> Domain Currency Overrides</h2>
-      <p class="hint">Websites where you chose a base currency for ambiguous prices. Remove to reset.</p>
-      <div id="domainOverridesList" class="domain-list"></div>
+    <!-- Advanced -->
+    <section class="section">
+      <h2><span class="section-icon">&#128295;</span> Advanced</h2>
+
+      <div class="advanced-subsection">
+        <h3>Ambiguous Patterns</h3>
+        <p class="hint">Patterns that could match multiple currencies (e.g. "rub.", "r."). Resolved by TLD or picker.</p>
+        <textarea id="ambiguousPatterns" rows="4"></textarea>
+      </div>
+
+      <div id="domainOverridesSection" style="display:none;" class="advanced-subsection">
+        <h3>Domain Currency Overrides</h3>
+        <p class="hint">Websites where you chose a base currency for ambiguous prices. Remove to reset.</p>
+        <div id="domainOverridesList" class="domain-list"></div>
+      </div>
     </section>
 
     <!-- Auto-save toast -->

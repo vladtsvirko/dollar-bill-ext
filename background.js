@@ -6,12 +6,6 @@ const ALARM_INTERVAL_MIN = 30;
 async function updateRates() {
   try {
     const settings = await RatesUtil.getSettings();
-    if (settings.rateSource === 'custom') {
-      const customRates = RatesUtil.getCustomRates(settings);
-      customRates.timestamp = Date.now();
-      await RatesUtil.cacheRates(customRates);
-      return;
-    }
     await RatesUtil.fetchAndCacheRates(settings.rateSource, settings);
     console.log('[DollarBill] Rates updated successfully');
   } catch (err) {
