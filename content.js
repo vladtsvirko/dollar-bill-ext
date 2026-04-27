@@ -54,10 +54,13 @@
     compiledAmbiguous = [];
     for (const [norm, entries] of Object.entries(identifierOwners)) {
       if (entries.length <= 1) continue;
+      // Only build if at least one owning currency is in the user's source currencies
+      const ownerCodes = entries.map(e => e.code);
+      if (!ownerCodes.some(code => sources.includes(code))) continue;
       const patterns = RatesUtil.buildPatternsFromIdentifiers([entries[0].originalId]);
       for (const pat of patterns) {
         try {
-          compiledAmbiguous.push({ regex: new RegExp(pat, 'giu'), currency: null });
+          compiledAmbiguous.push({ regex: new RegExp(pat, 'giu'), currency: null, ownerCurrencies: ownerCodes });
         } catch (e) {
           console.warn(`[DollarBill] Invalid ambiguous pattern: ${pat}`, e);
         }
@@ -216,6 +219,8 @@
     for (let pi = 0; pi < allPatterns.length + (ambiguousCurrency ? compiledAmbiguous.length : 0); pi++) {
       const pattern = pi < allPatterns.length ? allPatterns[pi] : compiledAmbiguous[pi - allPatterns.length];
       const currency = pattern.currency || ambiguousCurrency;
+      // Skip if domain-resolved currency doesn't own this identifier
+      if (!pattern.currency && pattern.ownerCurrencies && !pattern.ownerCurrencies.includes(currency)) continue;
       let match;
       while ((match = pattern.regex.exec(text)) !== null) {
         const amount = parseAmount(match[1]);
