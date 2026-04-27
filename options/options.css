@@ -278,16 +278,9 @@ html {
 }
 
 .options-logo {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
   width: 36px;
   height: 36px;
   border-radius: 8px;
-  background: var(--db-green);
-  color: #fff;
-  font-size: 18px;
-  font-weight: 700;
   flex-shrink: 0;
 }
 
