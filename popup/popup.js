@@ -131,12 +131,29 @@ function renderSourceDropdown(settings) {
     options.push({ id, name: src.name });
   }
 
-  sourceDropdown.innerHTML = options.map(opt => `
-    <div class="source-option${selectedSources.includes(opt.id) ? ' active' : ''}" data-source="${opt.id}">
-      <span class="source-option-check"></span>
-      <span>${RatesUtil.escapeHtml(opt.name)}</span>
+  sourceDropdown.innerHTML = `
+    <input type="text" class="source-dropdown-search" id="sourceDropdownSearch" placeholder="Search sources...">
+    <div class="source-dropdown-list" id="sourceDropdownList">
+      ${options.map(opt => `
+        <div class="source-option${selectedSources.includes(opt.id) ? ' active' : ''}" data-source="${opt.id}" data-label="${RatesUtil.escapeHtml(opt.name.toLowerCase())}">
+          <span class="source-option-check"></span>
+          <span>${RatesUtil.escapeHtml(opt.name)}</span>
+        </div>
+      `).join('')}
     </div>
-  `).join('');
+  `;
+
+  const searchInput = document.getElementById('sourceDropdownSearch');
+  const listEl = document.getElementById('sourceDropdownList');
+  if (searchInput && listEl) {
+    searchInput.addEventListener('input', () => {
+      const q = searchInput.value.toLowerCase().trim();
+      listEl.querySelectorAll('.source-option').forEach(opt => {
+        const label = opt.dataset.label || '';
+        opt.style.display = !q || label.includes(q) ? '' : 'none';
+      });
+    });
+  }
 }
 
 function toggleDropdown(forceClose) {
@@ -151,6 +168,16 @@ function toggleDropdown(forceClose) {
 sourceTrigger.addEventListener('click', (e) => {
   e.stopPropagation();
   toggleDropdown();
+  if (sourceDropdown.classList.contains('open')) {
+    const searchInput = document.getElementById('sourceDropdownSearch');
+    if (searchInput) {
+      searchInput.value = '';
+      searchInput.focus();
+      // Reset filter
+      const listEl = document.getElementById('sourceDropdownList');
+      if (listEl) listEl.querySelectorAll('.source-option').forEach(opt => opt.style.display = '');
+    }
+  }
 });
 
 document.addEventListener('click', (e) => {
@@ -328,24 +355,78 @@ async function handleSourcePickerClick(e) {
   const conflictData = currentConflicts[customPairKey];
   if (!conflictData) return;
 
+  // Close any existing dropdowns
+  closeAllSourcePickerDropdowns();
+
+  const activeSource = RatesUtil.getActiveSourceForPair(customPairKey, customPairKey.split(':').reverse().join(':'), currentSettings, currentRates);
   const sourceIds = Object.keys(conflictData);
-  const currentOverride = (currentSettings.rateSourceOverrides || {})[customPairKey];
-  const usedSources = RatesUtil.getUsedSources(currentRates);
 
-  // Cycle to next source
-  const currentIdx = currentOverride
-    ? sourceIds.indexOf(currentOverride)
-    : sourceIds.indexOf(usedSources[0]);
-  const nextIdx = (currentIdx + 1) % sourceIds.length;
-  const nextSource = sourceIds[nextIdx];
+  // Build dropdown
+  const dropdown = document.createElement('div');
+  dropdown.className = 'rate-source-picker-dropdown open';
+  dropdown.innerHTML = `
+    <input type="text" class="rate-source-picker-search" placeholder="Search...">
+    <div class="rate-source-picker-list">
+      ${sourceIds.map(id => {
+        const isActive = id === activeSource;
+        const rate = conflictData[id];
+        return `<div class="rate-source-picker-item${isActive ? ' active' : ''}" data-source-id="${id}" data-label="${RatesUtil.escapeHtml(RatesUtil.getSourceDisplayName(id).toLowerCase())}">
+          <span class="rate-source-picker-item-check"></span>
+          <span class="rate-source-picker-item-label">${RatesUtil.escapeHtml(RatesUtil.getSourceDisplayName(id))}</span>
+          <span class="rate-source-picker-item-rate">${rate ? rate.toFixed(4) : ''}</span>
+        </div>`;
+      }).join('')}
+    </div>
+  `;
 
-  if (!currentSettings.rateSourceOverrides) currentSettings.rateSourceOverrides = {};
-  currentSettings.rateSourceOverrides[customPairKey] = nextSource;
-  await RatesUtil.saveSettings(currentSettings);
+  el.classList.add('active');
+  el.style.overflow = 'visible';
+  el.appendChild(dropdown);
 
-  invalidateEffectiveRates();
-  renderRateCards(currentRates, currentSettings);
-  renderConflictBanner();
+  const searchInput = dropdown.querySelector('.rate-source-picker-search');
+  const listEl = dropdown.querySelector('.rate-source-picker-list');
+
+  searchInput.addEventListener('input', () => {
+    const q = searchInput.value.toLowerCase().trim();
+    listEl.querySelectorAll('.rate-source-picker-item').forEach(item => {
+      const label = item.dataset.label || '';
+      item.style.display = !q || label.includes(q) ? '' : 'none';
+    });
+  });
+
+  listEl.addEventListener('click', async (ev) => {
+    const item = ev.target.closest('.rate-source-picker-item');
+    if (!item) return;
+    const sourceId = item.dataset.sourceId;
+
+    if (!currentSettings.rateSourceOverrides) currentSettings.rateSourceOverrides = {};
+    currentSettings.rateSourceOverrides[customPairKey] = sourceId;
+    await RatesUtil.saveSettings(currentSettings);
+
+    closeAllSourcePickerDropdowns();
+    invalidateEffectiveRates();
+    renderRateCards(currentRates, currentSettings);
+    renderConflictBanner();
+  });
+
+  searchInput.focus();
+
+  // Close on outside click
+  const closeHandler = (ev) => {
+    if (!el.contains(ev.target)) {
+      closeAllSourcePickerDropdowns();
+      document.removeEventListener('click', closeHandler);
+    }
+  };
+  setTimeout(() => document.addEventListener('click', closeHandler), 0);
+}
+
+function closeAllSourcePickerDropdowns() {
+  document.querySelectorAll('.rate-source-picker-dropdown').forEach(d => d.remove());
+  document.querySelectorAll('.rate-source-picker.active').forEach(el => {
+    el.classList.remove('active');
+    el.style.overflow = '';
+  });
 }
 
 async function handleCustomRateChange(e) {

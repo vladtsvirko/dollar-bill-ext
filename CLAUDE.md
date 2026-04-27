@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-**Dollar Bill** is a Chrome extension (Manifest V3) that automatically detects prices on any webpage and displays converted amounts inline next to the original. It fetches exchange rates from official central bank APIs (NBRB, ECB, NBP, NBU, CBR, CNB, TCMB, BOC, BCB, BOE) plus Frankfurter as a fallback.
+**Dollar Bill** is a Chrome extension (Manifest V3) that automatically detects prices on any webpage and displays converted amounts inline next to the original. It fetches exchange rates from official central bank APIs (NBRB, ECB, NBP, NBU, CBR, CNB, TCMB, BOC, BCB, BOE, HKMA, NBK) plus Frankfurter as a fallback.
 
 ## Architecture
 

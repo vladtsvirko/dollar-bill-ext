@@ -15,7 +15,9 @@
     "https://*.bankofcanada.ca/*",
     "https://*.bcb.gov.br/*",
     "https://*.bankofengland.co.uk/*",
-    "https://api.frankfurter.app/*"
+    "https://api.frankfurter.app/*",
+    "https://api.hkma.gov.hk/*",
+    "https://nationalbank.kz/*"
   ],
   "background": {
     "service_worker": "background.js"

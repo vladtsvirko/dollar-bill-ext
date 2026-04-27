@@ -1,3 +1,16 @@
+// Generate rate source checkboxes dynamically from RATE_SOURCES
+(function buildSourceList() {
+  const list = document.getElementById('rateSourceList');
+  if (!list || typeof RatesUtil === 'undefined') return;
+  const sources = RatesUtil.RATE_SOURCES || {};
+  list.innerHTML = Object.entries(sources).map(([id, src]) =>
+    `<label class="toggle-option" data-label="${RatesUtil.escapeHtml(src.name)}">
+      <input type="checkbox" name="rateSource" value="${id}">
+      <span class="toggle-option-label">${RatesUtil.escapeHtml(src.name)}</span>
+    </label>`
+  ).join('');
+})();
+
 const rateSourceBoxes = document.querySelectorAll('input[name="rateSource"]');
 const customRatesSection = document.getElementById('customRatesSection');
 const customRatesGrid = document.getElementById('customRatesGrid');

@@ -1075,13 +1075,27 @@ h3 {
   overscroll-behavior: contain;
 }
 
-.cur-lib-grid-wrap::-webkit-scrollbar {
+/* Unified scrollbar for all scrollable areas */
+.cur-lib-grid-wrap::-webkit-scrollbar,
+.rate-source-scroll::-webkit-scrollbar,
+.loaded-rates-grid::-webkit-scrollbar,
+.currency-picker-list::-webkit-scrollbar {
   width: 4px;
 }
 
-.cur-lib-grid-wrap::-webkit-scrollbar-thumb {
+.cur-lib-grid-wrap::-webkit-scrollbar-thumb,
+.rate-source-scroll::-webkit-scrollbar-thumb,
+.loaded-rates-grid::-webkit-scrollbar-thumb,
+.currency-picker-list::-webkit-scrollbar-thumb {
   background: var(--border-input);
   border-radius: 4px;
+}
+
+.cur-lib-grid-wrap::-webkit-scrollbar-track,
+.rate-source-scroll::-webkit-scrollbar-track,
+.loaded-rates-grid::-webkit-scrollbar-track,
+.currency-picker-list::-webkit-scrollbar-track {
+  background: transparent;
 }
 
 .cur-lib-group-label {
