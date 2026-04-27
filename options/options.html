@@ -119,9 +119,11 @@
             </label>
           </div>
           <div id="whitelistSection" style="display:none;">
-            <p class="hint">One domain per line (e.g. onliner.by, kvitka.by)</p>
-            <textarea id="whitelist" rows="5" placeholder="onliner.by&#10;kvitka.by"></textarea>
-            <button id="addCurrentSiteBtn" class="btn btn-sm" style="margin-top:6px">+ Add current site</button>
+            <div id="whitelistChips" class="chip-list"></div>
+            <div class="whitelist-add-row">
+              <input type="text" id="whitelistInput" placeholder="e.g. onliner.by" />
+              <button id="addWhitelistBtn" class="btn btn-sm btn-primary">Add</button>
+            </div>
           </div>
         </section>
 
@@ -182,7 +184,12 @@
           <div id="customRatesSection" class="custom-rates">
             <h3>Custom Rate Overrides</h3>
             <p class="hint">Override specific pair rates regardless of the API source above.</p>
-            <div id="customRatesGrid" class="custom-rates-grid"></div>
+            <div class="custom-rates-search-wrap">
+              <input type="text" id="customRatesSearch" class="custom-rates-search" placeholder="Search pairs...">
+            </div>
+            <div class="custom-rates-scroll">
+              <div id="customRatesGrid" class="custom-rates-list"></div>
+            </div>
           </div>
         </section>
 

@@ -352,7 +352,8 @@ function renderRateCards(cachedRates, settings) {
 async function handleSourcePickerClick(e) {
   const el = e.currentTarget;
   const customPairKey = el.dataset.pair;
-  const conflictData = currentConflicts[customPairKey];
+  const reversePairKey = customPairKey.split(':').reverse().join(':');
+  const conflictData = currentConflicts[customPairKey] || currentConflicts[reversePairKey];
   if (!conflictData) return;
 
   // Close any existing dropdowns

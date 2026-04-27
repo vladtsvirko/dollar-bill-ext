@@ -16,7 +16,9 @@ const customRatesSection = document.getElementById('customRatesSection');
 const customRatesGrid = document.getElementById('customRatesGrid');
 const siteModeRadios = document.querySelectorAll('input[name="siteMode"]');
 const whitelistSection = document.getElementById('whitelistSection');
-const whitelistEl = document.getElementById('whitelist');
+const whitelistChips = document.getElementById('whitelistChips');
+const whitelistInput = document.getElementById('whitelistInput');
+const addWhitelistBtn = document.getElementById('addWhitelistBtn');
 const saveToast = document.getElementById('saveToast');
 const optEnabled = document.getElementById('optEnabled');
 const themeOptions = document.getElementById('themeOptions');
@@ -54,9 +56,6 @@ const addIdentifierBtn = document.getElementById('addIdentifierBtn');
 const saveCurrencyBtn = document.getElementById('saveCurrencyBtn');
 const cancelCurrencyBtn = document.getElementById('cancelCurrencyBtn');
 let editingIdentifiers = [];
-
-// Quick site add
-const addCurrentSiteBtn = document.getElementById('addCurrentSiteBtn');
 
 let currentSettings = null;
 let currentRates = null;
@@ -397,10 +396,7 @@ async function autoSave() {
   currentSettings.rateSources = getCheckboxValues(rateSourceBoxes);
   currentSettings.customRates = customRates;
   currentSettings.siteMode = getRadioValue(siteModeRadios) || 'all';
-  currentSettings.whitelist = whitelistEl.value
-    .split('\n')
-    .map((s) => s.trim())
-    .filter(Boolean);
+  // whitelist is managed directly via renderWhitelistChips / removeWhitelistChip
 
   await RatesUtil.saveSettings(currentSettings);
   showSaveToast();
@@ -1084,16 +1080,15 @@ function renderCustomRatesGrid() {
   const pairs = currentSettings.conversionPairs || [];
 
   if (pairs.length === 0) {
-    customRatesGrid.innerHTML = '<p class="hint">Add conversion pairs first.</p>';
+    customRatesGrid.innerHTML = '<p class="hint" style="padding:10px 12px;">Add conversion pairs first.</p>';
     return;
   }
 
   const normalizedRates = RatesUtil.getCustomRates(currentSettings);
   const conflicts = RatesUtil.getConflicts(currentRates);
-  const overrides = currentSettings.rateSourceOverrides || {};
 
   const seen = new Set();
-  let html = '<div class="grid-inputs">';
+  let html = '';
   for (const pair of pairs) {
     const pairKey = [pair.from, pair.to].sort().join(':');
     if (seen.has(pairKey)) continue;
@@ -1108,18 +1103,120 @@ function renderCustomRatesGrid() {
     const reverseInputKey = `${displayTo}:${displayFrom}`;
     const nf = currentSettings ? currentSettings.numberFormat : null;
     const conflictData = conflicts[inputKey] || conflicts[reverseInputKey];
-    const conflictTag = conflictData
-      ? ` <span style="color:#d4a017;font-size:11px" title="Conflicting rates: ${Object.entries(conflictData).map(([s, r]) => RatesUtil.getSourceDisplayName(s) + ': ' + RatesUtil.formatNumber(r, 4, nf)).join(', ')}">&#9888; ${RatesUtil.getSourceDisplayName(RatesUtil.getActiveSourceForPair(inputKey, reverseInputKey, currentSettings, currentRates))}</span>`
+    const conflictHtml = conflictData
+      ? `<span class="rate-source-picker" data-pair="${inputKey}" title="Click to change source">${RatesUtil.escapeHtml(RatesUtil.getSourceDisplayName(RatesUtil.getActiveSourceForPair(inputKey, reverseInputKey, currentSettings, currentRates)))}</span>`
       : '';
 
-    html += `<label>1 ${displayFrom} = <input type="number" step="0.0001" data-pair="${inputKey}" value="${val}" placeholder="${displayTo}"> ${displayTo}${conflictTag}</label>`;
+    const searchData = [displayFrom, displayTo, inputKey].join(' ').toLowerCase();
+
+    html += `<div class="custom-rate-row" data-search="${searchData}">
+      <span class="custom-rate-pair">
+        <span>1 ${RatesUtil.escapeHtml(displayFrom)}</span>
+      </span>
+      <span class="custom-rate-equals">=</span>
+      <input type="number" step="0.0001" class="custom-rate-input" data-pair="${inputKey}" value="${val}" placeholder="rate">
+      <span class="custom-rate-target">${RatesUtil.escapeHtml(displayTo)}</span>
+      ${conflictHtml}
+    </div>`;
   }
-  html += '</div>';
   customRatesGrid.innerHTML = html;
 
   // Auto-save when custom rate inputs change
   customRatesGrid.querySelectorAll('input[data-pair]').forEach((input) => {
     input.addEventListener('input', scheduleAutoSave);
+  });
+
+  // Source picker (conflict resolver)
+  customRatesGrid.querySelectorAll('.rate-source-picker').forEach(el => {
+    el.addEventListener('click', handleSourcePickerClick);
+  });
+}
+
+function closeAllSourcePickerDropdowns() {
+  document.querySelectorAll('.rate-source-picker-dropdown').forEach(d => d.remove());
+  document.querySelectorAll('.rate-source-picker.active').forEach(el => {
+    el.classList.remove('active');
+  });
+}
+
+function handleSourcePickerClick(e) {
+  const el = e.currentTarget;
+  const customPairKey = el.dataset.pair;
+  const reversePairKey = customPairKey.split(':').reverse().join(':');
+  const conflicts = RatesUtil.getConflicts(currentRates);
+  const conflictData = conflicts[customPairKey] || conflicts[reversePairKey];
+  if (!conflictData) return;
+
+  // Use the actual pairKey that exists in conflicts for saving overrides
+  const resolvedPairKey = conflicts[customPairKey] ? customPairKey : reversePairKey;
+
+  closeAllSourcePickerDropdowns();
+
+  const activeSource = RatesUtil.getActiveSourceForPair(customPairKey, reversePairKey, currentSettings, currentRates);
+  const nf = currentSettings ? currentSettings.numberFormat : null;
+  const sourceIds = Object.keys(conflictData);
+
+  const dropdown = document.createElement('div');
+  dropdown.className = 'rate-source-picker-dropdown open';
+  dropdown.innerHTML = `
+    <div class="rate-source-picker-list">
+      ${sourceIds.map(id => {
+        const isActive = id === activeSource;
+        const rate = conflictData[id];
+        return `<div class="rate-source-picker-item${isActive ? ' active' : ''}" data-source-id="${id}" data-label="${RatesUtil.escapeHtml(RatesUtil.getSourceDisplayName(id).toLowerCase())}">
+          <span class="rate-source-picker-item-check"></span>
+          <span class="rate-source-picker-item-label">${RatesUtil.escapeHtml(RatesUtil.getSourceDisplayName(id))}</span>
+          <span class="rate-source-picker-item-rate">${rate ? RatesUtil.formatNumber(rate, 4, nf) : ''}</span>
+        </div>`;
+      }).join('')}
+    </div>
+  `;
+
+  el.classList.add('active');
+
+  // Append to body to avoid clipping by scrollable parents
+  document.body.appendChild(dropdown);
+
+  // Position below the picker element
+  const rect = el.getBoundingClientRect();
+  dropdown.style.left = rect.left + 'px';
+  dropdown.style.top = (rect.bottom + 4) + 'px';
+
+  const listEl = dropdown.querySelector('.rate-source-picker-list');
+
+  listEl.addEventListener('click', async (ev) => {
+    const item = ev.target.closest('.rate-source-picker-item');
+    if (!item) return;
+    const sourceId = item.dataset.sourceId;
+
+    if (!currentSettings.rateSourceOverrides) currentSettings.rateSourceOverrides = {};
+    currentSettings.rateSourceOverrides[resolvedPairKey] = sourceId;
+    await RatesUtil.saveSettings(currentSettings);
+    showSaveToast();
+
+    closeAllSourcePickerDropdowns();
+    renderCustomRatesGrid();
+  });
+
+  // Close on outside click
+  const closeHandler = (ev) => {
+    if (!dropdown.contains(ev.target) && ev.target !== el) {
+      closeAllSourcePickerDropdowns();
+      document.removeEventListener('click', closeHandler);
+    }
+  };
+  setTimeout(() => document.addEventListener('click', closeHandler), 0);
+}
+
+// Custom rates search
+const customRatesSearch = document.getElementById('customRatesSearch');
+if (customRatesSearch && customRatesGrid) {
+  customRatesSearch.addEventListener('input', () => {
+    const q = customRatesSearch.value.toLowerCase().trim();
+    customRatesGrid.querySelectorAll('.custom-rate-row').forEach(row => {
+      const haystack = row.dataset.search || '';
+      row.style.display = !q || haystack.includes(q) ? '' : 'none';
+    });
   });
 }
 
@@ -1174,28 +1271,45 @@ document.getElementById('domainAddBtn').addEventListener('click', () => {
   scheduleAutoSave();
 });
 
-// ---- Quick site add ----
+// ---- Whitelist chips ----
 
-addCurrentSiteBtn.addEventListener('click', async () => {
-  try {
-    const [tab] = await chrome.tabs.query({ active: true, lastFocusedWindow: true });
-    if (!tab || !tab.url) return;
-    const url = new URL(tab.url);
-    const domain = url.hostname;
-    const lines = whitelistEl.value.split('\n').map((s) => s.trim()).filter(Boolean);
-    if (!lines.includes(domain)) {
-      lines.push(domain);
-      whitelistEl.value = lines.join('\n');
+function renderWhitelistChips() {
+  const sites = currentSettings.whitelist || [];
+  whitelistChips.innerHTML = sites.map((site, i) =>
+    `<span class="chip" data-index="${i}">
+      ${RatesUtil.escapeHtml(site)}
+      <button class="chip-remove" data-index="${i}" title="Remove">&times;</button>
+    </span>`
+  ).join('');
+  whitelistChips.querySelectorAll('.chip-remove').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      currentSettings.whitelist.splice(parseInt(btn.dataset.index), 1);
+      renderWhitelistChips();
       scheduleAutoSave();
-    }
-  } catch {
-    // Not in tab context (e.g. opened directly) — ignore
+    });
+  });
+}
+
+addWhitelistBtn.addEventListener('click', () => {
+  const domain = whitelistInput.value.trim().toLowerCase();
+  if (!domain) return;
+  if (!currentSettings.whitelist) currentSettings.whitelist = [];
+  if (currentSettings.whitelist.includes(domain)) {
+    whitelistInput.value = '';
+    return;
   }
+  currentSettings.whitelist.push(domain);
+  whitelistInput.value = '';
+  renderWhitelistChips();
+  scheduleAutoSave();
 });
 
-// ---- Auto-save on text changes ----
-
-whitelistEl.addEventListener('input', scheduleAutoSave);
+whitelistInput.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') {
+    e.preventDefault();
+    addWhitelistBtn.click();
+  }
+});
 
 // ---- Load ----
 
@@ -1229,7 +1343,7 @@ async function loadSettings() {
   renderSourceErrors(currentLoadedRates);
 
   setRadioValue(siteModeRadios, currentSettings.siteMode);
-  whitelistEl.value = (currentSettings.whitelist || []).join('\n');
+  renderWhitelistChips();
 
   renderDomainOverrides(currentSettings.domainCurrencyMap);
   populateDomainCurrencySelect();
