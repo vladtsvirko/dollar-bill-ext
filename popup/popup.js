@@ -22,6 +22,10 @@ let currentSettings = null;
 let currentRates = null;
 let currentConflicts = {};
 
+let addPairFormOpen = false;
+let selectedFrom = null;
+let selectedTo = null;
+
 // --- Theme ---
 
 const RESET_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>';
@@ -404,8 +408,223 @@ function renderPairChips(settings) {
   });
 
   document.getElementById('addPairPopup').addEventListener('click', () => {
-    chrome.runtime.openOptionsPage();
+    toggleAddPairForm();
   });
+}
+
+// --- Add Pair Form ---
+
+function toggleAddPairForm() {
+  if (addPairFormOpen) {
+    addPairFormOpen = false;
+    selectedFrom = null;
+    selectedTo = null;
+    document.removeEventListener('click', onAddPairFormClickOutside);
+    document.getElementById('addPairForm').innerHTML = '';
+    const btn = document.getElementById('addPairPopup');
+    if (btn) btn.classList.remove('active');
+  } else {
+    addPairFormOpen = true;
+    selectedFrom = null;
+    selectedTo = null;
+    renderAddPairForm();
+    const btn = document.getElementById('addPairPopup');
+    if (btn) btn.classList.add('active');
+  }
+}
+
+function renderAddPairForm() {
+  const formEl = document.getElementById('addPairForm');
+  formEl.innerHTML = `
+    <div class="add-pair-row">
+      <div class="currency-picker" id="fromPicker">
+        <button class="currency-picker-trigger" id="fromPickerTrigger">
+          <span class="currency-picker-text placeholder">From...</span>
+          <span class="source-chevron">&#9662;</span>
+        </button>
+        <div class="currency-picker-dropdown" id="fromPickerDropdown">
+          <input type="text" class="currency-picker-search" id="fromPickerSearch" placeholder="Search...">
+          <div class="currency-picker-list" id="fromPickerList"></div>
+        </div>
+      </div>
+      <span class="converter-arrow">&rarr;</span>
+      <div class="currency-picker" id="toPicker">
+        <button class="currency-picker-trigger" id="toPickerTrigger">
+          <span class="currency-picker-text placeholder">To...</span>
+          <span class="source-chevron">&#9662;</span>
+        </button>
+        <div class="currency-picker-dropdown" id="toPickerDropdown">
+          <input type="text" class="currency-picker-search" id="toPickerSearch" placeholder="Search...">
+          <div class="currency-picker-list" id="toPickerList"></div>
+        </div>
+      </div>
+    </div>
+    <div class="add-pair-actions">
+      <button class="add-pair-btn" id="addPairConfirmBtn">Add</button>
+      <button class="add-pair-cancel" id="addPairCancelBtn">Cancel</button>
+    </div>
+    <div class="add-pair-error" id="addPairError"></div>
+  `;
+  renderCurrencyList('from');
+  renderCurrencyList('to');
+  bindAddPairEvents();
+}
+
+function renderCurrencyList(which, filter) {
+  const currencies = currentSettings.currencies || {};
+  const codes = Object.keys(currencies).sort();
+  const q = (filter || '').toLowerCase();
+  const filtered = codes.filter(code => {
+    const name = currencies[code].name || '';
+    return !q || code.toLowerCase().includes(q) || name.toLowerCase().includes(q);
+  });
+
+  const listEl = document.getElementById(which + 'PickerList');
+  if (!listEl) return;
+
+  const selected = which === 'from' ? selectedFrom : selectedTo;
+
+  if (filtered.length === 0) {
+    listEl.innerHTML = '<div class="currency-picker-item empty">No results</div>';
+    return;
+  }
+
+  listEl.innerHTML = filtered.map(code => {
+    const name = currencies[code].name || '';
+    const isSelected = code === selected ? ' selected' : '';
+    return `<div class="currency-picker-item${isSelected}" data-code="${code}">${code} - ${RatesUtil.escapeHtml(name)}</div>`;
+  }).join('');
+}
+
+function bindAddPairEvents() {
+  const fromTrigger = document.getElementById('fromPickerTrigger');
+  const fromDropdown = document.getElementById('fromPickerDropdown');
+  const fromSearch = document.getElementById('fromPickerSearch');
+  const fromList = document.getElementById('fromPickerList');
+  const toTrigger = document.getElementById('toPickerTrigger');
+  const toDropdown = document.getElementById('toPickerDropdown');
+  const toSearch = document.getElementById('toPickerSearch');
+  const toList = document.getElementById('toPickerList');
+
+  function closeDropdowns() {
+    closePickerDropdowns();
+  }
+
+  fromTrigger.addEventListener('click', (e) => {
+    e.stopPropagation();
+    const isOpen = fromDropdown.classList.contains('open');
+    closeDropdowns();
+    if (!isOpen) {
+      fromDropdown.classList.add('open');
+      fromTrigger.classList.add('active');
+      fromSearch.value = '';
+      renderCurrencyList('from');
+      fromSearch.focus();
+    }
+  });
+
+  toTrigger.addEventListener('click', (e) => {
+    e.stopPropagation();
+    const isOpen = toDropdown.classList.contains('open');
+    closeDropdowns();
+    if (!isOpen) {
+      toDropdown.classList.add('open');
+      toTrigger.classList.add('active');
+      toSearch.value = '';
+      renderCurrencyList('to');
+      toSearch.focus();
+    }
+  });
+
+  fromSearch.addEventListener('input', () => renderCurrencyList('from', fromSearch.value));
+  toSearch.addEventListener('input', () => renderCurrencyList('to', toSearch.value));
+
+  fromList.addEventListener('click', (e) => {
+    const item = e.target.closest('.currency-picker-item');
+    if (!item || item.classList.contains('empty')) return;
+    selectedFrom = item.dataset.code;
+    const textEl = fromTrigger.querySelector('.currency-picker-text');
+    textEl.textContent = selectedFrom;
+    textEl.classList.remove('placeholder');
+    closeDropdowns();
+  });
+
+  toList.addEventListener('click', (e) => {
+    const item = e.target.closest('.currency-picker-item');
+    if (!item || item.classList.contains('empty')) return;
+    selectedTo = item.dataset.code;
+    const textEl = toTrigger.querySelector('.currency-picker-text');
+    textEl.textContent = selectedTo;
+    textEl.classList.remove('placeholder');
+    closeDropdowns();
+  });
+
+  document.getElementById('addPairConfirmBtn').addEventListener('click', handleAddPair);
+  document.getElementById('addPairCancelBtn').addEventListener('click', () => toggleAddPairForm());
+
+  document.addEventListener('click', onAddPairFormClickOutside);
+}
+
+function closePickerDropdowns() {
+  const fromDd = document.getElementById('fromPickerDropdown');
+  const toDd = document.getElementById('toPickerDropdown');
+  const fromTrig = document.getElementById('fromPickerTrigger');
+  const toTrig = document.getElementById('toPickerTrigger');
+  if (fromDd) fromDd.classList.remove('open');
+  if (toDd) toDd.classList.remove('open');
+  if (fromTrig) fromTrig.classList.remove('active');
+  if (toTrig) toTrig.classList.remove('active');
+}
+
+function onAddPairFormClickOutside(e) {
+  if (!addPairFormOpen) return;
+  const fromPicker = document.getElementById('fromPicker');
+  const toPicker = document.getElementById('toPicker');
+  if (!fromPicker || !toPicker) return;
+  if (!fromPicker.contains(e.target) && !toPicker.contains(e.target)) {
+    closePickerDropdowns();
+  }
+}
+
+async function handleAddPair() {
+  const errorEl = document.getElementById('addPairError');
+  errorEl.textContent = '';
+  errorEl.style.display = 'none';
+
+  if (!selectedFrom || !selectedTo) {
+    errorEl.textContent = 'Select both currencies';
+    errorEl.style.display = 'block';
+    return;
+  }
+  if (selectedFrom === selectedTo) {
+    errorEl.textContent = 'From and To must differ';
+    errorEl.style.display = 'block';
+    return;
+  }
+  const pairs = currentSettings.conversionPairs || [];
+  if (pairs.some(p =>
+    (p.from === selectedFrom && p.to === selectedTo) ||
+    (p.from === selectedTo && p.to === selectedFrom)
+  )) {
+    errorEl.textContent = 'Pair already exists';
+    errorEl.style.display = 'block';
+    return;
+  }
+
+  pairs.push({ from: selectedFrom, to: selectedTo });
+  currentSettings.conversionPairs = pairs;
+  await RatesUtil.saveSettings(currentSettings);
+
+  addPairFormOpen = false;
+  selectedFrom = null;
+  selectedTo = null;
+  document.removeEventListener('click', onAddPairFormClickOutside);
+  document.getElementById('addPairForm').innerHTML = '';
+
+  invalidateEffectiveRates();
+  renderPairChips(currentSettings);
+  renderRateCards(currentRates, currentSettings);
+  populateConverterSelects(currentSettings);
 }
 
 // --- Quick Convert ---

@@ -548,12 +548,164 @@ h3 {
 .add-row {
   display: flex;
   gap: 8px;
-  align-items: center;
+  align-items: flex-start;
 }
 
 .pair-arrow {
   font-size: 18px;
   color: var(--text-secondary);
+  padding-top: 8px;
+  flex-shrink: 0;
+}
+
+/* --- Currency Picker (Options page) --- */
+
+.currency-picker {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+}
+
+.currency-picker-trigger {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 6px 10px;
+  background: var(--bg-input);
+  border: 1px solid var(--border-input);
+  border-radius: 6px;
+  font-size: 13px;
+  font-family: var(--db-font);
+  font-weight: 500;
+  color: var(--text-primary);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.currency-picker-trigger:hover {
+  border-color: var(--text-tertiary);
+}
+
+.currency-picker-trigger.active {
+  border-color: var(--db-green);
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(45, 106, 46, 0.15);
+}
+
+[data-theme="dark"] .currency-picker-trigger.active {
+  box-shadow: 0 0 0 2px rgba(92, 184, 92, 0.2);
+}
+
+.currency-picker-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.currency-picker-text.placeholder {
+  color: var(--text-tertiary);
+  font-weight: 400;
+}
+
+.currency-picker-chevron {
+  font-size: 10px;
+  opacity: 0.4;
+  flex-shrink: 0;
+  margin-left: 4px;
+  transition: transform 0.2s;
+}
+
+.currency-picker-trigger.active .currency-picker-chevron {
+  transform: rotate(180deg);
+  opacity: 0.7;
+}
+
+.currency-picker-dropdown {
+  display: none;
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  z-index: 100;
+  background: var(--bg-section);
+  border: 1px solid var(--border-input);
+  border-radius: var(--db-radius);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+  overflow: hidden;
+}
+
+[data-theme="dark"] .currency-picker-dropdown {
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+}
+
+.currency-picker-dropdown.open {
+  display: block;
+}
+
+.currency-picker-search {
+  width: 100%;
+  padding: 8px 12px;
+  border: none;
+  border-bottom: 1px solid var(--border-subtle);
+  font-size: 13px;
+  font-family: var(--db-font);
+  background: var(--bg-section);
+  color: var(--text-primary);
+  outline: none;
+}
+
+.currency-picker-search::placeholder {
+  color: var(--text-tertiary);
+}
+
+.currency-picker-list {
+  max-height: 200px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.currency-picker-item {
+  display: flex;
+  align-items: center;
+  padding: 8px 12px;
+  font-size: 13px;
+  color: var(--text-primary);
+  cursor: pointer;
+  transition: background 0.1s;
+}
+
+.currency-picker-item:hover {
+  background: var(--bg-card);
+}
+
+.currency-picker-item.selected {
+  color: var(--db-green);
+  font-weight: 600;
+  background: var(--db-green-light);
+}
+
+.currency-picker-item.empty {
+  color: var(--text-tertiary);
+  font-style: italic;
+  cursor: default;
+}
+
+.currency-picker-item.empty:hover {
+  background: transparent;
+}
+
+.add-pair-error {
+  font-size: 12px;
+  color: #c44;
+  padding-top: 6px;
+  display: none;
+}
+
+.add-row .btn-primary {
+  margin-top: 0;
+  align-self: flex-start;
+  white-space: nowrap;
 }
 
 .add-row select {
@@ -1026,6 +1178,48 @@ textarea {
 
 .domain-remove:hover {
   color: #c33;
+}
+
+.domain-add-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.domain-add-row input {
+  flex: 1;
+  padding: 4px 8px;
+  font-family: var(--db-mono);
+  font-size: 0.85rem;
+  border: 1px solid var(--db-border);
+  border-radius: 4px;
+  background: var(--db-input-bg);
+  color: var(--db-text);
+}
+
+.domain-add-row select {
+  padding: 4px 8px;
+  font-size: 0.85rem;
+  border: 1px solid var(--db-border);
+  border-radius: 4px;
+  background: var(--db-input-bg);
+  color: var(--db-text);
+}
+
+.btn-small {
+  padding: 4px 14px;
+  font-size: 0.85rem;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  background: var(--db-green);
+  color: #fff;
+  font-weight: 600;
+}
+
+.btn-small:hover {
+  opacity: 0.85;
 }
 
 /* ---- Advanced subsections ---- */

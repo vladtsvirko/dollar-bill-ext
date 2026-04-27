@@ -196,11 +196,30 @@
       <p class="hint">Configure which currencies to detect and convert into. Source currencies are derived automatically.</p>
       <div id="pairChips" class="chip-list"></div>
       <div class="add-row">
-        <select id="addPairFrom"><option value="">From...</option></select>
+        <div class="currency-picker" id="optFromPicker">
+          <button class="currency-picker-trigger" id="optFromTrigger" type="button">
+            <span class="currency-picker-text placeholder">From...</span>
+            <span class="currency-picker-chevron">&#9662;</span>
+          </button>
+          <div class="currency-picker-dropdown" id="optFromDropdown">
+            <input type="text" class="currency-picker-search" id="optFromSearch" placeholder="Search currency...">
+            <div class="currency-picker-list" id="optFromList"></div>
+          </div>
+        </div>
         <span class="pair-arrow">&rarr;</span>
-        <select id="addPairTo"><option value="">To...</option></select>
-        <button id="addPairBtn" class="btn btn-sm">Add Pair</button>
+        <div class="currency-picker" id="optToPicker">
+          <button class="currency-picker-trigger" id="optToTrigger" type="button">
+            <span class="currency-picker-text placeholder">To...</span>
+            <span class="currency-picker-chevron">&#9662;</span>
+          </button>
+          <div class="currency-picker-dropdown" id="optToDropdown">
+            <input type="text" class="currency-picker-search" id="optToSearch" placeholder="Search currency...">
+            <div class="currency-picker-list" id="optToList"></div>
+          </div>
+        </div>
+        <button id="addPairBtn" class="btn btn-sm btn-primary">Add</button>
       </div>
+      <div class="add-pair-error" id="addPairError"></div>
     </section>
 
     <!-- Currency Library -->
@@ -255,10 +274,15 @@
     <section class="section">
       <h2><span class="section-icon">&#128295;</span> Advanced</h2>
 
-      <div id="domainOverridesSection" style="display:none;" class="advanced-subsection">
+      <div id="domainOverridesSection" class="advanced-subsection">
         <h3>Domain Currency Overrides</h3>
-        <p class="hint">Websites where you chose a base currency for ambiguous prices. Remove to reset.</p>
+        <p class="hint">Override the base currency for ambiguous prices on specific domains.</p>
         <div id="domainOverridesList" class="domain-list"></div>
+        <div class="domain-add-row">
+          <input type="text" id="domainAddInput" placeholder="e.g. amazon.ca" />
+          <select id="domainAddCurrency"></select>
+          <button id="domainAddBtn" class="btn-small">Add</button>
+        </div>
       </div>
     </section>
 

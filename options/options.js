@@ -22,9 +22,10 @@ let currentLoadedRates = null;
 
 // Conversion pairs
 const pairChips = document.getElementById('pairChips');
-const addPairFrom = document.getElementById('addPairFrom');
-const addPairTo = document.getElementById('addPairTo');
 const addPairBtn = document.getElementById('addPairBtn');
+let optSelectedFrom = null;
+let optSelectedTo = null;
+let optPickerEventsInitialized = false;
 
 // Currency library
 const currencyLibrary = document.getElementById('currencyLibrary');
@@ -513,26 +514,158 @@ function renderPairChips() {
 }
 
 function populatePairDropdowns() {
-  const currencies = currentSettings.currencies;
-  const makeOptions = () => {
-    return '<option value="">Select...</option>' +
-      Object.keys(currencies).sort().map(code =>
-        `<option value="${code}">${code} - ${currencies[code].name}</option>`
-      ).join('');
-  };
-  addPairFrom.innerHTML = makeOptions();
-  addPairTo.innerHTML = makeOptions();
+  optSelectedFrom = null;
+  optSelectedTo = null;
+  const fromTrigger = document.getElementById('optFromTrigger');
+  const toTrigger = document.getElementById('optToTrigger');
+  if (fromTrigger) {
+    const textEl = fromTrigger.querySelector('.currency-picker-text');
+    textEl.textContent = 'From...';
+    textEl.classList.add('placeholder');
+  }
+  if (toTrigger) {
+    const textEl = toTrigger.querySelector('.currency-picker-text');
+    textEl.textContent = 'To...';
+    textEl.classList.add('placeholder');
+  }
+  renderOptCurrencyList('from');
+  renderOptCurrencyList('to');
+}
+
+function renderOptCurrencyList(which, filter) {
+  const currencies = currentSettings.currencies || {};
+  const codes = Object.keys(currencies).sort();
+  const q = (filter || '').toLowerCase();
+  const filtered = codes.filter(code => {
+    const name = currencies[code].name || '';
+    return !q || code.toLowerCase().includes(q) || name.toLowerCase().includes(q);
+  });
+
+  const listEl = document.getElementById(which === 'from' ? 'optFromList' : 'optToList');
+  if (!listEl) return;
+
+  const selected = which === 'from' ? optSelectedFrom : optSelectedTo;
+
+  if (filtered.length === 0) {
+    listEl.innerHTML = '<div class="currency-picker-item empty">No results</div>';
+    return;
+  }
+
+  listEl.innerHTML = filtered.map(code => {
+    const name = currencies[code].name || '';
+    const isSelected = code === selected ? ' selected' : '';
+    return `<div class="currency-picker-item${isSelected}" data-code="${code}">${code} - ${RatesUtil.escapeHtml(name)}</div>`;
+  }).join('');
+}
+
+function initOptPickerEvents() {
+  const fromTrigger = document.getElementById('optFromTrigger');
+  const fromDropdown = document.getElementById('optFromDropdown');
+  const fromSearch = document.getElementById('optFromSearch');
+  const fromList = document.getElementById('optFromList');
+  const toTrigger = document.getElementById('optToTrigger');
+  const toDropdown = document.getElementById('optToDropdown');
+  const toSearch = document.getElementById('optToSearch');
+  const toList = document.getElementById('optToList');
+
+  if (optPickerEventsInitialized) return;
+  optPickerEventsInitialized = true;
+
+  function closeDropdowns() {
+    fromDropdown.classList.remove('open');
+    fromTrigger.classList.remove('active');
+    toDropdown.classList.remove('open');
+    toTrigger.classList.remove('active');
+  }
+
+  fromTrigger.addEventListener('click', (e) => {
+    e.stopPropagation();
+    const isOpen = fromDropdown.classList.contains('open');
+    closeDropdowns();
+    if (!isOpen) {
+      fromDropdown.classList.add('open');
+      fromTrigger.classList.add('active');
+      fromSearch.value = '';
+      renderOptCurrencyList('from');
+      fromSearch.focus();
+    }
+  });
+
+  toTrigger.addEventListener('click', (e) => {
+    e.stopPropagation();
+    const isOpen = toDropdown.classList.contains('open');
+    closeDropdowns();
+    if (!isOpen) {
+      toDropdown.classList.add('open');
+      toTrigger.classList.add('active');
+      toSearch.value = '';
+      renderOptCurrencyList('to');
+      toSearch.focus();
+    }
+  });
+
+  fromSearch.addEventListener('input', () => renderOptCurrencyList('from', fromSearch.value));
+  toSearch.addEventListener('input', () => renderOptCurrencyList('to', toSearch.value));
+
+  fromList.addEventListener('click', (e) => {
+    const item = e.target.closest('.currency-picker-item');
+    if (!item || item.classList.contains('empty')) return;
+    optSelectedFrom = item.dataset.code;
+    const textEl = fromTrigger.querySelector('.currency-picker-text');
+    textEl.textContent = optSelectedFrom;
+    textEl.classList.remove('placeholder');
+    closeDropdowns();
+  });
+
+  toList.addEventListener('click', (e) => {
+    const item = e.target.closest('.currency-picker-item');
+    if (!item || item.classList.contains('empty')) return;
+    optSelectedTo = item.dataset.code;
+    const textEl = toTrigger.querySelector('.currency-picker-text');
+    textEl.textContent = optSelectedTo;
+    textEl.classList.remove('placeholder');
+    closeDropdowns();
+  });
+
+  document.addEventListener('click', (e) => {
+    const fromPicker = document.getElementById('optFromPicker');
+    const toPicker = document.getElementById('optToPicker');
+    if (!fromPicker || !toPicker) return;
+    if (!fromPicker.contains(e.target) && !toPicker.contains(e.target)) {
+      closeDropdowns();
+    }
+  });
 }
 
 addPairBtn.addEventListener('click', () => {
-  const from = addPairFrom.value;
-  const to = addPairTo.value;
-  if (!from || !to || from === to) return;
-  const exists = currentSettings.conversionPairs.some(p => p.from === from && p.to === to);
-  if (exists) return;
-  currentSettings.conversionPairs.push({ from, to });
-  renderPairChips();
+  const errorEl = document.getElementById('addPairError');
+  errorEl.textContent = '';
+  errorEl.style.display = 'none';
+
+  if (!optSelectedFrom || !optSelectedTo) {
+    errorEl.textContent = 'Select both currencies';
+    errorEl.style.display = 'block';
+    return;
+  }
+  if (optSelectedFrom === optSelectedTo) {
+    errorEl.textContent = 'From and To must differ';
+    errorEl.style.display = 'block';
+    return;
+  }
+  const pairs = currentSettings.conversionPairs || [];
+  if (pairs.some(p =>
+    (p.from === optSelectedFrom && p.to === optSelectedTo) ||
+    (p.from === optSelectedTo && p.to === optSelectedFrom)
+  )) {
+    errorEl.textContent = 'Pair already exists';
+    errorEl.style.display = 'block';
+    return;
+  }
+
+  pairs.push({ from: optSelectedFrom, to: optSelectedTo });
+  currentSettings.conversionPairs = pairs;
   populatePairDropdowns();
+  renderPairChips();
   renderCustomRatesGrid();
   renderPreview();
   scheduleAutoSave();
@@ -795,10 +928,9 @@ function renderDomainOverrides(map) {
   const list = document.getElementById('domainOverridesList');
   const entries = Object.entries(map || {});
   if (entries.length === 0) {
-    section.style.display = 'none';
+    list.innerHTML = '<p class="hint">No domain overrides set.</p>';
     return;
   }
-  section.style.display = 'block';
   list.innerHTML = entries.map(([domain, currency]) => `
     <div class="domain-row">
       <span class="domain-name">${RatesUtil.escapeHtml(domain)}</span>
@@ -816,6 +948,29 @@ function renderDomainOverrides(map) {
     });
   });
 }
+
+function populateDomainCurrencySelect() {
+  const select = document.getElementById('domainAddCurrency');
+  const currencies = currentSettings.currencies || {};
+  const codes = Object.keys(currencies).sort();
+  select.innerHTML = codes.map((code) => {
+    const cur = currencies[code];
+    const label = cur ? `${code} (${cur.name})` : code;
+    return `<option value="${code}">${RatesUtil.escapeHtml(label)}</option>`;
+  }).join('');
+}
+
+document.getElementById('domainAddBtn').addEventListener('click', () => {
+  const input = document.getElementById('domainAddInput');
+  const select = document.getElementById('domainAddCurrency');
+  const domain = input.value.trim().toLowerCase();
+  if (!domain || !select.value) return;
+  if (!currentSettings.domainCurrencyMap) currentSettings.domainCurrencyMap = {};
+  currentSettings.domainCurrencyMap[domain] = select.value;
+  input.value = '';
+  renderDomainOverrides(currentSettings.domainCurrencyMap);
+  scheduleAutoSave();
+});
 
 // ---- Quick site add ----
 
@@ -862,6 +1017,7 @@ async function loadSettings() {
 
   renderPairChips();
   populatePairDropdowns();
+  initOptPickerEvents();
   renderCurrencyLibrary();
 
   setCheckboxValues(rateSourceBoxes, currentSettings.rateSources || []);
@@ -874,6 +1030,7 @@ async function loadSettings() {
   whitelistEl.value = (currentSettings.whitelist || []).join('\n');
 
   renderDomainOverrides(currentSettings.domainCurrencyMap);
+  populateDomainCurrencySelect();
   updateVisibility();
   renderPreview();
 }
