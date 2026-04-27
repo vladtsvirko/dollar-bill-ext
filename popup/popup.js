@@ -489,11 +489,43 @@ function renderCurrencyList(which, filter) {
     return;
   }
 
-  listEl.innerHTML = filtered.map(code => {
+  // When searching, show flat filtered list
+  if (q) {
+    listEl.innerHTML = filtered.map(code => {
+      const name = currencies[code].name || '';
+      const isSelected = code === selected ? ' selected' : '';
+      return `<div class="currency-picker-item${isSelected}" data-code="${code}">${code} - ${RatesUtil.escapeHtml(name)}</div>`;
+    }).join('');
+    return;
+  }
+
+  // When not searching, show popular currencies first, then alphabetical groups
+  const popularCodes = RatesUtil.POPULAR_CURRENCIES.filter(c => currencies[c]);
+  const remainingCodes = filtered.filter(c => !RatesUtil.POPULAR_CURRENCIES.includes(c));
+
+  let html = '';
+  if (popularCodes.length > 0) {
+    html += '<div class="currency-picker-group-label">Popular</div>';
+    for (const code of popularCodes) {
+      const name = currencies[code].name || '';
+      const isSelected = code === selected ? ' selected' : '';
+      html += `<div class="currency-picker-item${isSelected}" data-code="${code}">${code} - ${RatesUtil.escapeHtml(name)}</div>`;
+    }
+  }
+
+  let currentLetter = '';
+  for (const code of remainingCodes) {
+    const letter = code[0];
+    if (letter !== currentLetter) {
+      currentLetter = letter;
+      html += `<div class="currency-picker-group-label">${letter}</div>`;
+    }
     const name = currencies[code].name || '';
     const isSelected = code === selected ? ' selected' : '';
-    return `<div class="currency-picker-item${isSelected}" data-code="${code}">${code} - ${RatesUtil.escapeHtml(name)}</div>`;
-  }).join('');
+    html += `<div class="currency-picker-item${isSelected}" data-code="${code}">${code} - ${RatesUtil.escapeHtml(name)}</div>`;
+  }
+
+  listEl.innerHTML = html;
 }
 
 function bindAddPairEvents() {

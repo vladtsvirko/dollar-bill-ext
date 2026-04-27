@@ -432,6 +432,19 @@ for (const b of rateSourceBoxes) b.addEventListener('change', async () => {
   await reloadRates();
 });
 
+// Rate source search
+const rateSourceSearch = document.getElementById('rateSourceSearch');
+const rateSourceList = document.getElementById('rateSourceList');
+if (rateSourceSearch && rateSourceList) {
+  rateSourceSearch.addEventListener('input', () => {
+    const q = rateSourceSearch.value.toLowerCase().trim();
+    rateSourceList.querySelectorAll('.toggle-option').forEach(opt => {
+      const label = (opt.dataset.label || '').toLowerCase();
+      opt.style.display = !q || label.includes(q) ? '' : 'none';
+    });
+  });
+}
+
 // ---- Drag-to-reorder for pairs ----
 
 function setupDragReorder() {
@@ -551,11 +564,43 @@ function renderOptCurrencyList(which, filter) {
     return;
   }
 
-  listEl.innerHTML = filtered.map(code => {
+  // When searching, show flat filtered list
+  if (q) {
+    listEl.innerHTML = filtered.map(code => {
+      const name = currencies[code].name || '';
+      const isSelected = code === selected ? ' selected' : '';
+      return `<div class="currency-picker-item${isSelected}" data-code="${code}">${code} - ${RatesUtil.escapeHtml(name)}</div>`;
+    }).join('');
+    return;
+  }
+
+  // When not searching, show popular currencies first, then alphabetical groups
+  const popularCodes = RatesUtil.POPULAR_CURRENCIES.filter(c => currencies[c]);
+  const remainingCodes = filtered.filter(c => !RatesUtil.POPULAR_CURRENCIES.includes(c));
+
+  let html = '';
+  if (popularCodes.length > 0) {
+    html += '<div class="currency-picker-group-label">Popular</div>';
+    for (const code of popularCodes) {
+      const name = currencies[code].name || '';
+      const isSelected = code === selected ? ' selected' : '';
+      html += `<div class="currency-picker-item${isSelected}" data-code="${code}">${code} - ${RatesUtil.escapeHtml(name)}</div>`;
+    }
+  }
+
+  let currentLetter = '';
+  for (const code of remainingCodes) {
+    const letter = code[0];
+    if (letter !== currentLetter) {
+      currentLetter = letter;
+      html += `<div class="currency-picker-group-label">${letter}</div>`;
+    }
     const name = currencies[code].name || '';
     const isSelected = code === selected ? ' selected' : '';
-    return `<div class="currency-picker-item${isSelected}" data-code="${code}">${code} - ${RatesUtil.escapeHtml(name)}</div>`;
-  }).join('');
+    html += `<div class="currency-picker-item${isSelected}" data-code="${code}">${code} - ${RatesUtil.escapeHtml(name)}</div>`;
+  }
+
+  listEl.innerHTML = html;
 }
 
 function initOptPickerEvents() {
@@ -713,49 +758,192 @@ function renderCurrencyLibrary() {
   const conflicts = RatesUtil.detectIdentifierConflicts(currencies);
   const conflictIdentifiers = new Set(conflicts.map(c => c.identifier));
 
-  let html = '';
-  for (const [code, cur] of Object.entries(currencies).sort()) {
-    const domainStr = (cur.domains || []).join(', ') || 'none';
+  // Use the same owner map that detectIdentifierConflicts builds internally
+  const ownerMap = RatesUtil.buildIdentifierOwnerMap(currencies);
+  const idToCodes = {};
+  for (const [norm, entries] of Object.entries(ownerMap)) {
+    idToCodes[norm] = entries.map(e => e.code);
+  }
+
+  const entries = Object.entries(currencies).sort((a, b) => a[0].localeCompare(b[0]));
+
+  // Split into popular and remaining
+  const popularEntries = [];
+  const remainingEntries = [];
+  for (const entry of entries) {
+    if (RatesUtil.POPULAR_CURRENCIES.includes(entry[0])) {
+      popularEntries.push(entry);
+    } else {
+      remainingEntries.push(entry);
+    }
+  }
+  // Sort popular in POPULAR_CURRENCIES order
+  popularEntries.sort((a, b) =>
+    RatesUtil.POPULAR_CURRENCIES.indexOf(a[0]) - RatesUtil.POPULAR_CURRENCIES.indexOf(b[0])
+  );
+
+  function renderTile(code, cur) {
+    const domainStr = (cur.domains || []).join(', ') || '';
     const idChips = (cur.identifiers || []).map(id => {
       const norm = id.trim().toLowerCase();
       const isShared = conflictIdentifiers.has(norm);
       const cls = isShared ? 'identifier-chip identifier-chip-shared' : 'identifier-chip';
-      const example = `100 ${id}`;
-      return `<span class="${cls}" title="${RatesUtil.escapeHtml(example)}">${RatesUtil.escapeHtml(id)}</span>`;
+      let title;
+      if (isShared && idToCodes[norm]) {
+        const others = idToCodes[norm].filter(c => c !== code);
+        title = `Shared with ${others.join(', ')} \u2014 used by multiple currencies`;
+      } else {
+        title = `100 ${id}`;
+      }
+      return `<span class="${cls}" title="${RatesUtil.escapeHtml(title)}">${RatesUtil.escapeHtml(id)}</span>`;
     }).join('');
-    html += `
-      <div class="currency-card">
-        <div class="currency-card-header">
-          <strong>${code}</strong> ${RatesUtil.escapeHtml(cur.name)} <span class="currency-symbol">${RatesUtil.escapeHtml(cur.symbol)}</span>
-          <span class="currency-domains">${RatesUtil.escapeHtml(domainStr)}</span>
+    const hasConflict = (cur.identifiers || []).some(id => conflictIdentifiers.has(id.trim().toLowerCase()));
+    const conflictCls = hasConflict ? ' cur-tile-conflict' : '';
+
+    return `
+      <div class="cur-tile${conflictCls}" data-code="${code}" data-search="${code.toLowerCase()} ${(cur.name || '').toLowerCase()} ${(cur.symbol || '').toLowerCase()} ${(cur.identifiers || []).join(' ').toLowerCase()}">
+        <div class="cur-tile-top">
+          <span class="cur-tile-code">${code}</span>
+          <span class="cur-tile-symbol">${RatesUtil.escapeHtml(cur.symbol || '')}</span>
+          <div class="cur-tile-actions">
+            <button class="cur-tile-btn" data-edit="${code}" title="Edit">&#9998;</button>
+            <button class="cur-tile-btn cur-tile-btn-danger" data-delete="${code}" title="Delete">&times;</button>
+          </div>
         </div>
-        <div class="currency-identifiers">${idChips || '<span class="no-identifiers">No identifiers</span>'}</div>
-        <div class="currency-card-actions">
-          <button class="btn btn-sm btn-link" data-edit="${code}">Edit</button>
-          <button class="btn btn-sm btn-link btn-danger" data-delete="${code}">Delete</button>
+        <div class="cur-tile-name">${RatesUtil.escapeHtml(cur.name || '')}</div>
+        ${domainStr ? `<div class="cur-tile-domains">${RatesUtil.escapeHtml(domainStr)}</div>` : ''}
+        <div class="cur-tile-detail">
+          <div class="cur-tile-ids">${idChips || '<span class="no-identifiers">No identifiers</span>'}</div>
         </div>
       </div>
     `;
   }
 
-  // Show conflict warnings
+  // 1. Search
+  let html = '<div class="cur-lib-search-wrap">';
+  html += '<input type="text" class="cur-lib-search" id="curLibSearch" placeholder="Search currencies...">';
+  html += '</div>';
+
+  // 2. Conflict legend + warnings (above grid)
   if (conflicts.length > 0) {
-    html += '<div class="conflict-warnings">';
-    html += '<h3>Identifier Conflicts</h3>';
+    // Split conflicts: related to active pairs vs. everything else
+    const pairCurrencies = new Set();
+    for (const p of (currentSettings.conversionPairs || [])) {
+      pairCurrencies.add(p.from);
+      pairCurrencies.add(p.to);
+    }
+    const activeConflicts = [];
+    const otherConflicts = [];
     for (const c of conflicts) {
-      const domainInfo = c.currencies.map(code => {
-        const cur = currencies[code];
-        const domains = (cur.domains || []).join(', ') || 'no domains';
-        return `<strong>${code}</strong> on ${RatesUtil.escapeHtml(domains)}`;
-      }).join('; ');
-      html += `<div class="conflict-item">
-        <span class="conflict-identifier">"${RatesUtil.escapeHtml(c.identifier)}"</span> is shared by ${c.currencies.join(', ')}. Resolution: ${domainInfo}
-      </div>`;
+      if (c.currencies.some(code => pairCurrencies.has(code))) {
+        activeConflicts.push(c);
+      } else {
+        otherConflicts.push(c);
+      }
+    }
+
+    // Active pair conflicts — always visible
+    const hasAnyConflicts = activeConflicts.length > 0 || otherConflicts.length > 0;
+    if (hasAnyConflicts) {
+      html += '<div class="conflict-warnings">';
+      html += '<h3>Identifier Conflicts</h3>';
+      for (const c of activeConflicts) {
+        const domainInfo = c.currencies.map(code => {
+          const cur = currencies[code];
+          const domains = (cur.domains || []).join(', ') || 'no domains';
+          return `<strong>${code}</strong> on ${RatesUtil.escapeHtml(domains)}`;
+        }).join('; ');
+        html += `<div class="conflict-item">
+          <span class="conflict-identifier">"${RatesUtil.escapeHtml(c.identifier)}"</span> is shared by ${c.currencies.join(', ')}. Resolution: ${domainInfo}
+        </div>`;
+      }
+
+      // Other conflicts — collapsible, inside the same block
+      if (otherConflicts.length > 0) {
+        html += '<details class="conflict-other-details">';
+        html += `<summary class="conflict-other-summary">Other conflicting identifiers (${otherConflicts.length})</summary>`;
+        for (const c of otherConflicts) {
+          const domainInfo = c.currencies.map(code => {
+            const cur = currencies[code];
+            const domains = (cur.domains || []).join(', ') || 'no domains';
+            return `<strong>${code}</strong> on ${RatesUtil.escapeHtml(domains)}`;
+          }).join('; ');
+          html += `<div class="conflict-item">
+            <span class="conflict-identifier">"${RatesUtil.escapeHtml(c.identifier)}"</span> is shared by ${c.currencies.join(', ')}. Resolution: ${domainInfo}
+          </div>`;
+        }
+        html += '</details>';
+      }
+
+      html += '</div>';
+    }
+  }
+
+  // 3. Conflict legend (right above grid)
+  if (conflicts.length > 0) {
+    const count = conflictIdentifiers.size;
+    html += `<div class="conflict-legend">${count} identifier${count !== 1 ? 's are' : ' is'} shared between currencies and highlighted</div>`;
+  }
+
+  // 4. Scrollable grid with popular-first grouping
+  html += '<div class="cur-lib-grid-wrap" id="curLibGridWrap">';
+  html += '<div class="cur-lib-grid" id="curLibGrid">';
+
+  // Popular group
+  if (popularEntries.length > 0) {
+    html += '<div class="cur-lib-group-label" data-group=" Popular">Popular</div>';
+    html += '<div class="cur-lib-group-tiles">';
+    for (const [code, cur] of popularEntries) {
+      html += renderTile(code, cur);
     }
     html += '</div>';
   }
 
+  // Alphabetical groups
+  let currentLetter = '';
+  let groupOpen = false;
+  for (const [code, cur] of remainingEntries) {
+    const letter = code[0];
+    if (letter !== currentLetter) {
+      if (groupOpen) html += '</div>';
+      currentLetter = letter;
+      groupOpen = true;
+      html += `<div class="cur-lib-group-label" data-group="${letter}">${letter}</div>`;
+      html += '<div class="cur-lib-group-tiles">';
+    }
+    html += renderTile(code, cur);
+  }
+  if (groupOpen) html += '</div>';
+
+  html += '</div></div>';
+
   currencyLibrary.innerHTML = html;
+
+  // Search filter — hide group labels when searching
+  const searchInput = document.getElementById('curLibSearch');
+  const gridWrap = document.getElementById('curLibGridWrap');
+  const grid = document.getElementById('curLibGrid');
+  if (searchInput && grid && gridWrap) {
+    searchInput.addEventListener('input', () => {
+      const q = searchInput.value.toLowerCase().trim();
+      grid.querySelectorAll('.cur-tile').forEach(tile => {
+        const haystack = tile.dataset.search || '';
+        tile.style.display = !q || haystack.includes(q) ? '' : 'none';
+      });
+      // Hide group labels when searching
+      grid.querySelectorAll('.cur-lib-group-label').forEach(label => {
+        label.style.display = q ? 'none' : '';
+      });
+    });
+  }
+
+  // Tile expand/collapse on click (not on buttons)
+  grid.querySelectorAll('.cur-tile').forEach(tile => {
+    tile.addEventListener('click', (e) => {
+      if (e.target.closest('.cur-tile-btn')) return;
+      tile.classList.toggle('cur-tile-expanded');
+    });
+  });
 
   currencyLibrary.querySelectorAll('[data-edit]').forEach((btn) => {
     btn.addEventListener('click', () => openCurrencyEditor(btn.dataset.edit));
@@ -816,6 +1004,7 @@ function openCurrencyEditor(code) {
   }
   renderEditorIdentifiers();
   currencyEditor.style.display = 'block';
+  currencyEditor.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 }
 
 function deleteCurrency(code) {
@@ -1036,3 +1225,23 @@ async function loadSettings() {
 }
 
 loadSettings();
+
+// ---- Currency Library: fit grid to viewport ----
+
+function fitLibraryGrid() {
+  const gridWrap = document.querySelector('.col-library .cur-lib-grid-wrap');
+  if (!gridWrap) return;
+  const rect = gridWrap.getBoundingClientRect();
+  const padding = 24; // bottom margin
+  const available = window.innerHeight - rect.top - padding;
+  gridWrap.style.maxHeight = Math.max(120, available) + 'px';
+}
+
+// Patch renderCurrencyLibrary to also fit grid after render
+const _origRenderCurrencyLibrary = renderCurrencyLibrary;
+renderCurrencyLibrary = function() {
+  _origRenderCurrencyLibrary();
+  requestAnimationFrame(fitLibraryGrid);
+};
+
+window.addEventListener('resize', fitLibraryGrid);

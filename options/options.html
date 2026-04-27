@@ -2,6 +2,7 @@
 <html>
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <link rel="stylesheet" href="options.css">
   <title>Dollar Bill - Settings</title>
 </head>
@@ -17,278 +18,295 @@
       </div>
     </div>
 
-    <!-- General -->
-    <section class="section">
-      <div class="setting-row">
-        <div class="setting-info">
-          <span class="setting-label">Enabled</span>
-          <span class="setting-desc">Convert prices on web pages</span>
+    <!-- 3-Column Layout -->
+    <div class="columns-wrap">
+
+      <!-- Column 1: Settings + Preview -->
+      <div class="col col-settings">
+        <section class="section">
+          <div class="setting-row">
+            <div class="setting-info">
+              <span class="setting-label">Enabled</span>
+              <span class="setting-desc">Convert prices on web pages</span>
+            </div>
+            <label class="toggle-switch">
+              <input type="checkbox" id="optEnabled">
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
+
+          <div class="setting-row">
+            <div class="setting-info">
+              <span class="setting-label">Appearance</span>
+              <span class="setting-desc">Choose color theme</span>
+            </div>
+            <div class="theme-options" id="themeOptions">
+              <button class="theme-opt" data-theme-value="light" title="Light theme">
+                <div class="theme-opt-preview">
+                  <div class="theme-opt-card">
+                    <div class="theme-opt-dot"></div>
+                    <div class="theme-opt-lines">
+                      <div class="theme-opt-line"></div>
+                      <div class="theme-opt-line short"></div>
+                    </div>
+                  </div>
+                </div>
+                <span class="theme-opt-label">Light</span>
+              </button>
+              <button class="theme-opt" data-theme-value="dark" title="Dark theme">
+                <div class="theme-opt-preview">
+                  <div class="theme-opt-card is-dark">
+                    <div class="theme-opt-dot"></div>
+                    <div class="theme-opt-lines">
+                      <div class="theme-opt-line"></div>
+                      <div class="theme-opt-line short"></div>
+                    </div>
+                  </div>
+                </div>
+                <span class="theme-opt-label">Dark</span>
+              </button>
+              <button class="theme-opt" data-theme-value="" title="Follow system preference">
+                <div class="theme-opt-preview">
+                  <div class="theme-opt-card is-auto">
+                    <div class="theme-opt-dot"></div>
+                    <div class="theme-opt-lines">
+                      <div class="theme-opt-line"></div>
+                      <div class="theme-opt-line short"></div>
+                    </div>
+                  </div>
+                </div>
+                <span class="theme-opt-label">System</span>
+              </button>
+            </div>
+          </div>
+
+          <div class="setting-row">
+            <div class="setting-info">
+              <span class="setting-label">Time format</span>
+              <span class="setting-desc">Clock display in timestamps</span>
+            </div>
+            <div class="time-options" id="timeOptions">
+              <button class="time-opt" data-time-value="12h">12h</button>
+              <button class="time-opt" data-time-value="24h">24h</button>
+              <button class="time-opt" data-time-value="" title="Follow locale preference">Auto</button>
+            </div>
+          </div>
+
+          <div class="setting-row">
+            <div class="setting-info">
+              <span class="setting-label">Number format</span>
+              <span class="setting-desc">How converted prices are displayed</span>
+            </div>
+            <div class="time-options" id="numberOptions">
+              <button class="time-opt" data-num-value="en-US">1,234.56</button>
+              <button class="time-opt" data-num-value="de-DE">1.234,56</button>
+              <button class="time-opt" data-num-value="" title="Follow locale preference">Auto</button>
+            </div>
+          </div>
+        </section>
+
+        <!-- Site Filtering -->
+        <section class="section">
+          <h2><span class="section-icon">&#127760;</span> Site Filtering</h2>
+          <div class="toggle-group">
+            <label class="toggle-option">
+              <input type="radio" name="siteMode" value="all">
+              <span class="toggle-option-label">Auto-scan all websites</span>
+            </label>
+            <label class="toggle-option">
+              <input type="radio" name="siteMode" value="whitelist">
+              <span class="toggle-option-label">Only scan whitelisted sites</span>
+            </label>
+          </div>
+          <div id="whitelistSection" style="display:none;">
+            <p class="hint">One domain per line (e.g. onliner.by, kvitka.by)</p>
+            <textarea id="whitelist" rows="5" placeholder="onliner.by&#10;kvitka.by"></textarea>
+            <button id="addCurrentSiteBtn" class="btn btn-sm" style="margin-top:6px">+ Add current site</button>
+          </div>
+        </section>
+
+        <!-- Preview Panel -->
+        <section class="section preview-section">
+          <h2><span class="section-icon">&#128065;</span> Live Preview</h2>
+          <p class="hint">How converted prices will look on web pages.</p>
+          <div class="preview-mock">
+            <div class="preview-site-bar">
+              <span class="preview-dot preview-dot-red"></span>
+              <span class="preview-dot preview-dot-yellow"></span>
+              <span class="preview-dot preview-dot-green"></span>
+              <span class="preview-url">example.com</span>
+            </div>
+            <div class="preview-content" id="previewContent">
+              <span class="preview-price">100 BYN</span>
+            </div>
+          </div>
+        </section>
+
+        <div class="options-footer">
+          <a href="../privacy-policy.html" class="footer-link">Privacy Policy</a>
         </div>
-        <label class="toggle-switch">
-          <input type="checkbox" id="optEnabled">
-          <span class="toggle-slider"></span>
-        </label>
       </div>
 
-      <div class="setting-row">
-        <div class="setting-info">
-          <span class="setting-label">Appearance</span>
-          <span class="setting-desc">Choose color theme</span>
-        </div>
-        <div class="theme-options" id="themeOptions">
-          <button class="theme-opt" data-theme-value="light" title="Light theme">
-            <div class="theme-opt-preview">
-              <div class="theme-opt-card">
-                <div class="theme-opt-dot"></div>
-                <div class="theme-opt-lines">
-                  <div class="theme-opt-line"></div>
-                  <div class="theme-opt-line short"></div>
-                </div>
+      <!-- Column 2: Rates, Pairs, Advanced -->
+      <div class="col col-rates">
+        <!-- Rate Source -->
+        <section class="section">
+          <div class="section-header-row">
+            <h2><span class="section-icon">&#128200;</span> Exchange Rate Source</h2>
+            <button id="reloadRatesBtn" class="btn btn-sm btn-reload" title="Reload rates from selected source">
+              <span class="reload-icon">&#8635;</span> Reload
+            </button>
+          </div>
+          <div class="rate-source-search-wrap">
+            <input type="text" id="rateSourceSearch" class="rate-source-search" placeholder="Search sources...">
+          </div>
+          <div class="rate-source-scroll">
+            <div class="toggle-group" id="rateSourceList">
+              <label class="toggle-option" data-label="National Bank of Belarus">
+                <input type="checkbox" name="rateSource" value="nbrb">
+                <span class="toggle-option-label">National Bank of Belarus</span>
+              </label>
+              <label class="toggle-option" data-label="European Central Bank">
+                <input type="checkbox" name="rateSource" value="ecb">
+                <span class="toggle-option-label">European Central Bank</span>
+              </label>
+              <label class="toggle-option" data-label="National Bank of Poland">
+                <input type="checkbox" name="rateSource" value="nbp">
+                <span class="toggle-option-label">National Bank of Poland</span>
+              </label>
+              <label class="toggle-option" data-label="National Bank of Ukraine">
+                <input type="checkbox" name="rateSource" value="nbu">
+                <span class="toggle-option-label">National Bank of Ukraine</span>
+              </label>
+              <label class="toggle-option" data-label="Bank of Russia">
+                <input type="checkbox" name="rateSource" value="cbr">
+                <span class="toggle-option-label">Bank of Russia</span>
+              </label>
+              <label class="toggle-option" data-label="Czech National Bank">
+                <input type="checkbox" name="rateSource" value="cnb">
+                <span class="toggle-option-label">Czech National Bank</span>
+              </label>
+              <label class="toggle-option" data-label="Central Bank of Turkey">
+                <input type="checkbox" name="rateSource" value="tcmb">
+                <span class="toggle-option-label">Central Bank of Turkey</span>
+              </label>
+              <label class="toggle-option" data-label="Bank of Canada">
+                <input type="checkbox" name="rateSource" value="boc">
+                <span class="toggle-option-label">Bank of Canada</span>
+              </label>
+              <label class="toggle-option" data-label="Central Bank of Brazil">
+                <input type="checkbox" name="rateSource" value="bcb">
+                <span class="toggle-option-label">Central Bank of Brazil</span>
+              </label>
+              <label class="toggle-option" data-label="Bank of England">
+                <input type="checkbox" name="rateSource" value="boe">
+                <span class="toggle-option-label">Bank of England</span>
+              </label>
+            </div>
+          </div>
+          <div id="fetchStatusPanel" class="fetch-status-panel">
+            <div class="fetch-status-header">
+              <span class="fetch-status-dot" id="fetchStatusDot"></span>
+              <span class="fetch-status-title" id="fetchStatusTitle">Unknown</span>
+            </div>
+            <div id="fetchStatusDetails" class="fetch-status-details"></div>
+          </div>
+          <div id="loadedRatesSection" class="loaded-rates-section">
+            <button id="toggleLoadedRates" class="loaded-rates-toggle">
+              <span id="loadedRatesToggleLabel">Show loaded rates</span>
+              <span class="loaded-rates-chevron" id="loadedRatesChevron">&#9662;</span>
+            </button>
+            <div id="loadedRatesContent" class="loaded-rates-content" style="display:none">
+              <div id="loadedRatesList" class="loaded-rates-list"></div>
+            </div>
+          </div>
+          <div id="customRatesSection" class="custom-rates">
+            <h3>Custom Rate Overrides</h3>
+            <p class="hint">Override specific pair rates regardless of the API source above.</p>
+            <div id="customRatesGrid" class="custom-rates-grid"></div>
+          </div>
+        </section>
+
+        <!-- Conversion Pairs -->
+        <section class="section">
+          <h2><span class="section-icon">&#128259;</span> Conversion Pairs</h2>
+          <p class="hint">Configure which currencies to detect and convert into. Source currencies are derived automatically.</p>
+          <div id="pairChips" class="chip-list"></div>
+          <div class="add-row">
+            <div class="currency-picker" id="optFromPicker">
+              <button class="currency-picker-trigger" id="optFromTrigger" type="button">
+                <span class="currency-picker-text placeholder">From...</span>
+                <span class="currency-picker-chevron">&#9662;</span>
+              </button>
+              <div class="currency-picker-dropdown" id="optFromDropdown">
+                <input type="text" class="currency-picker-search" id="optFromSearch" placeholder="Search currency...">
+                <div class="currency-picker-list" id="optFromList"></div>
               </div>
             </div>
-            <span class="theme-opt-label">Light</span>
-          </button>
-          <button class="theme-opt" data-theme-value="dark" title="Dark theme">
-            <div class="theme-opt-preview">
-              <div class="theme-opt-card is-dark">
-                <div class="theme-opt-dot"></div>
-                <div class="theme-opt-lines">
-                  <div class="theme-opt-line"></div>
-                  <div class="theme-opt-line short"></div>
-                </div>
+            <span class="pair-arrow">&rarr;</span>
+            <div class="currency-picker" id="optToPicker">
+              <button class="currency-picker-trigger" id="optToTrigger" type="button">
+                <span class="currency-picker-text placeholder">To...</span>
+                <span class="currency-picker-chevron">&#9662;</span>
+              </button>
+              <div class="currency-picker-dropdown" id="optToDropdown">
+                <input type="text" class="currency-picker-search" id="optToSearch" placeholder="Search currency...">
+                <div class="currency-picker-list" id="optToList"></div>
               </div>
             </div>
-            <span class="theme-opt-label">Dark</span>
-          </button>
-          <button class="theme-opt" data-theme-value="" title="Follow system preference">
-            <div class="theme-opt-preview">
-              <div class="theme-opt-card is-auto">
-                <div class="theme-opt-dot"></div>
-                <div class="theme-opt-lines">
-                  <div class="theme-opt-line"></div>
-                  <div class="theme-opt-line short"></div>
-                </div>
+            <button id="addPairBtn" class="btn btn-sm btn-primary">Add</button>
+          </div>
+          <div class="add-pair-error" id="addPairError"></div>
+        </section>
+
+        <!-- Advanced -->
+        <section class="section">
+          <h2><span class="section-icon">&#128295;</span> Advanced</h2>
+
+          <div id="domainOverridesSection" class="advanced-subsection">
+            <h3>Domain Currency Overrides</h3>
+            <p class="hint">Override the base currency for ambiguous prices on specific domains.</p>
+            <div id="domainOverridesList" class="domain-list"></div>
+            <div class="domain-add-row">
+              <input type="text" id="domainAddInput" placeholder="e.g. amazon.ca" />
+              <select id="domainAddCurrency"></select>
+              <button id="domainAddBtn" class="btn-small">Add</button>
+            </div>
+          </div>
+        </section>
+      </div>
+
+      <!-- Column 3: Currency Library -->
+      <div class="col col-library">
+        <section class="section">
+          <div class="section-header-row">
+            <h2><span class="section-icon">&#128218;</span> Currency Library</h2>
+            <button id="addCurrencyBtn" class="btn btn-sm btn-primary">+ Add</button>
+          </div>
+          <div id="currencyEditor" class="currency-editor" style="display:none">
+            <div class="editor-row">
+              <label>ISO Code <input type="text" id="editCode" placeholder="USD" class="short-input"></label>
+              <label>Name <input type="text" id="editName" placeholder="US Dollar"></label>
+              <label>Symbol <input type="text" id="editSymbol" placeholder="$" class="short-input"></label>
+            </div>
+            <label>Domains <input type="text" id="editDomains" placeholder=".by, .бел" class="long-input"> (domains likely to use this currency, comma-separated)</label>
+            <div class="block-label">
+              <span>Identifiers</span>
+              <div id="editIdentifiers" class="identifier-list"></div>
+              <div class="add-identifier-row">
+                <input type="text" id="addIdentifierInput" placeholder="e.g. BYN, Br, бел. руб.">
+                <button id="addIdentifierBtn" class="btn btn-sm">Add</button>
               </div>
             </div>
-            <span class="theme-opt-label">System</span>
-          </button>
-        </div>
-      </div>
-
-      <div class="setting-row">
-        <div class="setting-info">
-          <span class="setting-label">Time format</span>
-          <span class="setting-desc">Clock display in timestamps</span>
-        </div>
-        <div class="time-options" id="timeOptions">
-          <button class="time-opt" data-time-value="12h">12h</button>
-          <button class="time-opt" data-time-value="24h">24h</button>
-          <button class="time-opt" data-time-value="" title="Follow locale preference">Auto</button>
-        </div>
-      </div>
-
-      <div class="setting-row">
-        <div class="setting-info">
-          <span class="setting-label">Number format</span>
-          <span class="setting-desc">How converted prices are displayed</span>
-        </div>
-        <div class="time-options" id="numberOptions">
-          <button class="time-opt" data-num-value="en-US">1,234.56</button>
-          <button class="time-opt" data-num-value="de-DE">1.234,56</button>
-          <button class="time-opt" data-num-value="" title="Follow locale preference">Auto</button>
-        </div>
-      </div>
-    </section>
-
-    <!-- Preview Panel -->
-    <section class="section preview-section">
-      <h2><span class="section-icon">&#128065;</span> Live Preview</h2>
-      <p class="hint">How converted prices will look on web pages.</p>
-      <div class="preview-mock">
-        <div class="preview-site-bar">
-          <span class="preview-dot preview-dot-red"></span>
-          <span class="preview-dot preview-dot-yellow"></span>
-          <span class="preview-dot preview-dot-green"></span>
-          <span class="preview-url">example.com</span>
-        </div>
-        <div class="preview-content" id="previewContent">
-          <span class="preview-price">100 BYN</span>
-        </div>
-      </div>
-    </section>
-
-    <!-- Rate Source -->
-    <section class="section">
-      <div class="section-header-row">
-        <h2><span class="section-icon">&#128200;</span> Exchange Rate Source</h2>
-        <button id="reloadRatesBtn" class="btn btn-sm btn-reload" title="Reload rates from selected source">
-          <span class="reload-icon">&#8635;</span> Reload
-        </button>
-      </div>
-      <div class="toggle-group">
-        <label class="toggle-option">
-          <input type="checkbox" name="rateSource" value="nbrb">
-          <span class="toggle-option-label">National Bank of Belarus</span>
-        </label>
-        <label class="toggle-option">
-          <input type="checkbox" name="rateSource" value="ecb">
-          <span class="toggle-option-label">European Central Bank</span>
-        </label>
-        <label class="toggle-option">
-          <input type="checkbox" name="rateSource" value="nbp">
-          <span class="toggle-option-label">National Bank of Poland</span>
-        </label>
-        <label class="toggle-option">
-          <input type="checkbox" name="rateSource" value="nbu">
-          <span class="toggle-option-label">National Bank of Ukraine</span>
-        </label>
-        <label class="toggle-option">
-          <input type="checkbox" name="rateSource" value="cbr">
-          <span class="toggle-option-label">Bank of Russia</span>
-        </label>
-        <label class="toggle-option">
-          <input type="checkbox" name="rateSource" value="cnb">
-          <span class="toggle-option-label">Czech National Bank</span>
-        </label>
-        <label class="toggle-option">
-          <input type="checkbox" name="rateSource" value="tcmb">
-          <span class="toggle-option-label">Central Bank of Turkey</span>
-        </label>
-        <label class="toggle-option">
-          <input type="checkbox" name="rateSource" value="boc">
-          <span class="toggle-option-label">Bank of Canada</span>
-        </label>
-        <label class="toggle-option">
-          <input type="checkbox" name="rateSource" value="bcb">
-          <span class="toggle-option-label">Central Bank of Brazil</span>
-        </label>
-        <label class="toggle-option">
-          <input type="checkbox" name="rateSource" value="boe">
-          <span class="toggle-option-label">Bank of England</span>
-        </label>
-      </div>
-      <div id="fetchStatusPanel" class="fetch-status-panel">
-        <div class="fetch-status-header">
-          <span class="fetch-status-dot" id="fetchStatusDot"></span>
-          <span class="fetch-status-title" id="fetchStatusTitle">Unknown</span>
-        </div>
-        <div id="fetchStatusDetails" class="fetch-status-details"></div>
-      </div>
-      <div id="loadedRatesSection" class="loaded-rates-section">
-        <button id="toggleLoadedRates" class="loaded-rates-toggle">
-          <span id="loadedRatesToggleLabel">Show loaded rates</span>
-          <span class="loaded-rates-chevron" id="loadedRatesChevron">&#9662;</span>
-        </button>
-        <div id="loadedRatesContent" class="loaded-rates-content" style="display:none">
-          <div id="loadedRatesList" class="loaded-rates-list"></div>
-        </div>
-      </div>
-      <div id="customRatesSection" class="custom-rates">
-        <h3>Custom Rate Overrides</h3>
-        <p class="hint">Override specific pair rates regardless of the API source above.</p>
-        <div id="customRatesGrid" class="custom-rates-grid"></div>
-      </div>
-    </section>
-
-    <!-- Conversion Pairs -->
-    <section class="section">
-      <h2><span class="section-icon">&#128259;</span> Conversion Pairs</h2>
-      <p class="hint">Configure which currencies to detect and convert into. Source currencies are derived automatically.</p>
-      <div id="pairChips" class="chip-list"></div>
-      <div class="add-row">
-        <div class="currency-picker" id="optFromPicker">
-          <button class="currency-picker-trigger" id="optFromTrigger" type="button">
-            <span class="currency-picker-text placeholder">From...</span>
-            <span class="currency-picker-chevron">&#9662;</span>
-          </button>
-          <div class="currency-picker-dropdown" id="optFromDropdown">
-            <input type="text" class="currency-picker-search" id="optFromSearch" placeholder="Search currency...">
-            <div class="currency-picker-list" id="optFromList"></div>
+            <div class="editor-actions">
+              <button id="saveCurrencyBtn" class="btn btn-primary btn-sm">Save Currency</button>
+              <button id="cancelCurrencyBtn" class="btn btn-sm">Cancel</button>
+            </div>
           </div>
-        </div>
-        <span class="pair-arrow">&rarr;</span>
-        <div class="currency-picker" id="optToPicker">
-          <button class="currency-picker-trigger" id="optToTrigger" type="button">
-            <span class="currency-picker-text placeholder">To...</span>
-            <span class="currency-picker-chevron">&#9662;</span>
-          </button>
-          <div class="currency-picker-dropdown" id="optToDropdown">
-            <input type="text" class="currency-picker-search" id="optToSearch" placeholder="Search currency...">
-            <div class="currency-picker-list" id="optToList"></div>
-          </div>
-        </div>
-        <button id="addPairBtn" class="btn btn-sm btn-primary">Add</button>
+          <div id="currencyLibrary"></div>
+        </section>
       </div>
-      <div class="add-pair-error" id="addPairError"></div>
-    </section>
 
-    <!-- Currency Library -->
-    <section class="section">
-      <h2><span class="section-icon">&#128218;</span> Currency Library</h2>
-      <p class="hint">Manage known currencies, their identifiers, and symbols.</p>
-      <div id="currencyLibrary"></div>
-      <button id="addCurrencyBtn" class="btn btn-sm" style="margin-top:8px">+ Add Currency</button>
-      <div id="currencyEditor" class="currency-editor" style="display:none">
-        <div class="editor-row">
-          <label>ISO Code <input type="text" id="editCode" placeholder="USD" class="short-input"></label>
-          <label>Name <input type="text" id="editName" placeholder="US Dollar"></label>
-          <label>Symbol <input type="text" id="editSymbol" placeholder="$" class="short-input"></label>
-        </div>
-        <label>Domains <input type="text" id="editDomains" placeholder=".by, .бел" class="long-input"> (domains likely to use this currency, comma-separated)</label>
-        <div class="block-label">
-          <span>Identifiers</span>
-          <div id="editIdentifiers" class="identifier-list"></div>
-          <div class="add-identifier-row">
-            <input type="text" id="addIdentifierInput" placeholder="e.g. BYN, Br, бел. руб.">
-            <button id="addIdentifierBtn" class="btn btn-sm">Add</button>
-          </div>
-        </div>
-        <div class="editor-actions">
-          <button id="saveCurrencyBtn" class="btn btn-primary btn-sm">Save Currency</button>
-          <button id="cancelCurrencyBtn" class="btn btn-sm">Cancel</button>
-        </div>
-      </div>
-    </section>
-
-    <!-- Site Filtering -->
-    <section class="section">
-      <h2><span class="section-icon">&#127760;</span> Site Filtering</h2>
-      <div class="toggle-group">
-        <label class="toggle-option">
-          <input type="radio" name="siteMode" value="all">
-          <span class="toggle-option-label">Auto-scan all websites</span>
-        </label>
-        <label class="toggle-option">
-          <input type="radio" name="siteMode" value="whitelist">
-          <span class="toggle-option-label">Only scan whitelisted sites</span>
-        </label>
-      </div>
-      <div id="whitelistSection" style="display:none;">
-        <p class="hint">One domain per line (e.g. onliner.by, kvitka.by)</p>
-        <textarea id="whitelist" rows="5" placeholder="onliner.by&#10;kvitka.by"></textarea>
-        <button id="addCurrentSiteBtn" class="btn btn-sm" style="margin-top:6px">+ Add current site</button>
-      </div>
-    </section>
-
-    <!-- Advanced -->
-    <section class="section">
-      <h2><span class="section-icon">&#128295;</span> Advanced</h2>
-
-      <div id="domainOverridesSection" class="advanced-subsection">
-        <h3>Domain Currency Overrides</h3>
-        <p class="hint">Override the base currency for ambiguous prices on specific domains.</p>
-        <div id="domainOverridesList" class="domain-list"></div>
-        <div class="domain-add-row">
-          <input type="text" id="domainAddInput" placeholder="e.g. amazon.ca" />
-          <select id="domainAddCurrency"></select>
-          <button id="domainAddBtn" class="btn-small">Add</button>
-        </div>
-      </div>
-    </section>
-
-    <!-- Footer -->
-    <div class="options-footer">
-      <a href="../privacy-policy.html" class="footer-link">Privacy Policy</a>
     </div>
 
     <!-- Auto-save toast -->
