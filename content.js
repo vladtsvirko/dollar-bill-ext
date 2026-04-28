@@ -1,22 +1,7 @@
 (() => {
-  const INJECTED_ATTR = 'data-dollarbill';
-  const INJECTED_CLASS = 'dollarbill-converted';
-  const PILL_CLASS = 'db-pill';
-
-  // Avoid scanning these elements
-  const SKIP_TAGS = new Set(['SCRIPT', 'STYLE', 'INPUT', 'TEXTAREA', 'SELECT', 'NOSCRIPT', 'SVG', 'MATH']);
-
-  function acceptTextNode(n) {
-    if (!n.parentElement || SKIP_TAGS.has(n.parentElement.tagName)) return NodeFilter.FILTER_REJECT;
-    if (n.parentElement.hasAttribute(INJECTED_ATTR)) return NodeFilter.FILTER_REJECT;
-    if (n.parentElement.classList.contains(INJECTED_CLASS)) return NodeFilter.FILTER_REJECT;
-    if (n.parentElement.classList.contains(PILL_CLASS)) return NodeFilter.FILTER_REJECT;
-    return NodeFilter.FILTER_ACCEPT;
-  }
-
   let compiledUnambiguous = [];
   let compiledAmbiguous = [];
-  let compiledDomainMap = null; // precomputed domain -> currency for O(1) lookup
+  let compiledDomainMap = null;
   let currentSettings = null;
   let lastCompiledKey = null;
 
@@ -30,7 +15,6 @@
     const currencies = settings.currencies || {};
     const identifierOwners = RatesUtil.buildIdentifierOwnerMap(currencies);
 
-    // Build unambiguous patterns from unique identifiers
     compiledUnambiguous = [];
     for (const code of sources) {
       const cur = currencies[code];
@@ -50,11 +34,9 @@
       }
     }
 
-    // Build ambiguous patterns from shared identifiers
     compiledAmbiguous = [];
     for (const [norm, entries] of Object.entries(identifierOwners)) {
       if (entries.length <= 1) continue;
-      // Only build if at least one owning currency is in the user's source currencies
       const ownerCodes = entries.map(e => e.code);
       if (!ownerCodes.some(code => sources.includes(code))) continue;
       const patterns = RatesUtil.buildPatternsFromIdentifiers([entries[0].originalId]);
@@ -67,118 +49,13 @@
       }
     }
 
-    // Precompute domain lookup map for O(1) resolveAmbiguousCurrency
     compiledDomainMap = [];
     for (const [code, cur] of Object.entries(currencies)) {
       for (const domain of (cur.domains || [])) {
         compiledDomainMap.push({ domain: domain.toLowerCase(), code });
       }
     }
-    // Sort longest-first so first match wins (most specific)
     compiledDomainMap.sort((a, b) => b.domain.length - a.domain.length);
-  }
-
-  function resolveAmbiguousCurrency(settings) {
-    const host = location.hostname;
-    if (settings.domainCurrencyMap && settings.domainCurrencyMap[host]) {
-      return settings.domainCurrencyMap[host];
-    }
-    // Use precomputed domain map
-    for (const { domain, code } of compiledDomainMap) {
-      if (domain.startsWith('.')) {
-        if (host.endsWith(domain)) return code;
-      } else {
-        if (host === domain || host.endsWith('.' + domain)) return code;
-      }
-    }
-    return null;
-  }
-
-  function hasAmbiguousMatches(node) {
-    if (!node) return false;
-    let found = false;
-    const walker = document.createTreeWalker(node, NodeFilter.SHOW_TEXT, { acceptNode: acceptTextNode });
-    let current;
-    while ((current = walker.nextNode()) && !found) {
-      const text = current.nodeValue;
-      for (const pattern of compiledAmbiguous) {
-        pattern.regex.lastIndex = 0;
-        if (pattern.regex.test(text)) {
-          found = true;
-          break;
-        }
-      }
-    }
-    return found;
-  }
-
-  function showCurrencyPicker(settings) {
-    const existing = document.getElementById('dollarbill-picker');
-    if (existing) return;
-
-    const host = location.hostname;
-    const sources = RatesUtil.getSourceCurrencies(settings);
-    const currencies = settings.currencies || {};
-
-    const bar = document.createElement('div');
-    bar.id = 'dollarbill-picker';
-
-    let buttonsHtml = sources.map((code) => {
-      const cur = currencies[code];
-      const label = cur ? `${code} (${cur.name})` : code;
-      return `<button class="dbp-btn" data-currency="${RatesUtil.escapeHtml(code)}">${RatesUtil.escapeHtml(label)}</button>`;
-    }).join('');
-
-    bar.innerHTML = `
-      <span class="dbp-label">Dollar Bill: ambiguous prices detected on <strong>${host}</strong></span>
-      <span class="dbp-label">Choose base currency:</span>
-      ${buttonsHtml}
-      <button class="dbp-dismiss" title="Dismiss">&times;</button>
-    `;
-
-    bar.querySelector('.dbp-dismiss').addEventListener('click', () => bar.remove());
-
-    bar.querySelectorAll('.dbp-btn').forEach((btn) => {
-      btn.addEventListener('click', async () => {
-        const currency = btn.dataset.currency;
-        const current = await new Promise((resolve) => {
-          chrome.runtime.sendMessage({ type: 'getSettings' }, resolve);
-        });
-        if (!current.domainCurrencyMap) current.domainCurrencyMap = {};
-        current.domainCurrencyMap[host] = currency;
-        await RatesUtil.saveSettings(current);
-        bar.remove();
-        runConversion();
-      });
-    });
-
-    document.body.appendChild(bar);
-  }
-
-  function parseAmount(str) {
-    const s = str.replace(/\s/g, '');
-    const lastComma = s.lastIndexOf(',');
-    const lastDot = s.lastIndexOf('.');
-    if (lastComma > lastDot) {
-      return parseFloat(s.replace(/\./g, '').replace(',', '.'));
-    }
-    if (lastDot > lastComma) {
-      return parseFloat(s.replace(/,/g, ''));
-    }
-    return parseFloat(s.replace(',', '.'));
-  }
-
-  function detectPrecision(str) {
-    const lastSep = Math.max(str.lastIndexOf('.'), str.lastIndexOf(','));
-    if (lastSep === -1) return 0;
-    return str.length - lastSep - 1;
-  }
-
-  function formatConverted(amount, code, decimals) {
-    if (!currentSettings || !currentSettings.currencies) return '';
-    const info = currentSettings.currencies[code];
-    if (!info) return '';
-    return `${info.symbol}${RatesUtil.formatNumber(amount, decimals, currentSettings.numberFormat)}`;
   }
 
   function shouldProcessPage(settings) {
@@ -205,131 +82,6 @@
     };
   }
 
-  function processTextNode(textNode, ratesData, conversionMap, ambiguousCurrency) {
-    const { rates, conflicts, usedSources, overrides } = ratesData;
-    const text = textNode.nodeValue;
-    if (!text || text.length < 2) return;
-
-    const parent = textNode.parentElement;
-    if (!parent || parent.hasAttribute(INJECTED_ATTR)) return;
-
-    const matches = [];
-
-    const allPatterns = compiledUnambiguous;
-    for (let pi = 0; pi < allPatterns.length + (ambiguousCurrency ? compiledAmbiguous.length : 0); pi++) {
-      const pattern = pi < allPatterns.length ? allPatterns[pi] : compiledAmbiguous[pi - allPatterns.length];
-      const currency = pattern.currency || ambiguousCurrency;
-      // Skip if domain-resolved currency doesn't own this identifier
-      if (!pattern.currency && pattern.ownerCurrencies && !pattern.ownerCurrencies.includes(currency)) continue;
-      let match;
-      while ((match = pattern.regex.exec(text)) !== null) {
-        const amount = parseAmount(match[1]);
-        if (isNaN(amount) || amount <= 0) continue;
-        matches.push({
-          index: match.index,
-          length: match[0].length,
-          amount,
-          precision: detectPrecision(match[1]),
-          currency,
-        });
-      }
-      pattern.regex.lastIndex = 0;
-    }
-
-    if (matches.length === 0) return;
-
-    const fragment = document.createDocumentFragment();
-    let lastIndex = 0;
-    let hasConversion = false;
-
-    for (const m of matches) {
-      if (m.index < lastIndex) continue;
-
-      // Text before the match
-      if (m.index > lastIndex) {
-        fragment.appendChild(document.createTextNode(text.slice(lastIndex, m.index)));
-      }
-
-      // The original price text
-      const originalText = text.slice(m.index, m.index + m.length);
-      fragment.appendChild(document.createTextNode(originalText));
-
-      // Create a pill for each target currency configured for this source
-      const targets = conversionMap[m.currency] || [];
-      for (const tc of targets) {
-        const converted = RatesUtil.convert(m.amount, m.currency, tc, rates);
-        if (converted !== null && converted > 0) {
-          hasConversion = true;
-          const pill = document.createElement('span');
-
-          // Check for conflict on this pair
-          const dispInfo = RatesUtil.formatRateForDisplay(m.currency, tc, rates);
-          const pairKey = dispInfo ? `${dispInfo.base}:${dispInfo.quote}` : null;
-          const reverseKey = dispInfo ? `${dispInfo.quote}:${dispInfo.base}` : null;
-          const conflictData = (pairKey && conflicts[pairKey]) || (reverseKey && conflicts[reverseKey]);
-          const hasConflict = !!conflictData;
-          const isResolved = hasConflict && (overrides[pairKey] !== undefined || overrides[reverseKey] !== undefined);
-
-          pill.className = PILL_CLASS + (hasConflict && !isResolved ? ' db-pill-conflict' : '');
-          const dp = Math.max(m.precision, 2);
-
-          pill.textContent = formatConverted(converted, tc, dp);
-
-          const curInfo = currentSettings.currencies[tc];
-          const symbol = curInfo ? curInfo.symbol : tc;
-          const nf = currentSettings.numberFormat;
-          let rateStr = dispInfo
-            ? ` (1 ${dispInfo.base} = ${RatesUtil.formatNumber(dispInfo.rate, 4, nf)} ${dispInfo.quote})`
-            : '';
-
-          if (hasConflict) {
-            const activeSource = overrides[pairKey] || overrides[reverseKey] || usedSources[0] || '';
-            const sourceName = RatesUtil.getSourceDisplayName(activeSource);
-            if (!isResolved) {
-              rateStr += ` [CONFLICT — using ${sourceName}]`;
-            } else {
-              rateStr += ` [Source: ${sourceName}]`;
-            }
-          }
-
-          pill.setAttribute('data-db-tooltip',
-            `${RatesUtil.formatNumber(m.amount, dp, nf)} ${m.currency} \u2192 ${symbol}${RatesUtil.formatNumber(converted, dp, nf)} ${tc}${rateStr}`
-          );
-
-          fragment.appendChild(pill);
-        }
-      }
-
-      lastIndex = m.index + m.length;
-    }
-
-    // Remaining text after last match
-    if (lastIndex < text.length) {
-      fragment.appendChild(document.createTextNode(text.slice(lastIndex)));
-    }
-
-    if (hasConversion) {
-      const container = document.createElement('span');
-      container.setAttribute(INJECTED_ATTR, 'true');
-      container.appendChild(fragment);
-      parent.replaceChild(container, textNode);
-    }
-  }
-
-  function scanNode(node, ratesData, conversionMap, ambiguousCurrency) {
-    if (!node) return;
-    const walker = document.createTreeWalker(node, NodeFilter.SHOW_TEXT, { acceptNode: acceptTextNode });
-
-    const textNodes = [];
-    let current;
-    while ((current = walker.nextNode())) {
-      textNodes.push(current);
-    }
-    for (const tn of textNodes) {
-      processTextNode(tn, ratesData, conversionMap, ambiguousCurrency);
-    }
-  }
-
   async function runConversion() {
     const [settings, cachedRates] = await Promise.all([
       new Promise((resolve) => chrome.runtime.sendMessage({ type: 'getSettings' }, resolve)),
@@ -344,27 +96,19 @@
     if (!ratesData || !ratesData.rates) return;
 
     const conversionMap = RatesUtil.buildConversionMap(settings);
-    const ambiguousCurrency = resolveAmbiguousCurrency(settings);
-    scanNode(document.body, ratesData, conversionMap, ambiguousCurrency);
+    const ambiguousCurrency = PickerBar.resolveAmbiguousCurrency(settings, compiledDomainMap);
+    Scanner.scanNode(document.body, ratesData, conversionMap, ambiguousCurrency, currentSettings, compiledUnambiguous, compiledAmbiguous);
 
-    if (!ambiguousCurrency && hasAmbiguousMatches(document.body)) {
-      showCurrencyPicker(settings);
+    if (!ambiguousCurrency && Scanner.hasAmbiguousMatches(document.body, compiledAmbiguous)) {
+      PickerBar.showCurrencyPicker(settings, compiledDomainMap, runConversion);
     }
   }
 
   // Initial scan
   runConversion();
 
-  // Observe dynamic content changes with debouncing
-  let debounceTimer = null;
-  const pendingNodes = new Set();
-
-  function flushPendingNodes() {
-    if (pendingNodes.size === 0) return;
-    const nodes = [...pendingNodes];
-    pendingNodes.clear();
-    debounceTimer = null;
-
+  // Observe dynamic content changes
+  ContentObserver.start((nodes) => {
     Promise.all([
       new Promise((resolve) => chrome.runtime.sendMessage({ type: 'getSettings' }, resolve)),
       new Promise((resolve) => chrome.runtime.sendMessage({ type: 'getRates' }, resolve)),
@@ -374,28 +118,12 @@
       const ratesData = getRatesForConversion(settings, cachedRates);
       if (!ratesData || !ratesData.rates) return;
       const conversionMap = RatesUtil.buildConversionMap(settings);
-      const ambiguousCurrency = resolveAmbiguousCurrency(settings);
+      const ambiguousCurrency = PickerBar.resolveAmbiguousCurrency(settings, compiledDomainMap);
       for (const node of nodes) {
         if (node.isConnected) {
-          scanNode(node, ratesData, conversionMap, ambiguousCurrency);
+          Scanner.scanNode(node, ratesData, conversionMap, ambiguousCurrency, currentSettings, compiledUnambiguous, compiledAmbiguous);
         }
       }
     });
-  }
-
-  const observer = new MutationObserver((mutations) => {
-    for (const mutation of mutations) {
-      for (const node of mutation.addedNodes) {
-        if (node.nodeType === Node.ELEMENT_NODE && !SKIP_TAGS.has(node.tagName)) {
-          pendingNodes.add(node);
-        }
-      }
-    }
-    if (pendingNodes.size > 0) {
-      clearTimeout(debounceTimer);
-      debounceTimer = setTimeout(flushPendingNodes, 300);
-    }
   });
-
-  observer.observe(document.body, { childList: true, subtree: true });
 })();

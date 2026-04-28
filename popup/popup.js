@@ -27,9 +27,8 @@ let addPairFormOpen = false;
 let selectedFrom = null;
 let selectedTo = null;
 let isRefreshing = false;
-// --- Theme ---
 
-const RESET_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>';
+// --- Theme ---
 
 function getThemeSetting() {
   return currentSettings && currentSettings.theme ? currentSettings.theme : '';
@@ -39,16 +38,8 @@ function setTheme(themeSetting) {
   if (!currentSettings) return;
   currentSettings.theme = themeSetting || null;
   UICommon.applyTheme(UICommon.getEffectiveTheme(currentSettings));
-  renderThemeSegmented();
+  ThemeHandler.renderPopupSegmented(themeSegmented, currentSettings.theme);
   RatesUtil.saveSettings(currentSettings);
-}
-
-function renderThemeSegmented() {
-  const active = getThemeSetting();
-  themeSegmented.querySelectorAll('.theme-seg').forEach(btn => {
-    const val = btn.dataset.themeValue;
-    btn.classList.toggle('active', val === active);
-  });
 }
 
 themeSegmented.addEventListener('click', (e) => {
@@ -57,58 +48,24 @@ themeSegmented.addEventListener('click', (e) => {
   setTheme(btn.dataset.themeValue);
 });
 
-UICommon.watchSystemTheme(() => {
+ThemeHandler.watchSystem(() => {
   if (!getThemeSetting()) {
     UICommon.applyTheme(UICommon.detectSystemTheme());
   }
 });
 
-// --- Fetch status ---
+// --- Fetch status tooltip ---
 
-function renderFetchStatus(fetchStatus, rates) {
-  const state = RatesUtil.getFetchState(fetchStatus, rates);
-  sourceDot.className = 'source-dot source-dot-' + state;
+sourceTrigger.addEventListener('mouseenter', () => sourceTooltip.classList.add('show'));
+sourceTrigger.addEventListener('mouseleave', () => sourceTooltip.classList.remove('show'));
 
-  const lines = [];
-  if (fetchStatus && fetchStatus.lastFetchTime) {
-    lines.push('Last fetch: ' + RatesUtil.formatTimestamp(fetchStatus.lastFetchTime, currentSettings.timeFormat));
-  }
-  if (fetchStatus && fetchStatus.lastSuccessTime) {
-    lines.push('Last success: ' + RatesUtil.formatTimestamp(fetchStatus.lastSuccessTime, currentSettings.timeFormat));
-  }
-  if (rates && rates.timestamp) {
-    lines.push('Cache age: ' + RatesUtil.formatCacheAge(rates));
-  }
-  if (fetchStatus && fetchStatus.lastError) {
-    lines.push('Error: ' + fetchStatus.lastError);
-    if (fetchStatus.consecutiveFailures > 1) {
-      lines.push('Failed ' + fetchStatus.consecutiveFailures + ' times in a row');
-    }
-  }
-  if (lines.length === 0) {
-    lines.push('No fetch data yet');
-  }
-  sourceTooltip.innerHTML = lines.map(l => RatesUtil.escapeHtml(l)).join('<br>');
-}
-
-sourceTrigger.addEventListener('mouseenter', () => {
-  sourceTooltip.classList.add('show');
-});
-sourceTrigger.addEventListener('mouseleave', () => {
-  sourceTooltip.classList.remove('show');
-});
-
-// --- Source dropdown (multi-select) ---
+// --- Source dropdown ---
 
 function renderSourceDropdown(settings) {
   const selectedSources = settings.rateSources || [];
-  if (selectedSources.length === 0) {
-    sourceNameEl.textContent = 'No source';
-  } else if (selectedSources.length === 1) {
-    sourceNameEl.textContent = RatesUtil.getSourceDisplayName(selectedSources[0]);
-  } else {
-    sourceNameEl.textContent = selectedSources.length + ' sources';
-  }
+  if (selectedSources.length === 0) sourceNameEl.textContent = 'No source';
+  else if (selectedSources.length === 1) sourceNameEl.textContent = RateSources.getSourceDisplayName(selectedSources[0]);
+  else sourceNameEl.textContent = selectedSources.length + ' sources';
 
   const options = [];
   for (const [id, src] of Object.entries(RatesUtil.RATE_SOURCES)) {
@@ -119,9 +76,9 @@ function renderSourceDropdown(settings) {
     <input type="text" class="source-dropdown-search" id="sourceDropdownSearch" placeholder="Search sources...">
     <div class="source-dropdown-list" id="sourceDropdownList">
       ${options.map(opt => `
-        <div class="source-option${selectedSources.includes(opt.id) ? ' active' : ''}" data-source="${opt.id}" data-label="${RatesUtil.escapeHtml(opt.name.toLowerCase())}">
+        <div class="source-option${selectedSources.includes(opt.id) ? ' active' : ''}" data-source="${opt.id}" data-label="${FormatUtils.escapeHtml(opt.name.toLowerCase())}">
           <span class="source-option-check"></span>
-          <span>${RatesUtil.escapeHtml(opt.name)}</span>
+          <span>${FormatUtils.escapeHtml(opt.name)}</span>
         </div>
       `).join('')}
     </div>
@@ -140,24 +97,15 @@ function renderSourceDropdown(settings) {
   }
 }
 
-function toggleDropdown(forceClose) {
-  const isOpen = sourceDropdown.classList.contains('open');
-  if (forceClose || isOpen) {
-    sourceDropdown.classList.remove('open');
-  } else {
-    sourceDropdown.classList.add('open');
-  }
-}
-
 sourceTrigger.addEventListener('click', (e) => {
   e.stopPropagation();
-  toggleDropdown();
-  if (sourceDropdown.classList.contains('open')) {
+  const isOpen = sourceDropdown.classList.contains('open');
+  sourceDropdown.classList.toggle('open', !isOpen);
+  if (!isOpen) {
     const searchInput = document.getElementById('sourceDropdownSearch');
     if (searchInput) {
       searchInput.value = '';
       searchInput.focus();
-      // Reset filter
       const listEl = document.getElementById('sourceDropdownList');
       if (listEl) listEl.querySelectorAll('.source-option').forEach(opt => opt.style.display = '');
     }
@@ -176,22 +124,18 @@ sourceDropdown.addEventListener('click', async (e) => {
   const sourceId = option.dataset.source;
   const sources = currentSettings.rateSources || [];
   const idx = sources.indexOf(sourceId);
-
-  if (idx >= 0) {
-    sources.splice(idx, 1);
-  } else {
-    sources.push(sourceId);
-  }
+  if (idx >= 0) sources.splice(idx, 1);
+  else sources.push(sourceId);
 
   currentSettings.rateSources = sources;
   await RatesUtil.saveSettings(currentSettings);
   renderSourceDropdown(currentSettings);
 
-  invalidateEffectiveRates();
+  RateCards.invalidateCache();
   await refreshRates();
 });
 
-// --- Reload button ---
+// --- Reload ---
 
 async function refreshRates() {
   isRefreshing = true;
@@ -206,22 +150,21 @@ async function refreshRates() {
       renderConflictBanner();
       renderSourceTimestamp(currentRates);
       if (converterInput.value.trim()) {
-        renderConverter(converterInput.value.trim(), currentRates, currentSettings);
+        PopupConverter.render({ converterFrom, converterTo, converterInput, converterResult, cachedRates: currentRates, settings: currentSettings, getEffectiveRates: RateCards.getEffectiveRates });
       }
     }
-    renderFetchStatus(fetchStatus, rates || currentRates);
+    FetchStatusUI.renderPopup({ dotEl: sourceDot, tooltipEl: sourceTooltip, fetchStatus, rates: rates || currentRates, timeFormat: currentSettings.timeFormat });
   } finally {
     sourceReload.classList.remove('loading');
     isRefreshing = false;
-    // Re-render in case loading cards need to settle to no-rate state
-    renderRateCards(currentRates, currentSettings);
+    RateCards.render({ rateCardsEl, rateSearchEl, cachedRates: currentRates, settings: currentSettings, currentConflicts, isRefreshing, onCustomRateChange: handleCustomRateChange, onCustomRateReset: handleCustomRateReset, onSourcePickerClick: handleSourcePickerClick });
   }
 }
 
 sourceReload.addEventListener('click', refreshRates);
 
 function renderSourceTimestamp(rates) {
-  sourceTimeEl.textContent = RatesUtil.formatTimestamp(rates && rates.timestamp, currentSettings.timeFormat);
+  sourceTimeEl.textContent = FormatUtils.formatTimestamp(rates && rates.timestamp, currentSettings.timeFormat);
 }
 
 // --- Conflict banner ---
@@ -229,9 +172,7 @@ function renderSourceTimestamp(rates) {
 function renderConflictBanner() {
   const pairs = currentSettings.conversionPairs || [];
   const pairKeys = new Set();
-  for (const p of pairs) {
-    pairKeys.add([p.from, p.to].sort().join(':'));
-  }
+  for (const p of pairs) pairKeys.add([p.from, p.to].sort().join(':'));
 
   const unresolvedCount = Object.keys(currentConflicts).filter(pairKey => {
     const reverseKey = pairKey.split(':').reverse().join(':');
@@ -249,224 +190,7 @@ function renderConflictBanner() {
   }
 }
 
-// --- Rate cards ---
-
-let effectiveRatesCache = null;
-let effectiveRatesInput = null;
-
-function getEffectiveRates(settings, cachedRates) {
-  const key = cachedRates && cachedRates.timestamp;
-  if (effectiveRatesCache && effectiveRatesInput === key) return effectiveRatesCache;
-  effectiveRatesCache = RatesUtil.getEffectiveRates(settings, cachedRates);
-  effectiveRatesInput = key;
-  return effectiveRatesCache;
-}
-
-function invalidateEffectiveRates() {
-  effectiveRatesCache = null;
-  effectiveRatesInput = null;
-}
-
-function renderRateCards(cachedRates, settings) {
-  const rates = getEffectiveRates(settings, cachedRates);
-
-  const pairs = settings.conversionPairs || [];
-  const currencies = settings.currencies || {};
-
-  if (pairs.length === 0) {
-    rateCardsEl.innerHTML = '<div class="rate-card-skeleton">No rates available</div>';
-    return;
-  }
-
-  const cards = [];
-  const seen = new Set();
-  for (const pair of pairs) {
-    const pairKey = [pair.from, pair.to].sort().join(':');
-    if (seen.has(pairKey)) continue;
-    seen.add(pairKey);
-
-    const rateInfo = RatesUtil.formatRateForDisplay(pair.from, pair.to, rates);
-
-    if (!rateInfo) {
-      const loadingClass = isRefreshing ? ' rate-card-loading' : ' rate-card-no-rate';
-      const placeholder = isRefreshing ? 'Loading\u2026' : 'rate';
-      const disabled = isRefreshing ? ' disabled' : '';
-      const symbol = (currencies[pair.from] || {}).symbol || pair.from;
-      cards.push(`
-      <div class="rate-card${loadingClass}" data-pair="${pair.from}:${pair.to}" data-search="${pair.from.toLowerCase()} ${pair.to.toLowerCase()} ${RatesUtil.escapeHtml(symbol).toLowerCase()}">
-        <div class="rate-card-left">
-          <div class="rate-card-flag">${RatesUtil.escapeHtml((currencies[pair.from] || {}).symbol || pair.from)}</div>
-          <div class="rate-card-label">1 <code>${pair.from}</code> =</div>
-        </div>
-        <div class="rate-card-right">
-          <div class="rate-input-group">
-            <input class="rate-card-value-input" type="text"
-              value="" placeholder="${placeholder}"
-              data-base="${pair.from}" data-quote="${pair.to}"${disabled}>
-            <span class="rate-input-code">${pair.to}</span>
-          </div>
-        </div>
-      </div>
-    `);
-      continue;
-    }
-    const baseCur = currencies[rateInfo.base] || {};
-    const baseSymbol = baseCur.symbol || rateInfo.base;
-
-    const customPairKey = `${rateInfo.base}:${rateInfo.quote}`;
-    const reversePairKey = `${rateInfo.quote}:${rateInfo.base}`;
-    const hasOverride = settings.customRates && (
-      settings.customRates[customPairKey] != null ||
-      settings.customRates[reversePairKey] != null
-    );
-
-    // Check for conflict on this pair
-    const conflictData = currentConflicts[customPairKey] || currentConflicts[reversePairKey];
-    const isConflict = !!conflictData;
-
-    // Determine which source is currently used
-    let sourceTag = '';
-    if (isConflict) {
-      const activeSource = RatesUtil.getActiveSourceForPair(customPairKey, reversePairKey, settings, cachedRates);
-      sourceTag = `<span class="rate-source-picker" data-pair="${customPairKey}" title="${RatesUtil.escapeHtml(RatesUtil.getSourceDisplayName(activeSource))}">${RatesUtil.escapeHtml(activeSource.toUpperCase())}</span>`;
-    }
-
-    cards.push(`
-      <div class="rate-card${hasOverride ? ' rate-card-custom' : ''}${isConflict && !hasOverride ? ' rate-card-conflict' : ''}" data-pair="${customPairKey}" data-search="${rateInfo.base.toLowerCase()} ${rateInfo.quote.toLowerCase()} ${RatesUtil.escapeHtml(baseSymbol).toLowerCase()}">
-        <div class="rate-card-left">
-          <div class="rate-card-flag">${RatesUtil.escapeHtml(baseSymbol)}</div>
-          <div class="rate-card-label">1 <code>${rateInfo.base}</code> =</div>
-        </div>
-        <div class="rate-card-right">
-          <div class="rate-input-group">
-            <input class="rate-card-value-input" type="text"
-              value="${rateInfo.rate.toFixed(4)}"
-              data-base="${rateInfo.base}" data-quote="${rateInfo.quote}">
-            <span class="rate-input-code">${rateInfo.quote}</span>
-          </div>
-          ${hasOverride ? `<button class="rate-card-reset" title="Reset to fetched rate" data-base="${rateInfo.base}" data-quote="${rateInfo.quote}">${RESET_SVG}</button>` : ''}
-        </div>
-        ${sourceTag}
-      </div>
-    `);
-  }
-
-  const savedScroll = rateCardsEl.scrollTop;
-  rateCardsEl.innerHTML = cards.length
-    ? cards.join('')
-    : '<div class="rate-card-skeleton">No rates available</div>';
-  rateCardsEl.scrollTop = savedScroll;
-
-  rateCardsEl.querySelectorAll('.rate-card-value-input').forEach(input => {
-    input.addEventListener('change', handleCustomRateChange);
-  });
-
-  rateCardsEl.querySelectorAll('.rate-card-reset').forEach(btn => {
-    btn.addEventListener('click', handleCustomRateReset);
-  });
-
-  rateCardsEl.querySelectorAll('.rate-source-picker').forEach(el => {
-    el.addEventListener('click', handleSourcePickerClick);
-  });
-
-  // Re-apply current search filter
-  filterRateCards(rateSearchEl.value);
-}
-
-// --- Rate search ---
-
-function filterRateCards(query) {
-  const q = query.toLowerCase().trim();
-  rateCardsEl.querySelectorAll('.rate-card').forEach(card => {
-    card.style.display = (!q || (card.dataset.search || '').includes(q)) ? '' : 'none';
-  });
-}
-
-rateSearchEl.addEventListener('input', () => {
-  filterRateCards(rateSearchEl.value);
-});
-
-async function handleSourcePickerClick(e) {
-  const el = e.currentTarget;
-  const customPairKey = el.dataset.pair;
-  const reversePairKey = customPairKey.split(':').reverse().join(':');
-  const conflictData = currentConflicts[customPairKey] || currentConflicts[reversePairKey];
-  if (!conflictData) return;
-
-  // Close any existing dropdowns
-  UICommon.closeAllSourcePickerDropdowns();
-
-  const activeSource = RatesUtil.getActiveSourceForPair(customPairKey, customPairKey.split(':').reverse().join(':'), currentSettings, currentRates);
-  const sourceIds = Object.keys(conflictData);
-
-  // Build dropdown
-  const dropdown = document.createElement('div');
-  dropdown.className = 'rate-source-picker-dropdown open';
-  dropdown.innerHTML = `
-    <input type="text" class="rate-source-picker-search" placeholder="Search...">
-    <div class="rate-source-picker-list">
-      ${sourceIds.map(id => {
-        const isActive = id === activeSource;
-        const rate = conflictData[id];
-        return `<div class="rate-source-picker-item${isActive ? ' active' : ''}" data-source-id="${id}" data-label="${RatesUtil.escapeHtml(RatesUtil.getSourceDisplayName(id).toLowerCase())}">
-          <span class="rate-source-picker-item-check"></span>
-          <span class="rate-source-picker-item-label">${RatesUtil.escapeHtml(RatesUtil.getSourceDisplayName(id))}</span>
-          <span class="rate-source-picker-item-rate">${rate ? rate.toFixed(4) : ''}</span>
-        </div>`;
-      }).join('')}
-    </div>
-  `;
-
-  // Position dropdown anchored to picker, but append to popup container
-  // to avoid clipping by overflow:hidden ancestors
-  const popupEl = document.querySelector('.popup');
-  const pickerRect = el.getBoundingClientRect();
-  const popupRect = popupEl.getBoundingClientRect();
-
-  dropdown.style.position = 'absolute';
-  dropdown.style.top = (pickerRect.bottom - popupRect.top + 4) + 'px';
-  const ddMinWidth = 180;
-  dropdown.style.left = Math.max(0, (pickerRect.right - popupRect.left) - ddMinWidth) + 'px';
-
-  el.classList.add('active');
-  popupEl.appendChild(dropdown);
-
-  const searchInput = dropdown.querySelector('.rate-source-picker-search');
-  const listEl = dropdown.querySelector('.rate-source-picker-list');
-
-  searchInput.addEventListener('input', () => {
-    const q = searchInput.value.toLowerCase().trim();
-    listEl.querySelectorAll('.rate-source-picker-item').forEach(item => {
-      const label = item.dataset.label || '';
-      item.style.display = !q || label.includes(q) ? '' : 'none';
-    });
-  });
-
-  // Close on outside click
-  const closeHandler = (ev) => {
-    if (!dropdown.contains(ev.target) && !el.contains(ev.target)) {
-      UICommon.closeAllSourcePickerDropdowns();
-    }
-  };
-  UICommon.setSourcePickerCloseHandler(closeHandler);
-
-  listEl.addEventListener('click', async (ev) => {
-    const item = ev.target.closest('.rate-source-picker-item');
-    if (!item) return;
-    const sourceId = item.dataset.sourceId;
-
-    if (!currentSettings.rateSourceOverrides) currentSettings.rateSourceOverrides = {};
-    currentSettings.rateSourceOverrides[customPairKey] = sourceId;
-    await RatesUtil.saveSettings(currentSettings);
-
-    UICommon.closeAllSourcePickerDropdowns();
-    invalidateEffectiveRates();
-    renderRateCards(currentRates, currentSettings);
-    renderConflictBanner();
-  });
-
-  searchInput.focus();
-}
+// --- Rate cards handlers ---
 
 async function handleCustomRateChange(e) {
   const input = e.target;
@@ -479,13 +203,13 @@ async function handleCustomRateChange(e) {
   currentSettings.customRates[`${base}:${quote}`] = val;
   await RatesUtil.saveSettings(currentSettings);
 
-  invalidateEffectiveRates();
-  renderRateCards(currentRates, currentSettings);
+  RateCards.invalidateCache();
+  RateCards.render({ rateCardsEl, rateSearchEl, cachedRates: currentRates, settings: currentSettings, currentConflicts, isRefreshing, onCustomRateChange: handleCustomRateChange, onCustomRateReset: handleCustomRateReset, onSourcePickerClick: handleSourcePickerClick });
   renderSourceTimestamp(currentRates);
   renderConflictBanner();
 
   if (converterInput.value.trim()) {
-    renderConverter(converterInput.value.trim(), currentRates, currentSettings);
+    PopupConverter.render({ converterFrom, converterTo, converterInput, converterResult, cachedRates: currentRates, settings: currentSettings, getEffectiveRates: RateCards.getEffectiveRates });
   }
 }
 
@@ -498,41 +222,59 @@ async function handleCustomRateReset(e) {
   delete currentSettings.customRates[`${base}:${quote}`];
   await RatesUtil.saveSettings(currentSettings);
 
-  invalidateEffectiveRates();
-  renderRateCards(currentRates, currentSettings);
+  RateCards.invalidateCache();
+  RateCards.render({ rateCardsEl, rateSearchEl, cachedRates: currentRates, settings: currentSettings, currentConflicts, isRefreshing, onCustomRateChange: handleCustomRateChange, onCustomRateReset: handleCustomRateReset, onSourcePickerClick: handleSourcePickerClick });
   renderSourceTimestamp(currentRates);
   renderConflictBanner();
 
   if (converterInput.value.trim()) {
-    renderConverter(converterInput.value.trim(), currentRates, currentSettings);
+    PopupConverter.render({ converterFrom, converterTo, converterInput, converterResult, cachedRates: currentRates, settings: currentSettings, getEffectiveRates: RateCards.getEffectiveRates });
   }
 }
+
+async function handleSourcePickerClick(e) {
+  const el = e.currentTarget;
+  const customPairKey = el.dataset.pair;
+  const reversePairKey = customPairKey.split(':').reverse().join(':');
+  const conflictData = currentConflicts[customPairKey] || currentConflicts[reversePairKey];
+  if (!conflictData) return;
+
+  SourcePicker.createDropdown({
+    el,
+    customPairKey,
+    conflictData,
+    activeSource: RatesUtil.getActiveSourceForPair(customPairKey, reversePairKey, currentSettings, currentRates),
+    settings: currentSettings,
+    rates: currentRates,
+    appendTo: document.querySelector('.popup'),
+    onSelected: async (sourceId) => {
+      if (!currentSettings.rateSourceOverrides) currentSettings.rateSourceOverrides = {};
+      currentSettings.rateSourceOverrides[customPairKey] = sourceId;
+      await RatesUtil.saveSettings(currentSettings);
+      RateCards.invalidateCache();
+      RateCards.render({ rateCardsEl, rateSearchEl, cachedRates: currentRates, settings: currentSettings, currentConflicts, isRefreshing, onCustomRateChange: handleCustomRateChange, onCustomRateReset: handleCustomRateReset, onSourcePickerClick: handleSourcePickerClick });
+      renderConflictBanner();
+    },
+  });
+}
+
+// --- Search ---
+
+rateSearchEl.addEventListener('input', () => {
+  RateCards.filterRateCards(rateSearchEl, rateCardsEl);
+});
 
 // --- Conversion Pairs ---
 
 function renderPairChips(settings) {
-  const pairs = settings.conversionPairs || [];
-  pairChipsEl.innerHTML = pairs.map((p, i) => `
-    <span class="pair-chip">${p.from} <span class="pair-chip-arrow">&rarr;</span> ${p.to}
-      <button class="pair-chip-remove" data-index="${i}" title="Remove pair">&times;</button>
-    </span>
-  `).join('') + '<button class="pair-chip-add" id="addPairPopup" title="Add conversion pair">+</button>';
-
-  pairChipsEl.querySelectorAll('.pair-chip-remove').forEach(btn => {
-    btn.addEventListener('click', async () => {
-      const idx = parseInt(btn.dataset.index);
-      currentSettings.conversionPairs.splice(idx, 1);
-      await RatesUtil.saveSettings(currentSettings);
-      renderPairChips(currentSettings);
-      renderRateCards(currentRates, currentSettings);
-      renderConflictBanner();
-      populateConverterSelects(currentSettings);
-    });
-  });
-
-  document.getElementById('addPairPopup').addEventListener('click', () => {
-    toggleAddPairForm();
-  });
+  PairChips.renderPopupChips(settings.conversionPairs || [], pairChipsEl, async (idx) => {
+    currentSettings.conversionPairs.splice(idx, 1);
+    await RatesUtil.saveSettings(currentSettings);
+    renderPairChips(currentSettings);
+    RateCards.render({ rateCardsEl, rateSearchEl, cachedRates: currentRates, settings: currentSettings, currentConflicts, isRefreshing, onCustomRateChange: handleCustomRateChange, onCustomRateReset: handleCustomRateReset, onSourcePickerClick: handleSourcePickerClick });
+    renderConflictBanner();
+    PopupConverter.populateSelects({ converterFrom, converterTo, settings: currentSettings });
+  }, () => toggleAddPairForm());
 }
 
 // --- Add Pair Form ---
@@ -588,97 +330,29 @@ function renderAddPairForm() {
     </div>
     <div class="add-pair-error" id="addPairError"></div>
   `;
-  renderCurrencyList('from');
-  renderCurrencyList('to');
-  bindAddPairEvents();
-}
 
-function renderCurrencyList(which, filter) {
-  const currencies = currentSettings.currencies || {};
-  const listEl = document.getElementById(which + 'PickerList');
-  if (!listEl) return;
-  const selected = which === 'from' ? selectedFrom : selectedTo;
-  listEl.innerHTML = UICommon.renderCurrencyListHTML(currencies, selected, filter);
-}
-
-function bindAddPairEvents() {
-  const fromTrigger = document.getElementById('fromPickerTrigger');
-  const fromDropdown = document.getElementById('fromPickerDropdown');
-  const fromSearch = document.getElementById('fromPickerSearch');
-  const fromList = document.getElementById('fromPickerList');
-  const toTrigger = document.getElementById('toPickerTrigger');
-  const toDropdown = document.getElementById('toPickerDropdown');
-  const toSearch = document.getElementById('toPickerSearch');
-  const toList = document.getElementById('toPickerList');
-
-  function closeDropdowns() {
-    closePickerDropdowns();
-  }
-
-  fromTrigger.addEventListener('click', (e) => {
-    e.stopPropagation();
-    const isOpen = fromDropdown.classList.contains('open');
-    closeDropdowns();
-    if (!isOpen) {
-      fromDropdown.classList.add('open');
-      fromTrigger.classList.add('active');
-      fromSearch.value = '';
-      renderCurrencyList('from');
-      fromSearch.focus();
-    }
+  const { closeDropdowns } = CurrencyPicker.bindPickerEvents({
+    fromTrigger: document.getElementById('fromPickerTrigger'),
+    fromDropdown: document.getElementById('fromPickerDropdown'),
+    fromSearch: document.getElementById('fromPickerSearch'),
+    fromList: document.getElementById('fromPickerList'),
+    toTrigger: document.getElementById('toPickerTrigger'),
+    toDropdown: document.getElementById('toPickerDropdown'),
+    toSearch: document.getElementById('toPickerSearch'),
+    toList: document.getElementById('toPickerList'),
+    getFrom: () => selectedFrom,
+    getTo: () => selectedTo,
+    setFrom: (v) => { selectedFrom = v; },
+    setTo: (v) => { selectedTo = v; },
+    currencies: currentSettings.currencies || {},
   });
 
-  toTrigger.addEventListener('click', (e) => {
-    e.stopPropagation();
-    const isOpen = toDropdown.classList.contains('open');
-    closeDropdowns();
-    if (!isOpen) {
-      toDropdown.classList.add('open');
-      toTrigger.classList.add('active');
-      toSearch.value = '';
-      renderCurrencyList('to');
-      toSearch.focus();
-    }
-  });
-
-  fromSearch.addEventListener('input', () => renderCurrencyList('from', fromSearch.value));
-  toSearch.addEventListener('input', () => renderCurrencyList('to', toSearch.value));
-
-  fromList.addEventListener('click', (e) => {
-    const item = e.target.closest('.currency-picker-item');
-    if (!item || item.classList.contains('empty')) return;
-    selectedFrom = item.dataset.code;
-    const textEl = fromTrigger.querySelector('.currency-picker-text');
-    textEl.textContent = selectedFrom;
-    textEl.classList.remove('placeholder');
-    closeDropdowns();
-  });
-
-  toList.addEventListener('click', (e) => {
-    const item = e.target.closest('.currency-picker-item');
-    if (!item || item.classList.contains('empty')) return;
-    selectedTo = item.dataset.code;
-    const textEl = toTrigger.querySelector('.currency-picker-text');
-    textEl.textContent = selectedTo;
-    textEl.classList.remove('placeholder');
-    closeDropdowns();
-  });
+  // Store closeDropdowns for click-outside handler
+  window._popupCloseDropdowns = closeDropdowns;
 
   document.getElementById('addPairConfirmBtn').addEventListener('click', handleAddPair);
   document.getElementById('addPairCancelBtn').addEventListener('click', () => toggleAddPairForm());
-
   document.addEventListener('click', onAddPairFormClickOutside);
-}
-
-function closePickerDropdowns() {
-  const fromDd = document.getElementById('fromPickerDropdown');
-  const toDd = document.getElementById('toPickerDropdown');
-  const fromTrig = document.getElementById('fromPickerTrigger');
-  const toTrig = document.getElementById('toPickerTrigger');
-  if (fromDd) fromDd.classList.remove('open');
-  if (toDd) toDd.classList.remove('open');
-  if (fromTrig) fromTrig.classList.remove('active');
-  if (toTrig) toTrig.classList.remove('active');
 }
 
 function onAddPairFormClickOutside(e) {
@@ -687,7 +361,7 @@ function onAddPairFormClickOutside(e) {
   const toPicker = document.getElementById('toPicker');
   if (!fromPicker || !toPicker) return;
   if (!fromPicker.contains(e.target) && !toPicker.contains(e.target)) {
-    closePickerDropdowns();
+    if (window._popupCloseDropdowns) window._popupCloseDropdowns();
   }
 }
 
@@ -725,82 +399,22 @@ async function handleAddPair() {
   document.removeEventListener('click', onAddPairFormClickOutside);
   document.getElementById('addPairForm').innerHTML = '';
 
-  invalidateEffectiveRates();
+  RateCards.invalidateCache();
   renderPairChips(currentSettings);
-  populateConverterSelects(currentSettings);
+  PopupConverter.populateSelects({ converterFrom, converterTo, settings: currentSettings });
 
   isRefreshing = true;
-  renderRateCards(currentRates, currentSettings);
+  RateCards.render({ rateCardsEl, rateSearchEl, cachedRates: currentRates, settings: currentSettings, currentConflicts, isRefreshing, onCustomRateChange: handleCustomRateChange, onCustomRateReset: handleCustomRateReset, onSourcePickerClick: handleSourcePickerClick });
   refreshRates();
 }
 
 // --- Quick Convert ---
 
-function populateConverterSelects(settings) {
-  const currencies = settings.currencies || {};
-  const allCodes = Object.keys(currencies);
-  if (allCodes.length === 0) return;
-
-  const prevFrom = converterFrom.value;
-  const prevTo = converterTo.value;
-
-  const makeOptions = (selected) => {
-    return allCodes.map(code =>
-      `<option value="${code}"${code === selected ? ' selected' : ''}>${code}</option>`
-    ).join('');
-  };
-
-  const firstPair = settings.conversionPairs && settings.conversionPairs[0];
-  const defaultFrom = firstPair ? firstPair.from : allCodes[0];
-  const defaultTo = firstPair ? firstPair.to : allCodes[allCodes.length > 1 ? 1 : 0];
-
-  converterFrom.innerHTML = makeOptions(allCodes.includes(prevFrom) ? prevFrom : defaultFrom);
-  converterTo.innerHTML = makeOptions(allCodes.includes(prevTo) ? prevTo : defaultTo);
-}
-
-function renderConverter(value, cachedRates, settings) {
-  if (!value || isNaN(value) || !settings) {
-    converterResult.innerHTML = '';
-    return;
-  }
-
-  const amount = parseFloat(value);
-  if (isNaN(amount) || amount === 0) {
-    converterResult.innerHTML = '';
-    return;
-  }
-
-  const from = converterFrom.value;
-  const to = converterTo.value;
-  if (!from || !to || from === to) {
-    converterResult.innerHTML = '';
-    return;
-  }
-
-  const rates = getEffectiveRates(settings, cachedRates);
-  const converted = RatesUtil.convert(amount, from, to, rates);
-  if (converted === null) {
-    converterResult.innerHTML = '';
-    return;
-  }
-
-  const toInfo = (settings.currencies || {})[to] || {};
-  const symbol = toInfo.symbol || to;
-
-  const nf = settings.numberFormat;
-  converterResult.innerHTML = `
-    <div class="converter-result-line">
-      <span class="converter-result-symbol">${from} \u2192 ${to}</span>
-      <span class="converter-result-value">${symbol}${RatesUtil.formatNumber(converted, 2, nf)}</span>
-    </div>
-  `;
-}
-
 converterFrom.addEventListener('change', () => {
-  renderConverter(converterInput.value.trim(), currentRates, currentSettings);
+  PopupConverter.render({ converterFrom, converterTo, converterInput, converterResult, cachedRates: currentRates, settings: currentSettings, getEffectiveRates: RateCards.getEffectiveRates });
 });
 converterTo.addEventListener('change', () => {
-  renderConverter(converterInput.value.trim(), currentRates, currentSettings);
+  PopupConverter.render({ converterFrom, converterTo, converterInput, converterResult, cachedRates: currentRates, settings: currentSettings, getEffectiveRates: RateCards.getEffectiveRates });
 });
 
 // --- Main load ---
@@ -819,14 +433,14 @@ async function loadPopup() {
   enabledEl.checked = settings.enabled;
 
   UICommon.applyTheme(UICommon.getEffectiveTheme(currentSettings));
-  renderThemeSegmented();
+  ThemeHandler.renderPopupSegmented(themeSegmented, currentSettings.theme);
   renderSourceDropdown(settings);
   renderSourceTimestamp(rates);
-  renderFetchStatus(fetchStatus, rates);
+  FetchStatusUI.renderPopup({ dotEl: sourceDot, tooltipEl: sourceTooltip, fetchStatus, rates, timeFormat: currentSettings.timeFormat });
   renderConflictBanner();
-  renderRateCards(rates, settings);
+  RateCards.render({ rateCardsEl, rateSearchEl, cachedRates: rates, settings: currentSettings, currentConflicts, isRefreshing, onCustomRateChange: handleCustomRateChange, onCustomRateReset: handleCustomRateReset, onSourcePickerClick: handleSourcePickerClick });
   renderPairChips(settings);
-  populateConverterSelects(settings);
+  PopupConverter.populateSelects({ converterFrom, converterTo, settings: currentSettings });
 
   try {
     const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
@@ -842,7 +456,7 @@ async function loadPopup() {
   }
 
   converterInput.addEventListener('input', () => {
-    renderConverter(converterInput.value.trim(), currentRates, currentSettings);
+    PopupConverter.render({ converterFrom, converterTo, converterInput, converterResult, cachedRates: currentRates, settings: currentSettings, getEffectiveRates: RateCards.getEffectiveRates });
   });
 }
 

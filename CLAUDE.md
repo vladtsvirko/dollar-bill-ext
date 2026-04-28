@@ -6,43 +6,91 @@
 
 ## Architecture
 
-This is a vanilla JS Chrome extension with no build step, no bundler, no npm, and no package.json. Files are loaded directly by the browser.
+This is a vanilla JS Chrome extension with no build step, no bundler, no npm, and no package.json. Files are loaded directly by the browser. All modules are IIFEs exposing globals.
 
-### Core files
+### Directory Structure
 
-- **`manifest.json`** — Manifest V3 config. Content scripts run on `<all_urls>`.
-- **`lib/currencies.js`** — `Currencies` IIFE. Currency database (150+ currencies) with identifiers and domain mappings.
-- **`lib/rate-sources.js`** — `RateSources` IIFE. Rate source definitions (`RATE_SOURCES` object), fetch functions per central bank API, `getSourceDisplayName()`.
-- **`lib/settings.js`** — `Settings` IIFE. Settings schema (`DEFAULT_SETTINGS`), key constant (`dollarbill_settings`), and migration chain (v1→v7).
-- **`lib/rates.js`** — `RatesUtil` IIFE. Rate fetching/caching, cross-rate table building, pattern compilation, conversion math. Re-exports from the above modules.
-- **`lib/ui-common.js`** — `UICommon` IIFE. Shared theme detection/application and currency list rendering for popup and options pages.
-- **`background.js`** — Service worker. Manages rate refresh via `chrome.alarms` (every 30 min). Handles messages: `getRates`, `updateRates`, `getSettings`, `getFetchStatus`, `getLoadedRates`.
-- **`content.js`** — Content script injected into all pages. Uses `TreeWalker` to scan text nodes, regex-matches currency patterns, replaces matches with original text + conversion pills (`<span class="db-pill">`). Uses `MutationObserver` with 300ms debounce for dynamic content.
-- **`popup/popup.html|js|css`** — Extension popup with enable/disable toggle, rate source selector, conversion pair chips, quick converter, and theme switcher.
-- **`options/options.html|js|css`** — Full settings page: enabled toggle, rate sources, custom rates, conversion pairs, currency library editor, site filtering (all/whitelist), theme, number/time format, live preview. Opens via `chrome.runtime.openOptionsPage()`.
-- **`styles/injected.css`** — Styles for `.db-pill` conversion badges and `#dollarbill-picker` currency picker bar injected into pages.
-- **`styles/tokens.css`** — Design tokens (CSS custom properties) for popup and options pages. Single source of truth for colors, fonts, spacing.
-- **`styles/components.css`** — Shared component styles (toggle switches, currency pickers, rate source pickers) for popup and options. Loaded after tokens.css.
+```
+dollar-bill-ext/
+├── manifest.json
+├── background.js               (service worker)
+├── content.js                   (slim entry — calls content/ modules)
+├── core/
+│   ├── currencies.js            (Currencies IIFE — 150+ currency database)
+│   ├── rate-sources.js          (RateSources IIFE — API definitions + fetch)
+│   ├── migrations.js            (Migrations IIFE — v1→v6 migration chain)
+│   ├── settings.js              (Settings IIFE — schema + persistence)
+│   ├── patterns.js              (Patterns IIFE — regex compilation)
+│   ├── rate-tables.js           (RateTables IIFE — cross-rate math, merge, convert)
+│   ├── format-utils.js          (FormatUtils IIFE — escapeHtml, timestamps, numbers)
+│   ├── rate-fetch.js            (RateFetch IIFE — cache, storage, fetch orchestration)
+│   └── rates.js                 (RatesUtil IIFE — facade re-exporting all core modules)
+├── content/
+│   ├── scanner.js               (Scanner IIFE — TreeWalker, text node iteration)
+│   ├── converter.js             (ContentConverter IIFE — pill creation, regex matching)
+│   ├── picker-bar.js            (PickerBar IIFE — ambiguous currency picker)
+│   └── observer.js              (ContentObserver IIFE — MutationObserver + debounce)
+├── ui/
+│   ├── ui-common.js             (UICommon IIFE — theme, currency list, source picker close)
+│   ├── source-picker.js         (SourcePicker IIFE — conflict dropdown factory)
+│   ├── currency-picker.js       (CurrencyPicker IIFE — from/to picker binding)
+│   ├── pair-chips.js            (PairChips IIFE — chip rendering for popup/options)
+│   ├── theme-handler.js         (ThemeHandler IIFE — segmented/selector rendering)
+│   └── fetch-status.js          (FetchStatusUI IIFE — popup/options status display)
+├── options/
+│   ├── options.html|css         (settings page)
+│   ├── options.js               (init, save, orchestration)
+│   ├── currency-library.js      (CurrencyLibrary IIFE — tile grid, editor)
+│   ├── custom-rates.js          (CustomRates IIFE — rate grid)
+│   ├── loaded-rates.js          (LoadedRates IIFE — loaded rates viewer)
+│   ├── site-filter.js           (SiteFilter IIFE — whitelist + domain overrides)
+│   └── preview.js               (Preview IIFE — live preview panel)
+├── popup/
+│   ├── popup.html|css           (extension popup)
+│   ├── popup.js                 (init, toggle, source dropdown, conflict banner)
+│   ├── rate-cards.js            (RateCards IIFE — rate card rendering)
+│   └── converter.js             (PopupConverter IIFE — quick converter widget)
+└── styles/
+    ├── tokens.css               (design tokens — CSS custom properties)
+    ├── components.css           (shared component styles)
+    └── injected.css             (pill + picker styles for injected pages)
+```
 
 ### Data flow
 
-1. **Rates**: Central bank APIs → `fetchAndCacheRates()` → `chrome.storage.local` → cached as merged cross-rate table `{ USD: { EUR: 0.92, ... } }` with conflict tracking
-2. **Settings**: `chrome.storage.local` under `dollarbill_settings` key. Schema versioned (`_settingsVersion: 7`) with migration chain (v1→v2 through v6→v7).
-3. **Content script**: Loads `lib/currencies.js`, `lib/rate-sources.js`, `lib/settings.js`, `lib/rates.js`, then `content.js` at `document_idle`. Sends `getSettings`/`getRates` messages to background. Compiles regex patterns from currency identifiers. Ambiguous currencies (shared identifiers like `$`) resolved via domain TLD mapping or user picker bar.
+1. **Rates**: Central bank APIs → `RateFetch.fetchAndCacheRates()` → `chrome.storage.local` → cached as merged cross-rate table with conflict tracking
+2. **Settings**: `chrome.storage.local` under `dollarbill_settings` key. Schema versioned (`_settingsVersion: 7`) with migration chain in `core/migrations.js`.
+3. **Content script**: Loads core modules, then content modules, then `content.js`. Sends `getSettings`/`getRates` messages to background. Compiles regex patterns from currency identifiers. Ambiguous currencies resolved via domain TLD mapping or picker bar.
 
-### Key patterns in `lib/rates.js`
+### Key patterns
 
-- `RATE_SOURCES` object (in `lib/rate-sources.js`) maps source IDs (`nbrb`, `ecb`, etc.) to `{ name, convention, fetchBaseRates }`. Convention is `direct` (1 base = X foreign) or `indirect` (1 foreign = X base).
-- `buildMergedRateTable()` merges rates from multiple sources and detects conflicts (same pair, different rates from different sources).
-- `buildPatternsFromIdentifiers()` generates regex patterns from currency identifiers for text matching.
-- Settings migrations run sequentially in `getSettings()` — always read settings through this function.
+- `RATE_SOURCES` object (in `core/rate-sources.js`) maps source IDs to `{ name, convention, fetchBaseRates }`.
+- `RateTables.buildMergedRateTable()` merges rates from multiple sources and detects conflicts.
+- `Patterns.buildPatternsFromIdentifiers()` generates regex patterns from currency identifiers.
+- `RatesUtil` (in `core/rates.js`) is a **facade** — it re-exports everything from `Patterns`, `RateTables`, `FormatUtils`, and `RateFetch` as a single backward-compatible global. All existing callers use `RatesUtil.convert()`, `RatesUtil.getSettings()`, etc.
+- Settings migrations run sequentially via `Migrations.migrate()` called from `Settings.getSettings()`.
 
 ## Module Load Order
 
 The IIFE modules have hard dependencies and must load in this order:
-`currencies.js` → `rate-sources.js` → `settings.js` → `rates.js`
 
-This order is enforced in both `manifest.json` content_scripts and `background.js` `importScripts()`.
+### manifest.json content_scripts
+```
+core/currencies.js → core/rate-sources.js → core/migrations.js →
+core/settings.js → core/patterns.js → core/rate-tables.js →
+core/format-utils.js → core/rate-fetch.js → core/rates.js →
+content/scanner.js → content/converter.js → content/picker-bar.js →
+content/observer.js → content.js
+```
+
+### background.js importScripts
+Same as above minus content/ modules.
+
+### popup.html scripts
+Core 9 files → ui/ 6 files → popup/rate-cards.js → popup/converter.js → popup/popup.js
+
+### options.html scripts
+Core 9 files → ui/ 6 files → options/ 5 feature files → options/options.js
 
 ## Development
 
@@ -52,11 +100,12 @@ Load the extension directly in Chrome via `chrome://extensions` → "Load unpack
 
 - **Content script changes**: Must reload the extension on `chrome://extensions`, then refresh the target page.
 - **Background script changes**: Must reload the extension. Check service worker logs via "Inspect views: service worker" on `chrome://extensions`.
-- **Rate fetching**: Use background console to inspect `fetchAndCacheRates()` results. Rate APIs can be tested directly in browser — no auth required.
+- **Rate fetching**: Use background console to inspect `fetchAndCacheRates()` results.
 - **Storage inspection**: `chrome.storage.local` is viewable via DevTools → Application → Storage → Chrome Extension Storage.
 
 ### Gotchas
 
-- IIFEs expose globals (`Currencies`, `RateSources`, `Settings`, `RatesUtil`, `UICommon`). Do not add `import`/`export` — there is no module bundler.
+- IIFEs expose globals. Do not add `import`/`export` — there is no module bundler.
 - Settings must always be read via `Settings.getSettings()` to run migrations. Never read `chrome.storage.local` directly for settings.
 - `styles/injected.css` uses hardcoded values intentionally — it loads into arbitrary pages and must remain isolated from the design tokens.
+- New modules should be their own IIFE globals. The `RatesUtil` facade in `core/rates.js` provides backward compatibility — new code can import directly from sub-modules (e.g., `RateTables.convert()`) or use `RatesUtil.convert()`.
