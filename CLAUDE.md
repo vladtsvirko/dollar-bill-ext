@@ -1,7 +1,5 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
-
 ## Project Overview
 
 **Dollar Bill** is a Chrome extension (Manifest V3) that automatically detects prices on any webpage and displays converted amounts inline next to the original. It fetches exchange rates from official central bank APIs (NBRB, ECB, NBP, NBU, CBR, CNB, TCMB, BOC, BCB, BOE, HKMA, NBK) plus Frankfurter as a fallback.
@@ -23,6 +21,8 @@ This is a vanilla JS Chrome extension with no build step, no bundler, no npm, an
 - **`popup/popup.html|js|css`** — Extension popup with enable/disable toggle, rate source selector, conversion pair chips, quick converter, and theme switcher.
 - **`options/options.html|js|css`** — Full settings page: enabled toggle, rate sources, custom rates, conversion pairs, currency library editor, site filtering (all/whitelist), theme, number/time format, live preview. Opens via `chrome.runtime.openOptionsPage()`.
 - **`styles/injected.css`** — Styles for `.db-pill` conversion badges and `#dollarbill-picker` currency picker bar injected into pages.
+- **`styles/tokens.css`** — Design tokens (CSS custom properties) for popup and options pages. Single source of truth for colors, fonts, spacing.
+- **`styles/components.css`** — Shared component styles (toggle switches, currency pickers, rate source pickers) for popup and options. Loaded after tokens.css.
 
 ### Data flow
 
@@ -47,3 +47,16 @@ This order is enforced in both `manifest.json` content_scripts and `background.j
 ## Development
 
 Load the extension directly in Chrome via `chrome://extensions` → "Load unpacked" → point to this directory. No build or compilation needed. Changes to content scripts require reloading the extension; changes to the options/popup pages just need a page refresh.
+
+### Debugging
+
+- **Content script changes**: Must reload the extension on `chrome://extensions`, then refresh the target page.
+- **Background script changes**: Must reload the extension. Check service worker logs via "Inspect views: service worker" on `chrome://extensions`.
+- **Rate fetching**: Use background console to inspect `fetchAndCacheRates()` results. Rate APIs can be tested directly in browser — no auth required.
+- **Storage inspection**: `chrome.storage.local` is viewable via DevTools → Application → Storage → Chrome Extension Storage.
+
+### Gotchas
+
+- IIFEs expose globals (`Currencies`, `RateSources`, `Settings`, `RatesUtil`, `UICommon`). Do not add `import`/`export` — there is no module bundler.
+- Settings must always be read via `Settings.getSettings()` to run migrations. Never read `chrome.storage.local` directly for settings.
+- `styles/injected.css` uses hardcoded values intentionally — it loads into arbitrary pages and must remain isolated from the design tokens.
