@@ -41,7 +41,6 @@ const addPairBtn = document.getElementById('addPairBtn');
 let optSelectedFrom = null;
 let optSelectedTo = null;
 let optPickerEventsInitialized = false;
-
 // Currency library
 const currencyLibrary = document.getElementById('currencyLibrary');
 const addCurrencyBtn = document.getElementById('addCurrencyBtn');
@@ -542,7 +541,10 @@ function renderOptCurrencyList(which, filter) {
   const listEl = document.getElementById(which === 'from' ? 'optFromList' : 'optToList');
   if (!listEl) return;
   const selected = which === 'from' ? optSelectedFrom : optSelectedTo;
-  listEl.innerHTML = UICommon.renderCurrencyListHTML(currencies, selected, filter);
+  const availableCurrencies = currentRates
+    ? RatesUtil.getCurrencyRateAvailability(currentSettings, currentRates)
+    : null;
+  listEl.innerHTML = UICommon.renderCurrencyListHTML(currencies, selected, filter, availableCurrencies);
 }
 
 function initOptPickerEvents() {
@@ -1095,9 +1097,9 @@ function renderCustomRatesGrid() {
         <span>1 ${RatesUtil.escapeHtml(displayFrom)}</span>
       </span>
       <span class="custom-rate-equals">=</span>
+      ${conflictHtml}
       <input type="number" step="0.0001" class="custom-rate-input" data-pair="${inputKey}" value="${val}" placeholder="rate">
       <span class="custom-rate-target">${RatesUtil.escapeHtml(displayTo)}</span>
-      ${conflictHtml}
     </div>`;
   }
   customRatesGrid.innerHTML = html;

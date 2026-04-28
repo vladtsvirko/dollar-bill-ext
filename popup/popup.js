@@ -1,5 +1,6 @@
 const enabledEl = document.getElementById('enabled');
 const rateCardsEl = document.getElementById('rateCards');
+const rateSearchEl = document.getElementById('rateSearch');
 const sourceTrigger = document.getElementById('sourceTrigger');
 const sourceNameEl = document.getElementById('sourceName');
 const sourceTimeEl = document.getElementById('sourceTime');
@@ -25,7 +26,7 @@ let currentConflicts = {};
 let addPairFormOpen = false;
 let selectedFrom = null;
 let selectedTo = null;
-
+let isRefreshing = false;
 // --- Theme ---
 
 const RESET_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>';
@@ -192,6 +193,7 @@ sourceDropdown.addEventListener('click', async (e) => {
 // --- Reload button ---
 
 async function refreshRates() {
+  isRefreshing = true;
   sourceReload.classList.add('loading');
   try {
     const { rates, fetchStatus } = await new Promise((resolve) => {
@@ -201,6 +203,7 @@ async function refreshRates() {
       currentRates = rates;
       currentConflicts = RatesUtil.getConflicts(rates);
       renderConflictBanner();
+      isRefreshing = false;
       renderRateCards(currentRates, currentSettings);
       renderSourceTimestamp(currentRates);
       if (converterInput.value.trim()) {
@@ -210,6 +213,9 @@ async function refreshRates() {
     renderFetchStatus(fetchStatus, rates || currentRates);
   } finally {
     sourceReload.classList.remove('loading');
+    isRefreshing = false;
+    // Re-render in case loading cards need to settle to no-rate state
+    renderRateCards(currentRates, currentSettings);
   }
 }
 
@@ -222,7 +228,14 @@ function renderSourceTimestamp(rates) {
 // --- Conflict banner ---
 
 function renderConflictBanner() {
+  const pairs = currentSettings.conversionPairs || [];
+  const pairKeys = new Set();
+  for (const p of pairs) {
+    pairKeys.add([p.from, p.to].sort().join(':'));
+  }
+
   const unresolvedCount = Object.keys(currentConflicts).filter(pairKey => {
+    if (!pairKeys.has(pairKey)) return false;
     return !RatesUtil.isConflictResolved(pairKey, currentSettings, currentRates);
   }).length;
 
@@ -260,7 +273,7 @@ function renderRateCards(cachedRates, settings) {
   const pairs = settings.conversionPairs || [];
   const currencies = settings.currencies || {};
 
-  if (pairs.length === 0 || !rates || Object.keys(rates).length === 0) {
+  if (pairs.length === 0) {
     rateCardsEl.innerHTML = '<div class="rate-card-skeleton">No rates available</div>';
     return;
   }
@@ -273,7 +286,29 @@ function renderRateCards(cachedRates, settings) {
     seen.add(pairKey);
 
     const rateInfo = RatesUtil.formatRateForDisplay(pair.from, pair.to, rates);
-    if (!rateInfo) continue;
+
+    if (!rateInfo) {
+      const loadingClass = isRefreshing ? ' rate-card-loading' : ' rate-card-no-rate';
+      const placeholder = isRefreshing ? 'Loading\u2026' : 'rate';
+      const disabled = isRefreshing ? ' disabled' : '';
+      cards.push(`
+      <div class="rate-card${loadingClass}" data-pair="${pair.from}:${pair.to}">
+        <div class="rate-card-left">
+          <div class="rate-card-flag">${RatesUtil.escapeHtml((currencies[pair.from] || {}).symbol || pair.from)}</div>
+          <div class="rate-card-label">1 <code>${pair.from}</code> =</div>
+        </div>
+        <div class="rate-card-right">
+          <div class="rate-input-group">
+            <input class="rate-card-value-input" type="text"
+              value="" placeholder="${placeholder}"
+              data-base="${pair.from}" data-quote="${pair.to}"${disabled}>
+            <span class="rate-input-code">${pair.to}</span>
+          </div>
+        </div>
+      </div>
+    `);
+      continue;
+    }
     const baseCur = currencies[rateInfo.base] || {};
     const baseSymbol = baseCur.symbol || rateInfo.base;
 
@@ -292,7 +327,7 @@ function renderRateCards(cachedRates, settings) {
     let sourceTag = '';
     if (isConflict) {
       const activeSource = RatesUtil.getActiveSourceForPair(customPairKey, reversePairKey, settings, cachedRates);
-      sourceTag = `<span class="rate-source-picker" data-pair="${customPairKey}" title="Click to change source">${RatesUtil.escapeHtml(RatesUtil.getSourceDisplayName(activeSource))}</span>`;
+      sourceTag = `<span class="rate-source-picker" data-pair="${customPairKey}" title="${RatesUtil.escapeHtml(RatesUtil.getSourceDisplayName(activeSource))}">${RatesUtil.escapeHtml(activeSource.toUpperCase())}</span>`;
     }
 
     cards.push(`
@@ -302,7 +337,6 @@ function renderRateCards(cachedRates, settings) {
           <div class="rate-card-label">1 <code>${rateInfo.base}</code> =</div>
         </div>
         <div class="rate-card-right">
-          ${sourceTag}
           <div class="rate-input-group">
             <input class="rate-card-value-input" type="text"
               value="${rateInfo.rate.toFixed(4)}"
@@ -311,13 +345,16 @@ function renderRateCards(cachedRates, settings) {
           </div>
           ${hasOverride ? `<button class="rate-card-reset" title="Reset to fetched rate" data-base="${rateInfo.base}" data-quote="${rateInfo.quote}">${RESET_SVG}</button>` : ''}
         </div>
+        ${sourceTag}
       </div>
     `);
   }
 
+  const savedScroll = rateCardsEl.scrollTop;
   rateCardsEl.innerHTML = cards.length
     ? cards.join('')
     : '<div class="rate-card-skeleton">No rates available</div>';
+  rateCardsEl.scrollTop = savedScroll;
 
   rateCardsEl.querySelectorAll('.rate-card-value-input').forEach(input => {
     input.addEventListener('change', handleCustomRateChange);
@@ -330,7 +367,31 @@ function renderRateCards(cachedRates, settings) {
   rateCardsEl.querySelectorAll('.rate-source-picker').forEach(el => {
     el.addEventListener('click', handleSourcePickerClick);
   });
+
+  // Re-apply current search filter
+  filterRateCards(rateSearchEl.value);
 }
+
+// --- Rate search ---
+
+function filterRateCards(query) {
+  const q = query.toLowerCase().trim();
+  rateCardsEl.querySelectorAll('.rate-card').forEach(card => {
+    if (!q) {
+      card.style.display = '';
+      return;
+    }
+    const base = (card.querySelector('.rate-card-label code') || {}).textContent || '';
+    const quote = (card.querySelector('.rate-input-code') || {}).textContent || '';
+    const symbol = (card.querySelector('.rate-card-flag') || {}).textContent || '';
+    const text = (base + ' ' + quote + ' ' + symbol).toLowerCase();
+    card.style.display = text.includes(q) ? '' : 'none';
+  });
+}
+
+rateSearchEl.addEventListener('input', () => {
+  filterRateCards(rateSearchEl.value);
+});
 
 async function handleSourcePickerClick(e) {
   const el = e.currentTarget;
@@ -363,9 +424,18 @@ async function handleSourcePickerClick(e) {
     </div>
   `;
 
+  // Position dropdown anchored to picker, but append to popup container
+  // to avoid clipping by overflow:hidden ancestors
+  const popupEl = document.querySelector('.popup');
+  const pickerRect = el.getBoundingClientRect();
+  const popupRect = popupEl.getBoundingClientRect();
+
+  dropdown.style.position = 'absolute';
+  dropdown.style.top = (pickerRect.bottom - popupRect.top + 4) + 'px';
+  dropdown.style.left = Math.max(0, Math.min(pickerRect.left - popupRect.left, popupRect.width - 200)) + 'px';
+
   el.classList.add('active');
-  el.style.overflow = 'visible';
-  el.appendChild(dropdown);
+  popupEl.appendChild(dropdown);
 
   const searchInput = dropdown.querySelector('.rate-source-picker-search');
   const listEl = dropdown.querySelector('.rate-source-picker-list');
@@ -380,7 +450,7 @@ async function handleSourcePickerClick(e) {
 
   // Close on outside click
   const closeHandler = (ev) => {
-    if (!el.contains(ev.target)) {
+    if (!dropdown.contains(ev.target) && !el.contains(ev.target)) {
       UICommon.closeAllSourcePickerDropdowns();
     }
   };
@@ -531,7 +601,10 @@ function renderCurrencyList(which, filter) {
   const listEl = document.getElementById(which + 'PickerList');
   if (!listEl) return;
   const selected = which === 'from' ? selectedFrom : selectedTo;
-  listEl.innerHTML = UICommon.renderCurrencyListHTML(currencies, selected, filter);
+  const availableCurrencies = currentRates
+    ? RatesUtil.getCurrencyRateAvailability(currentSettings, currentRates)
+    : null;
+  listEl.innerHTML = UICommon.renderCurrencyListHTML(currencies, selected, filter, availableCurrencies);
 }
 
 function bindAddPairEvents() {
@@ -628,7 +701,6 @@ async function handleAddPair() {
   const errorEl = document.getElementById('addPairError');
   errorEl.textContent = '';
   errorEl.style.display = 'none';
-
   if (!selectedFrom || !selectedTo) {
     errorEl.textContent = 'Select both currencies';
     errorEl.style.display = 'block';
@@ -649,7 +721,10 @@ async function handleAddPair() {
     return;
   }
 
-  pairs.push({ from: selectedFrom, to: selectedTo });
+  const newFrom = selectedFrom;
+  const newTo = selectedTo;
+
+  pairs.push({ from: newFrom, to: newTo });
   currentSettings.conversionPairs = pairs;
   await RatesUtil.saveSettings(currentSettings);
 
@@ -661,8 +736,11 @@ async function handleAddPair() {
 
   invalidateEffectiveRates();
   renderPairChips(currentSettings);
-  renderRateCards(currentRates, currentSettings);
   populateConverterSelects(currentSettings);
+
+  isRefreshing = true;
+  renderRateCards(currentRates, currentSettings);
+  refreshRates();
 }
 
 // --- Quick Convert ---

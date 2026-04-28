@@ -193,6 +193,13 @@
   background: transparent;
 }
 
+.currency-no-rate {
+  margin-left: auto;
+  font-size: 11px;
+  color: var(--text-tertiary);
+  white-space: nowrap;
+}
+
 /* ---- Rate source picker ---- */
 
 .rate-source-picker {
@@ -211,7 +218,7 @@
   font-family: var(--db-font);
   transition: all 0.15s ease;
   white-space: nowrap;
-  flex-shrink: 1;
+  flex-shrink: 0;
 }
 
 .rate-source-picker:hover {
