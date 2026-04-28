@@ -501,11 +501,6 @@ function renderDomainOverrides() {
   );
 }
 
-SiteFilter.populateDomainCurrencySelect(
-  document.getElementById('domainAddCurrency'),
-  currentSettings.currencies || {}
-);
-
 document.getElementById('domainAddBtn').addEventListener('click', () => {
   const input = document.getElementById('domainAddInput');
   const select = document.getElementById('domainAddCurrency');

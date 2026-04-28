@@ -5,12 +5,10 @@ const Settings = (() => {
     enabled: true,
     currencies: JSON.parse(JSON.stringify(Currencies.DEFAULT_CURRENCIES)),
     conversionPairs: [
-      { from: 'BYN', to: 'USD' },
-      { from: 'BYN', to: 'EUR' },
-      { from: 'RUB', to: 'USD' },
-      { from: 'RUB', to: 'EUR' },
+      { from: 'USD', to: 'EUR' },
+      { from: 'EUR', to: 'USD' },
     ],
-    rateSources: ['nbrb'],
+    rateSources: ['ecb'],
     rateSourceOverrides: {},
     customRates: {},
     domainCurrencyMap: {},
@@ -19,7 +17,7 @@ const Settings = (() => {
     theme: null,
     timeFormat: null,
     numberFormat: null,
-    _settingsVersion: 7,
+    _settingsVersion: 1,
   };
 
   async function getSettings() {
