@@ -187,6 +187,7 @@ sourceDropdown.addEventListener('click', async (e) => {
   await RatesUtil.saveSettings(currentSettings);
   renderSourceDropdown(currentSettings);
 
+  invalidateEffectiveRates();
   await refreshRates();
 });
 
@@ -233,7 +234,8 @@ function renderConflictBanner() {
   }
 
   const unresolvedCount = Object.keys(currentConflicts).filter(pairKey => {
-    if (!pairKeys.has(pairKey)) return false;
+    const reverseKey = pairKey.split(':').reverse().join(':');
+    if (!pairKeys.has(pairKey) && !pairKeys.has(reverseKey)) return false;
     return !RatesUtil.isConflictResolved(pairKey, currentSettings, currentRates);
   }).length;
 
@@ -251,25 +253,18 @@ function renderConflictBanner() {
 
 let effectiveRatesCache = null;
 let effectiveRatesInput = null;
-let availabilityCache = null;
 
 function getEffectiveRates(settings, cachedRates) {
   const key = cachedRates && cachedRates.timestamp;
   if (effectiveRatesCache && effectiveRatesInput === key) return effectiveRatesCache;
   effectiveRatesCache = RatesUtil.getEffectiveRates(settings, cachedRates);
   effectiveRatesInput = key;
-  availabilityCache = RatesUtil.getCurrencyRateAvailability(settings, cachedRates);
   return effectiveRatesCache;
 }
 
 function invalidateEffectiveRates() {
   effectiveRatesCache = null;
   effectiveRatesInput = null;
-  availabilityCache = null;
-}
-
-function getAvailability() {
-  return availabilityCache;
 }
 
 function renderRateCards(cachedRates, settings) {
@@ -430,7 +425,8 @@ async function handleSourcePickerClick(e) {
 
   dropdown.style.position = 'absolute';
   dropdown.style.top = (pickerRect.bottom - popupRect.top + 4) + 'px';
-  dropdown.style.left = Math.max(0, Math.min(pickerRect.left - popupRect.left, popupRect.width - 200)) + 'px';
+  const ddMinWidth = 180;
+  dropdown.style.left = Math.max(0, (pickerRect.right - popupRect.left) - ddMinWidth) + 'px';
 
   el.classList.add('active');
   popupEl.appendChild(dropdown);
@@ -486,6 +482,7 @@ async function handleCustomRateChange(e) {
   invalidateEffectiveRates();
   renderRateCards(currentRates, currentSettings);
   renderSourceTimestamp(currentRates);
+  renderConflictBanner();
 
   if (converterInput.value.trim()) {
     renderConverter(converterInput.value.trim(), currentRates, currentSettings);
@@ -504,6 +501,7 @@ async function handleCustomRateReset(e) {
   invalidateEffectiveRates();
   renderRateCards(currentRates, currentSettings);
   renderSourceTimestamp(currentRates);
+  renderConflictBanner();
 
   if (converterInput.value.trim()) {
     renderConverter(converterInput.value.trim(), currentRates, currentSettings);
@@ -527,6 +525,7 @@ function renderPairChips(settings) {
       await RatesUtil.saveSettings(currentSettings);
       renderPairChips(currentSettings);
       renderRateCards(currentRates, currentSettings);
+      renderConflictBanner();
       populateConverterSelects(currentSettings);
     });
   });
@@ -599,8 +598,7 @@ function renderCurrencyList(which, filter) {
   const listEl = document.getElementById(which + 'PickerList');
   if (!listEl) return;
   const selected = which === 'from' ? selectedFrom : selectedTo;
-  const availableCurrencies = getAvailability();
-  listEl.innerHTML = UICommon.renderCurrencyListHTML(currencies, selected, filter, availableCurrencies);
+  listEl.innerHTML = UICommon.renderCurrencyListHTML(currencies, selected, filter);
 }
 
 function bindAddPairEvents() {

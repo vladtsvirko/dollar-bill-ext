@@ -193,13 +193,6 @@
   background: transparent;
 }
 
-.currency-no-rate {
-  margin-left: auto;
-  font-size: 11px;
-  color: var(--text-tertiary);
-  white-space: nowrap;
-}
-
 /* ---- Rate source picker ---- */
 
 .rate-source-picker {
