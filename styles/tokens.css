@@ -1,0 +1,121 @@
+/* Dollar Bill — Design Tokens */
+/* Single source of truth for all CSS custom properties consumed by popup and options. */
+/* Injected pills (styles/injected.css) remain isolated with hardcoded values for safety. */
+
+/* --- Typography --- */
+:root {
+  --db-font: 'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --db-mono: 'DM Mono', 'SF Mono', 'Fira Code', 'Consolas', monospace;
+}
+
+/* --- Radii --- */
+:root {
+  --db-radius: 8px;
+  --db-radius-pill: 99px;
+}
+
+/* --- Z-index scale --- */
+:root {
+  --z-dropdown: 100;
+  --z-toast: 9999;
+}
+
+/* --- LIGHT THEME (default) --- */
+:root {
+  /* Text */
+  --text-primary: #1a1d1a;
+  --text-secondary: #6b7068;
+  --text-tertiary: #9ca39a;
+  --text-on-accent: #ffffff;
+
+  /* Backgrounds */
+  --bg-app: #ffffff;
+  --bg-section: #f6f7f5;
+  --bg-card: #f6f7f5;
+  --bg-card-hover: #eff0ed;
+  --bg-input: rgba(0,0,0,0.03);
+  --bg-input-focus: rgba(45,106,46,0.06);
+  --bg-chip: #e8ede8;
+  --bg-chip-hover: #dce3dc;
+  --bg-toggle: #d4d8d4;
+  --bg-toggle-active: #2d6a2e;
+  --bg-reset: #e8ede8;
+  --bg-reset-hover: #2d6a2e;
+
+  /* Accent */
+  --accent: #2d6a2e;
+  --accent-light: #3a8a3b;
+  --accent-muted: rgba(45,106,46,0.08);
+  --accent-glow: rgba(45,106,46,0.15);
+
+  /* Borders */
+  --border-default: #e0e3de;
+  --border-subtle: #eceee9;
+  --border-focus: #2d6a2e;
+
+  /* Status */
+  --color-error: #c44;
+  --color-error-dark: #a00;
+  --color-error-bg: rgba(200,50,50,0.15);
+  --color-warning: #d4a017;
+  --color-warning-text: #b58a10;
+  --color-warning-bg: rgba(212,160,23,0.1);
+  --color-warning-border: rgba(212,160,23,0.25);
+
+  /* Toggle */
+  --toggle-thumb-bg: var(--bg-app);
+
+  /* Shadows */
+  --shadow-dropdown: 0 4px 12px rgba(0,0,0,0.1);
+  --shadow-dropdown-lg: 0 8px 24px rgba(0,0,0,0.12);
+}
+
+/* --- DARK THEME --- */
+[data-theme="dark"] {
+  /* Text */
+  --text-primary: #e4e8e4;
+  --text-secondary: #8a908a;
+  --text-tertiary: #5a605a;
+  --text-on-accent: #111411;
+
+  /* Backgrounds */
+  --bg-app: #111411;
+  --bg-section: #171a17;
+  --bg-card: #1a1d1a;
+  --bg-card-hover: #222522;
+  --bg-input: rgba(255,255,255,0.04);
+  --bg-input-focus: rgba(45,106,46,0.12);
+  --bg-chip: #262926;
+  --bg-chip-hover: #2e322e;
+  --bg-toggle: #3a3d3a;
+  --bg-toggle-active: #3a8a3b;
+  --bg-reset: #2a2d2a;
+  --bg-reset-hover: #5cb85c;
+
+  /* Accent */
+  --accent: #5cb85c;
+  --accent-light: #6ecf6e;
+  --accent-muted: rgba(92,184,92,0.1);
+  --accent-glow: rgba(92,184,92,0.2);
+
+  /* Borders */
+  --border-default: #2a2d2a;
+  --border-subtle: #1f221f;
+  --border-focus: #5cb85c;
+
+  /* Status */
+  --color-error: #ef5350;
+  --color-error-dark: #c33;
+  --color-error-bg: rgba(239,83,80,0.15);
+  --color-warning: #d4a017;
+  --color-warning-text: #d4a017;
+  --color-warning-bg: rgba(212,160,23,0.08);
+  --color-warning-border: rgba(212,160,23,0.2);
+
+  /* Toggle */
+  --toggle-thumb-bg: var(--bg-app);
+
+  /* Shadows */
+  --shadow-dropdown: 0 4px 12px rgba(0,0,0,0.3);
+  --shadow-dropdown-lg: 0 8px 24px rgba(0,0,0,0.4);
+}

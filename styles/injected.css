@@ -1,4 +1,13 @@
 /* Dollar Bill — Injected Pill Styles */
+/* This file is injected into arbitrary pages and uses `all: initial` isolation with */
+/* hardcoded values (no CSS custom properties) to prevent host-page style leakage.    */
+/* Token names reference styles/tokens.css for maintainers:                            */
+/*   Accent green:   --accent (#2d6a2e light / #5cb85c dark)                          */
+/*   Warning gold:   --color-warning (#d4a017)                                         */
+/*   Warning text:   --color-warning-text (#b58a10)                                    */
+/*   Tooltip bg:     #1a1a1a                                                           */
+/*   Picker bar bg:  #1a1a1a                                                           */
+/*   Picker accent:  --accent                                                          */
 
 @keyframes db-fade-in {
   from { opacity: 0; transform: translateY(1px); }
