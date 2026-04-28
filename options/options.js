@@ -61,6 +61,7 @@ let currentRates = null;
 let currentFetchStatus = null;
 let editingCurrency = null;
 let autoSaveTimer = null;
+let optAvailabilityCache = null;
 
 // ---- Fetch Status ----
 
@@ -139,6 +140,7 @@ async function reloadRates() {
     if (rates) currentRates = rates;
     if (fetchStatus) currentFetchStatus = fetchStatus;
     if (loadedRates) currentLoadedRates = loadedRates;
+    if (currentRates) optAvailabilityCache = RatesUtil.getCurrencyRateAvailability(currentSettings, currentRates);
     renderFetchStatus(currentFetchStatus, currentRates);
     renderLoadedRates(currentLoadedRates);
     renderSourceErrors(currentLoadedRates);
@@ -363,6 +365,7 @@ function showSaveToast() {
 
 async function autoSave() {
   if (!currentSettings) return;
+  optAvailabilityCache = null;
 
   // Read custom rates from grid
   const customRates = {};
@@ -541,9 +544,7 @@ function renderOptCurrencyList(which, filter) {
   const listEl = document.getElementById(which === 'from' ? 'optFromList' : 'optToList');
   if (!listEl) return;
   const selected = which === 'from' ? optSelectedFrom : optSelectedTo;
-  const availableCurrencies = currentRates
-    ? RatesUtil.getCurrencyRateAvailability(currentSettings, currentRates)
-    : null;
+  const availableCurrencies = optAvailabilityCache;
   listEl.innerHTML = UICommon.renderCurrencyListHTML(currencies, selected, filter, availableCurrencies);
 }
 
@@ -1296,6 +1297,8 @@ async function loadSettings() {
     RatesUtil.getFetchStatus(),
     RatesUtil.getLoadedRates(),
   ]);
+
+  if (currentRates) optAvailabilityCache = RatesUtil.getCurrencyRateAvailability(currentSettings, currentRates);
 
   // Apply theme
   UICommon.applyTheme(UICommon.getEffectiveTheme(currentSettings));

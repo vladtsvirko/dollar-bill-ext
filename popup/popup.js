@@ -203,8 +203,6 @@ async function refreshRates() {
       currentRates = rates;
       currentConflicts = RatesUtil.getConflicts(rates);
       renderConflictBanner();
-      isRefreshing = false;
-      renderRateCards(currentRates, currentSettings);
       renderSourceTimestamp(currentRates);
       if (converterInput.value.trim()) {
         renderConverter(converterInput.value.trim(), currentRates, currentSettings);
@@ -253,18 +251,25 @@ function renderConflictBanner() {
 
 let effectiveRatesCache = null;
 let effectiveRatesInput = null;
+let availabilityCache = null;
 
 function getEffectiveRates(settings, cachedRates) {
   const key = cachedRates && cachedRates.timestamp;
   if (effectiveRatesCache && effectiveRatesInput === key) return effectiveRatesCache;
   effectiveRatesCache = RatesUtil.getEffectiveRates(settings, cachedRates);
   effectiveRatesInput = key;
+  availabilityCache = RatesUtil.getCurrencyRateAvailability(settings, cachedRates);
   return effectiveRatesCache;
 }
 
 function invalidateEffectiveRates() {
   effectiveRatesCache = null;
   effectiveRatesInput = null;
+  availabilityCache = null;
+}
+
+function getAvailability() {
+  return availabilityCache;
 }
 
 function renderRateCards(cachedRates, settings) {
@@ -291,8 +296,9 @@ function renderRateCards(cachedRates, settings) {
       const loadingClass = isRefreshing ? ' rate-card-loading' : ' rate-card-no-rate';
       const placeholder = isRefreshing ? 'Loading\u2026' : 'rate';
       const disabled = isRefreshing ? ' disabled' : '';
+      const symbol = (currencies[pair.from] || {}).symbol || pair.from;
       cards.push(`
-      <div class="rate-card${loadingClass}" data-pair="${pair.from}:${pair.to}">
+      <div class="rate-card${loadingClass}" data-pair="${pair.from}:${pair.to}" data-search="${pair.from.toLowerCase()} ${pair.to.toLowerCase()} ${RatesUtil.escapeHtml(symbol).toLowerCase()}">
         <div class="rate-card-left">
           <div class="rate-card-flag">${RatesUtil.escapeHtml((currencies[pair.from] || {}).symbol || pair.from)}</div>
           <div class="rate-card-label">1 <code>${pair.from}</code> =</div>
@@ -331,7 +337,7 @@ function renderRateCards(cachedRates, settings) {
     }
 
     cards.push(`
-      <div class="rate-card${hasOverride ? ' rate-card-custom' : ''}${isConflict && !hasOverride ? ' rate-card-conflict' : ''}" data-pair="${customPairKey}">
+      <div class="rate-card${hasOverride ? ' rate-card-custom' : ''}${isConflict && !hasOverride ? ' rate-card-conflict' : ''}" data-pair="${customPairKey}" data-search="${rateInfo.base.toLowerCase()} ${rateInfo.quote.toLowerCase()} ${RatesUtil.escapeHtml(baseSymbol).toLowerCase()}">
         <div class="rate-card-left">
           <div class="rate-card-flag">${RatesUtil.escapeHtml(baseSymbol)}</div>
           <div class="rate-card-label">1 <code>${rateInfo.base}</code> =</div>
@@ -377,15 +383,7 @@ function renderRateCards(cachedRates, settings) {
 function filterRateCards(query) {
   const q = query.toLowerCase().trim();
   rateCardsEl.querySelectorAll('.rate-card').forEach(card => {
-    if (!q) {
-      card.style.display = '';
-      return;
-    }
-    const base = (card.querySelector('.rate-card-label code') || {}).textContent || '';
-    const quote = (card.querySelector('.rate-input-code') || {}).textContent || '';
-    const symbol = (card.querySelector('.rate-card-flag') || {}).textContent || '';
-    const text = (base + ' ' + quote + ' ' + symbol).toLowerCase();
-    card.style.display = text.includes(q) ? '' : 'none';
+    card.style.display = (!q || (card.dataset.search || '').includes(q)) ? '' : 'none';
   });
 }
 
@@ -601,9 +599,7 @@ function renderCurrencyList(which, filter) {
   const listEl = document.getElementById(which + 'PickerList');
   if (!listEl) return;
   const selected = which === 'from' ? selectedFrom : selectedTo;
-  const availableCurrencies = currentRates
-    ? RatesUtil.getCurrencyRateAvailability(currentSettings, currentRates)
-    : null;
+  const availableCurrencies = getAvailability();
   listEl.innerHTML = UICommon.renderCurrencyListHTML(currencies, selected, filter, availableCurrencies);
 }
 
@@ -721,10 +717,7 @@ async function handleAddPair() {
     return;
   }
 
-  const newFrom = selectedFrom;
-  const newTo = selectedTo;
-
-  pairs.push({ from: newFrom, to: newTo });
+  pairs.push({ from: selectedFrom, to: selectedTo });
   currentSettings.conversionPairs = pairs;
   await RatesUtil.saveSettings(currentSettings);
 
