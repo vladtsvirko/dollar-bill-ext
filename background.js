@@ -1,4 +1,4 @@
-importScripts('lib/rates.js');
+importScripts('lib/currencies.js', 'lib/rate-sources.js', 'lib/settings.js', 'lib/rates.js');
 
 const ALARM_NAME = 'dollarbill-update-rates';
 const ALARM_INTERVAL_MIN = 30;

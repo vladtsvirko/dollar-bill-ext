@@ -30,31 +30,14 @@ let selectedTo = null;
 
 const RESET_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>';
 
-function applyTheme(theme) {
-  if (theme === 'dark') {
-    document.documentElement.setAttribute('data-theme', 'dark');
-  } else {
-    document.documentElement.removeAttribute('data-theme');
-  }
-}
-
-function detectSystemTheme() {
-  return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
-}
-
 function getThemeSetting() {
   return currentSettings && currentSettings.theme ? currentSettings.theme : '';
-}
-
-function getEffectiveTheme() {
-  const setting = getThemeSetting();
-  return setting ? setting : detectSystemTheme();
 }
 
 function setTheme(themeSetting) {
   if (!currentSettings) return;
   currentSettings.theme = themeSetting || null;
-  applyTheme(getEffectiveTheme());
+  UICommon.applyTheme(UICommon.getEffectiveTheme(currentSettings));
   renderThemeSegmented();
   RatesUtil.saveSettings(currentSettings);
 }
@@ -73,9 +56,9 @@ themeSegmented.addEventListener('click', (e) => {
   setTheme(btn.dataset.themeValue);
 });
 
-window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
+UICommon.watchSystemTheme(() => {
   if (!getThemeSetting()) {
-    applyTheme(detectSystemTheme());
+    UICommon.applyTheme(UICommon.detectSystemTheme());
   }
 });
 
@@ -357,7 +340,7 @@ async function handleSourcePickerClick(e) {
   if (!conflictData) return;
 
   // Close any existing dropdowns
-  closeAllSourcePickerDropdowns();
+  UICommon.closeAllSourcePickerDropdowns();
 
   const activeSource = RatesUtil.getActiveSourceForPair(customPairKey, customPairKey.split(':').reverse().join(':'), currentSettings, currentRates);
   const sourceIds = Object.keys(conflictData);
@@ -395,6 +378,14 @@ async function handleSourcePickerClick(e) {
     });
   });
 
+  // Close on outside click
+  const closeHandler = (ev) => {
+    if (!el.contains(ev.target)) {
+      UICommon.closeAllSourcePickerDropdowns();
+    }
+  };
+  UICommon.setSourcePickerCloseHandler(closeHandler);
+
   listEl.addEventListener('click', async (ev) => {
     const item = ev.target.closest('.rate-source-picker-item');
     if (!item) return;
@@ -404,30 +395,13 @@ async function handleSourcePickerClick(e) {
     currentSettings.rateSourceOverrides[customPairKey] = sourceId;
     await RatesUtil.saveSettings(currentSettings);
 
-    closeAllSourcePickerDropdowns();
+    UICommon.closeAllSourcePickerDropdowns();
     invalidateEffectiveRates();
     renderRateCards(currentRates, currentSettings);
     renderConflictBanner();
   });
 
   searchInput.focus();
-
-  // Close on outside click
-  const closeHandler = (ev) => {
-    if (!el.contains(ev.target)) {
-      closeAllSourcePickerDropdowns();
-      document.removeEventListener('click', closeHandler);
-    }
-  };
-  setTimeout(() => document.addEventListener('click', closeHandler), 0);
-}
-
-function closeAllSourcePickerDropdowns() {
-  document.querySelectorAll('.rate-source-picker-dropdown').forEach(d => d.remove());
-  document.querySelectorAll('.rate-source-picker.active').forEach(el => {
-    el.classList.remove('active');
-    el.style.overflow = '';
-  });
 }
 
 async function handleCustomRateChange(e) {
@@ -554,60 +528,10 @@ function renderAddPairForm() {
 
 function renderCurrencyList(which, filter) {
   const currencies = currentSettings.currencies || {};
-  const codes = Object.keys(currencies).sort();
-  const q = (filter || '').toLowerCase();
-  const filtered = codes.filter(code => {
-    const name = currencies[code].name || '';
-    return !q || code.toLowerCase().includes(q) || name.toLowerCase().includes(q);
-  });
-
   const listEl = document.getElementById(which + 'PickerList');
   if (!listEl) return;
-
   const selected = which === 'from' ? selectedFrom : selectedTo;
-
-  if (filtered.length === 0) {
-    listEl.innerHTML = '<div class="currency-picker-item empty">No results</div>';
-    return;
-  }
-
-  // When searching, show flat filtered list
-  if (q) {
-    listEl.innerHTML = filtered.map(code => {
-      const name = currencies[code].name || '';
-      const isSelected = code === selected ? ' selected' : '';
-      return `<div class="currency-picker-item${isSelected}" data-code="${code}">${code} - ${RatesUtil.escapeHtml(name)}</div>`;
-    }).join('');
-    return;
-  }
-
-  // When not searching, show popular currencies first, then alphabetical groups
-  const popularCodes = RatesUtil.POPULAR_CURRENCIES.filter(c => currencies[c]);
-  const remainingCodes = filtered.filter(c => !RatesUtil.POPULAR_CURRENCIES.includes(c));
-
-  let html = '';
-  if (popularCodes.length > 0) {
-    html += '<div class="currency-picker-group-label">Popular</div>';
-    for (const code of popularCodes) {
-      const name = currencies[code].name || '';
-      const isSelected = code === selected ? ' selected' : '';
-      html += `<div class="currency-picker-item${isSelected}" data-code="${code}">${code} - ${RatesUtil.escapeHtml(name)}</div>`;
-    }
-  }
-
-  let currentLetter = '';
-  for (const code of remainingCodes) {
-    const letter = code[0];
-    if (letter !== currentLetter) {
-      currentLetter = letter;
-      html += `<div class="currency-picker-group-label">${letter}</div>`;
-    }
-    const name = currencies[code].name || '';
-    const isSelected = code === selected ? ' selected' : '';
-    html += `<div class="currency-picker-item${isSelected}" data-code="${code}">${code} - ${RatesUtil.escapeHtml(name)}</div>`;
-  }
-
-  listEl.innerHTML = html;
+  listEl.innerHTML = UICommon.renderCurrencyListHTML(currencies, selected, filter);
 }
 
 function bindAddPairEvents() {
@@ -825,7 +749,7 @@ async function loadPopup() {
 
   enabledEl.checked = settings.enabled;
 
-  applyTheme(getEffectiveTheme());
+  UICommon.applyTheme(UICommon.getEffectiveTheme(currentSettings));
   renderThemeSegmented();
   renderSourceDropdown(settings);
   renderSourceTimestamp(rates);

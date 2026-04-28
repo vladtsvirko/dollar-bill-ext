@@ -251,23 +251,6 @@ toggleLoadedRatesBtn.addEventListener('click', () => {
 
 // ---- Theme ----
 
-function detectSystemTheme() {
-  return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
-}
-
-function getEffectiveTheme() {
-  if (currentSettings && currentSettings.theme) return currentSettings.theme;
-  return detectSystemTheme();
-}
-
-function applyTheme(theme) {
-  if (theme === 'dark') {
-    document.documentElement.setAttribute('data-theme', 'dark');
-  } else {
-    document.documentElement.removeAttribute('data-theme');
-  }
-}
-
 function renderThemeSelector() {
   const savedTheme = currentSettings ? currentSettings.theme : null;
   const activeValue = savedTheme === null ? '' : savedTheme;
@@ -276,9 +259,9 @@ function renderThemeSelector() {
   });
 }
 
-window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
+UICommon.watchSystemTheme(() => {
   if (!currentSettings || !currentSettings.theme) {
-    applyTheme(detectSystemTheme());
+    UICommon.applyTheme(UICommon.detectSystemTheme());
   }
 });
 
@@ -287,7 +270,7 @@ themeOptions.addEventListener('click', async (e) => {
   if (!btn) return;
   const value = btn.dataset.themeValue;
   currentSettings.theme = value === '' ? null : value;
-  applyTheme(getEffectiveTheme());
+  UICommon.applyTheme(UICommon.getEffectiveTheme(currentSettings));
   renderThemeSelector();
   await RatesUtil.saveSettings(currentSettings);
   showSaveToast();
@@ -338,13 +321,13 @@ numberOptions.addEventListener('click', async (e) => {
 
 // Listen for theme changes from popup
 chrome.storage.onChanged.addListener((changes, area) => {
-  if (area === 'local' && changes.dollarbill_settings) {
-    const newSettings = changes.dollarbill_settings.newValue;
+  if (area === 'local' && changes[Settings.SETTINGS_KEY]) {
+    const newSettings = changes[Settings.SETTINGS_KEY].newValue;
     if (newSettings && currentSettings) {
       const oldTheme = currentSettings.theme;
       currentSettings.theme = newSettings.theme;
       if (oldTheme !== newSettings.theme) {
-        applyTheme(getEffectiveTheme());
+        UICommon.applyTheme(UICommon.getEffectiveTheme(currentSettings));
         renderThemeSelector();
       }
       const oldTimeFormat = currentSettings.timeFormat;
@@ -556,60 +539,10 @@ function populatePairDropdowns() {
 
 function renderOptCurrencyList(which, filter) {
   const currencies = currentSettings.currencies || {};
-  const codes = Object.keys(currencies).sort();
-  const q = (filter || '').toLowerCase();
-  const filtered = codes.filter(code => {
-    const name = currencies[code].name || '';
-    return !q || code.toLowerCase().includes(q) || name.toLowerCase().includes(q);
-  });
-
   const listEl = document.getElementById(which === 'from' ? 'optFromList' : 'optToList');
   if (!listEl) return;
-
   const selected = which === 'from' ? optSelectedFrom : optSelectedTo;
-
-  if (filtered.length === 0) {
-    listEl.innerHTML = '<div class="currency-picker-item empty">No results</div>';
-    return;
-  }
-
-  // When searching, show flat filtered list
-  if (q) {
-    listEl.innerHTML = filtered.map(code => {
-      const name = currencies[code].name || '';
-      const isSelected = code === selected ? ' selected' : '';
-      return `<div class="currency-picker-item${isSelected}" data-code="${code}">${code} - ${RatesUtil.escapeHtml(name)}</div>`;
-    }).join('');
-    return;
-  }
-
-  // When not searching, show popular currencies first, then alphabetical groups
-  const popularCodes = RatesUtil.POPULAR_CURRENCIES.filter(c => currencies[c]);
-  const remainingCodes = filtered.filter(c => !RatesUtil.POPULAR_CURRENCIES.includes(c));
-
-  let html = '';
-  if (popularCodes.length > 0) {
-    html += '<div class="currency-picker-group-label">Popular</div>';
-    for (const code of popularCodes) {
-      const name = currencies[code].name || '';
-      const isSelected = code === selected ? ' selected' : '';
-      html += `<div class="currency-picker-item${isSelected}" data-code="${code}">${code} - ${RatesUtil.escapeHtml(name)}</div>`;
-    }
-  }
-
-  let currentLetter = '';
-  for (const code of remainingCodes) {
-    const letter = code[0];
-    if (letter !== currentLetter) {
-      currentLetter = letter;
-      html += `<div class="currency-picker-group-label">${letter}</div>`;
-    }
-    const name = currencies[code].name || '';
-    const isSelected = code === selected ? ' selected' : '';
-    html += `<div class="currency-picker-item${isSelected}" data-code="${code}">${code} - ${RatesUtil.escapeHtml(name)}</div>`;
-  }
-
-  listEl.innerHTML = html;
+  listEl.innerHTML = UICommon.renderCurrencyListHTML(currencies, selected, filter);
 }
 
 function initOptPickerEvents() {
@@ -764,29 +697,57 @@ function renderPreview() {
 
 function renderCurrencyLibrary() {
   const currencies = currentSettings.currencies;
-  const conflicts = RatesUtil.detectIdentifierConflicts(currencies);
-  const conflictIdentifiers = new Set(conflicts.map(c => c.identifier));
 
-  // Use the same owner map that detectIdentifierConflicts builds internally
+  // Build owner map once — derive both conflict info and id-to-codes mapping from it
   const ownerMap = RatesUtil.buildIdentifierOwnerMap(currencies);
   const idToCodes = {};
-  for (const [norm, entries] of Object.entries(ownerMap)) {
-    idToCodes[norm] = entries.map(e => e.code);
+  const conflictIdentifiers = new Set();
+  for (const [norm, ent] of Object.entries(ownerMap)) {
+    idToCodes[norm] = ent.map(e => e.code);
+    if (ent.length > 1) {
+      conflictIdentifiers.add(norm);
+    }
   }
 
   const entries = Object.entries(currencies).sort((a, b) => a[0].localeCompare(b[0]));
 
-  // Split into popular and remaining
+  // Build sets for categorization
+  const usedCodes = new Set();
+  for (const p of (currentSettings.conversionPairs || [])) {
+    usedCodes.add(p.from);
+    usedCodes.add(p.to);
+  }
+  const defaultCodes = new Set(Object.keys(RatesUtil.DEFAULT_CURRENCIES));
+
+  // Single-pass categorization — each currency goes into its highest-priority group only
+  const usedEntries = [];
+  const customEntries = [];
   const popularEntries = [];
   const remainingEntries = [];
+
   for (const entry of entries) {
-    if (RatesUtil.POPULAR_CURRENCIES.includes(entry[0])) {
+    const code = entry[0];
+    if (usedCodes.has(code)) {
+      usedEntries.push(entry);
+    } else if (!defaultCodes.has(code)) {
+      customEntries.push(entry);
+    } else if (Currencies.POPULAR_CURRENCIES.includes(code)) {
       popularEntries.push(entry);
     } else {
       remainingEntries.push(entry);
     }
   }
-  // Sort popular in POPULAR_CURRENCIES order
+
+  // Sort used in POPULAR_CURRENCIES order first, then alphabetical
+  usedEntries.sort((a, b) => {
+    const ai = RatesUtil.POPULAR_CURRENCIES.indexOf(a[0]);
+    const bi = RatesUtil.POPULAR_CURRENCIES.indexOf(b[0]);
+    if (ai !== -1 && bi !== -1) return ai - bi;
+    if (ai !== -1) return -1;
+    if (bi !== -1) return 1;
+    return a[0].localeCompare(b[0]);
+  });
+  customEntries.sort((a, b) => a[0].localeCompare(b[0]));
   popularEntries.sort((a, b) =>
     RatesUtil.POPULAR_CURRENCIES.indexOf(a[0]) - RatesUtil.POPULAR_CURRENCIES.indexOf(b[0])
   );
@@ -894,9 +855,29 @@ function renderCurrencyLibrary() {
     html += `<div class="conflict-legend">${count} identifier${count !== 1 ? 's are' : ' is'} shared between currencies and highlighted</div>`;
   }
 
-  // 4. Scrollable grid with popular-first grouping
+  // 4. Scrollable grid with categories
   html += '<div class="cur-lib-grid-wrap" id="curLibGridWrap">';
   html += '<div class="cur-lib-grid" id="curLibGrid">';
+
+  // Used group (currencies in conversion pairs)
+  if (usedEntries.length > 0) {
+    html += '<div class="cur-lib-group-label cur-lib-group-used" data-group=" Used">Used</div>';
+    html += '<div class="cur-lib-group-tiles">';
+    for (const [code, cur] of usedEntries) {
+      html += renderTile(code, cur);
+    }
+    html += '</div>';
+  }
+
+  // Custom group (user-added currencies)
+  if (customEntries.length > 0) {
+    html += '<div class="cur-lib-group-label cur-lib-group-custom" data-group=" Custom">Custom</div>';
+    html += '<div class="cur-lib-group-tiles">';
+    for (const [code, cur] of customEntries) {
+      html += renderTile(code, cur);
+    }
+    html += '</div>';
+  }
 
   // Popular group
   if (popularEntries.length > 0) {
@@ -1132,13 +1113,6 @@ function renderCustomRatesGrid() {
   });
 }
 
-function closeAllSourcePickerDropdowns() {
-  document.querySelectorAll('.rate-source-picker-dropdown').forEach(d => d.remove());
-  document.querySelectorAll('.rate-source-picker.active').forEach(el => {
-    el.classList.remove('active');
-  });
-}
-
 function handleSourcePickerClick(e) {
   const el = e.currentTarget;
   const customPairKey = el.dataset.pair;
@@ -1150,7 +1124,7 @@ function handleSourcePickerClick(e) {
   // Use the actual pairKey that exists in conflicts for saving overrides
   const resolvedPairKey = conflicts[customPairKey] ? customPairKey : reversePairKey;
 
-  closeAllSourcePickerDropdowns();
+  UICommon.closeAllSourcePickerDropdowns();
 
   const activeSource = RatesUtil.getActiveSourceForPair(customPairKey, reversePairKey, currentSettings, currentRates);
   const nf = currentSettings ? currentSettings.numberFormat : null;
@@ -1184,6 +1158,14 @@ function handleSourcePickerClick(e) {
 
   const listEl = dropdown.querySelector('.rate-source-picker-list');
 
+  // Close on outside click
+  const closeHandler = (ev) => {
+    if (!dropdown.contains(ev.target) && ev.target !== el) {
+      UICommon.closeAllSourcePickerDropdowns();
+    }
+  };
+  UICommon.setSourcePickerCloseHandler(closeHandler);
+
   listEl.addEventListener('click', async (ev) => {
     const item = ev.target.closest('.rate-source-picker-item');
     if (!item) return;
@@ -1194,18 +1176,9 @@ function handleSourcePickerClick(e) {
     await RatesUtil.saveSettings(currentSettings);
     showSaveToast();
 
-    closeAllSourcePickerDropdowns();
+    UICommon.closeAllSourcePickerDropdowns();
     renderCustomRatesGrid();
   });
-
-  // Close on outside click
-  const closeHandler = (ev) => {
-    if (!dropdown.contains(ev.target) && ev.target !== el) {
-      closeAllSourcePickerDropdowns();
-      document.removeEventListener('click', closeHandler);
-    }
-  };
-  setTimeout(() => document.addEventListener('click', closeHandler), 0);
 }
 
 // Custom rates search
@@ -1323,7 +1296,7 @@ async function loadSettings() {
   ]);
 
   // Apply theme
-  applyTheme(getEffectiveTheme());
+  UICommon.applyTheme(UICommon.getEffectiveTheme(currentSettings));
   renderThemeSelector();
   renderTimeFormatSelector();
   renderNumberFormatSelector();
