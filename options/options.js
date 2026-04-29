@@ -76,18 +76,33 @@ function showSaveToast() {
 async function autoSave() {
   if (!currentSettings) return;
   const customRates = {};
-  customRatesGrid.querySelectorAll('input[data-pair]').forEach((input) => {
-    const pair = input.dataset.pair;
-    const val = input.value.trim();
-    if (val) {
-      const num = parseFloat(val);
-      if (!isNaN(num) && num > 0) customRates[pair] = num;
+  // Collect amount + rate pairs from the grid
+  const rows = customRatesGrid.querySelectorAll('.custom-rate-row');
+  rows.forEach((row) => {
+    const amountInput = row.querySelector('.custom-rate-amount-input');
+    const rateInput = row.querySelector('.custom-rate-input');
+    if (!rateInput) return;
+    const pair = rateInput.dataset.pair;
+    const rateVal = rateInput.value.trim();
+    const amountVal = amountInput ? amountInput.value.trim() : '1';
+    if (rateVal) {
+      const num = parseFloat(rateVal);
+      const amt = parseFloat(amountVal) || 1;
+      if (!isNaN(num) && num > 0) {
+        customRates[pair] = { amount: amt, rate: num };
+      }
     }
   });
 
   currentSettings.rateSources = getCheckboxValues(rateSourceBoxes);
   currentSettings.customRates = customRates;
   currentSettings.siteMode = getRadioValue(siteModeRadios) || 'all';
+
+  // Auto-select custom source for newly added custom rates
+  for (const pairKey of Object.keys(customRates)) {
+    const [from, to] = pairKey.split(':');
+    RatesUtil.setSelection(currentSettings, from, to, RatesUtil.CUSTOM_SOURCE);
+  }
 
   await RatesUtil.saveSettings(currentSettings);
   showSaveToast();
@@ -458,10 +473,10 @@ function handleSourcePickerClick(e) {
   const el = e.currentTarget;
   const customPairKey = el.dataset.pair;
   const reversePairKey = customPairKey.split(':').reverse().join(':');
-  const conflicts = RatesUtil.getConflicts(currentRates);
+  const effectiveRates = currentRates ? RatesUtil.getEffectiveRates(currentSettings, currentRates) : {};
+  const conflicts = RatesUtil.getConflicts(effectiveRates);
   const conflictData = conflicts[customPairKey] || conflicts[reversePairKey];
   if (!conflictData) return;
-  const resolvedPairKey = conflicts[customPairKey] ? customPairKey : reversePairKey;
 
   SourcePicker.createDropdown({
     el,
@@ -469,10 +484,9 @@ function handleSourcePickerClick(e) {
     conflictData,
     activeSource: RatesUtil.getActiveSourceForPair(customPairKey, reversePairKey, currentSettings, currentRates),
     settings: currentSettings,
-    rates: currentRates,
     onSelected: async (sourceId) => {
-      if (!currentSettings.rateSourceOverrides) currentSettings.rateSourceOverrides = {};
-      currentSettings.rateSourceOverrides[resolvedPairKey] = sourceId;
+      const [from, to] = customPairKey.split(':');
+      RatesUtil.setSelection(currentSettings, from, to, sourceId);
       await RatesUtil.saveSettings(currentSettings);
       showSaveToast();
       renderCustomRatesGrid();

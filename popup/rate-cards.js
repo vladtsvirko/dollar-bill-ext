@@ -19,6 +19,7 @@ const RateCards = (() => {
 
   function render({ rateCardsEl, rateSearchEl, cachedRates, settings, currentConflicts, isRefreshing, onCustomRateChange, onCustomRateReset, onSourcePickerClick }) {
     const rates = getEffectiveRates(settings, cachedRates);
+    const selections = settings.rateSourceSelections || [];
     const pairs = settings.conversionPairs || [];
     const currencies = settings.currencies || {};
 
@@ -78,11 +79,16 @@ const RateCards = (() => {
         sourceTag = `<span class="rate-source-picker" data-pair="${customPairKey}" title="${FormatUtils.escapeHtml(RateSources.getSourceDisplayName(activeSource))}">${FormatUtils.escapeHtml(activeSource.toUpperCase())}</span>`;
       }
 
+      // Use display amount from rateInfo if available
+      const displayAmount = rateInfo.amount || 1;
+      const labelPrefix = displayAmount !== 1 ? `${displayAmount} ` : '';
+      const typeBadge = rateInfo.type ? `<span class="rate-type-badge">${rateInfo.type}</span>` : '';
+
       cards.push(`
         <div class="rate-card${hasOverride ? ' rate-card-custom' : ''}${isConflict && !hasOverride ? ' rate-card-conflict' : ''}" data-pair="${customPairKey}" data-search="${rateInfo.base.toLowerCase()} ${rateInfo.quote.toLowerCase()} ${FormatUtils.escapeHtml(baseSymbol).toLowerCase()}">
           <div class="rate-card-left">
             <div class="rate-card-flag">${FormatUtils.escapeHtml(baseSymbol)}</div>
-            <div class="rate-card-label">1 <code>${rateInfo.base}</code> =</div>
+            <div class="rate-card-label">${labelPrefix}<code>${rateInfo.base}</code> =</div>
           </div>
           <div class="rate-card-right">
             <div class="rate-input-group">
@@ -91,6 +97,7 @@ const RateCards = (() => {
                 data-base="${rateInfo.base}" data-quote="${rateInfo.quote}">
               <span class="rate-input-code">${rateInfo.quote}</span>
             </div>
+            ${typeBadge}
             ${hasOverride ? `<button class="rate-card-reset" title="${I18n.t('options.resetToFetchedRate')}" data-base="${rateInfo.base}" data-quote="${rateInfo.quote}">${RESET_SVG}</button>` : ''}
           </div>
           ${sourceTag}

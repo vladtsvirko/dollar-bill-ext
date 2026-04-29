@@ -1,0 +1,57 @@
+{
+	"USD": {
+		"BYN":{
+			"nbrb":{
+				"amount":1,
+				"rate":3.177,
+				"type": "plain" // plain is the rate that we got explicitly from the source
+			}
+		},
+		"JPY":{
+			"ecb":{
+				"amount":1,
+				"rate":142.83,
+				"type": "cross" //cross is the rate that we got from chaining rates from the source
+			}
+		}
+	},
+	"BYN":{
+		"USD":{
+			"nbrb":{
+				"amount":1,
+				"rate":0.31476,
+				"type":"plain_inversed" // plain_inversed is the rate that we got inversing plain rate (in this case amount/rate of USD->BYN pair from nbrb source)
+			}
+		},
+		"JPY": {
+			"nbrb":{
+				"amount":1,
+				"rate":46.39,
+				"type": "plain_inversed"
+			}
+		}
+	},
+	"JPY":{
+		"BYN":{
+			"nbrb":{
+				"amount":100,
+				"rate":2.1556,
+				"type": "plain"
+			},
+			"custom":{ //custom is one more source
+				"amount":10,
+				"rate": 0.21556,
+				"type": "plain"
+			}
+		}
+	},
+	"EUR":{
+		"BYN":{
+			"nbrb":{
+				"amount":1,
+				"rate":3.4651,
+				"type":"plain"
+			}
+		}
+	}
+}

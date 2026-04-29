@@ -23,7 +23,8 @@ const Preview = (() => {
         const tcCur = currencies[tc] || {};
         const tcSymbol = tcCur.symbol || tc;
         const converted = amount * (1 + Math.random() * 0.5);
-        html += ` <span class="db-pill">${tcSymbol}${FormatUtils.formatNumber(converted, 2, nf)}</span>`;
+        // New pill format: amount FROM = rate TO
+        html += ` <span class="db-pill">${amount} ${srcCode} = ${tcSymbol}${FormatUtils.formatNumber(converted, 2, nf)}</span>`;
       }
       examples.push(html);
     }

@@ -1,5 +1,5 @@
 const SourcePicker = (() => {
-  function createDropdown({ el, customPairKey, conflictData, activeSource, settings, rates, onSelected, appendTo }) {
+  function createDropdown({ el, customPairKey, conflictData, activeSource, settings, onSelected, appendTo }) {
     UICommon.closeAllSourcePickerDropdowns();
 
     const nf = settings ? settings.numberFormat : null;
@@ -11,11 +11,18 @@ const SourcePicker = (() => {
       <div class="rate-source-picker-list">
         ${sourceIds.map(id => {
           const isActive = id === activeSource;
-          const rate = conflictData[id];
+          const entry = conflictData[id];
+          let rateStr = '';
+          if (entry && typeof entry === 'object' && entry.rate !== undefined) {
+            rateStr = `${entry.amount || 1} ${customPairKey.split(':')[0]} = ${FormatUtils.formatNumber(entry.rate, 4, nf)} ${customPairKey.split(':')[1]}`;
+            if (entry.type) rateStr += ` (${entry.type})`;
+          } else if (typeof entry === 'number') {
+            rateStr = FormatUtils.formatNumber(entry, 4, nf);
+          }
           return `<div class="rate-source-picker-item${isActive ? ' active' : ''}" data-source-id="${id}" data-label="${FormatUtils.escapeHtml(RateSources.getSourceDisplayName(id).toLowerCase())}">
             <span class="rate-source-picker-item-check"></span>
             <span class="rate-source-picker-item-label">${FormatUtils.escapeHtml(RateSources.getSourceDisplayName(id))}</span>
-            <span class="rate-source-picker-item-rate">${rate ? FormatUtils.formatNumber(rate, 4, nf) : ''}</span>
+            <span class="rate-source-picker-item-rate">${FormatUtils.escapeHtml(rateStr)}</span>
           </div>`;
         }).join('')}
       </div>

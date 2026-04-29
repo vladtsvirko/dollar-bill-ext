@@ -31,10 +31,19 @@ const LoadedRates = (() => {
       html += `<div class="loaded-rates-meta">${FormatUtils.escapeHtml(sourceName)} &middot; ${entries.length} ${I18n.t('fetchStatus.currencies')}${rateDateMeta}${age ? ' &middot; ' + I18n.t('fetchStatus.fetchedAgo', { age: FormatUtils.escapeHtml(age) }) : ''}</div>`;
       html += '<div class="loaded-rates-grid">';
       html += `<div class="loaded-rates-header"><span>${I18n.t('loadedRates.code')}</span><span>${I18n.t('loadedRates.baseRate', { base: FormatUtils.escapeHtml(base) })}</span></div>`;
-      for (const [code, rate] of entries) {
-        const displayRate = convention === 'direct'
-          ? (rate > 0 ? FormatUtils.formatNumber(1 / rate, 4, nf) : '&mdash;')
-          : (rate > 0 ? FormatUtils.formatNumber(rate, 4, nf) : '&mdash;');
+      for (const [code, rateData] of entries) {
+        let displayRate;
+        if (typeof rateData === 'object' && rateData !== null && rateData.rate !== undefined) {
+          // New format: { rate, amount }
+          const amount = rateData.amount || 1;
+          displayRate = `${amount} ${code} = ${FormatUtils.formatNumber(rateData.rate, 4, nf)} ${base}`;
+        } else {
+          // Legacy format: plain number
+          const rate = rateData;
+          displayRate = convention === RateSources.CONVENTION.DIRECT
+            ? (rate > 0 ? FormatUtils.formatNumber(1 / rate, 4, nf) : '\u2014')
+            : (rate > 0 ? FormatUtils.formatNumber(rate, 4, nf) : '\u2014');
+        }
         html += `<div class="loaded-rates-row"><span class="loaded-rates-code">${FormatUtils.escapeHtml(code)}</span><span class="loaded-rates-value">${displayRate}</span></div>`;
       }
       html += '</div>';

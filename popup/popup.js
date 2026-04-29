@@ -146,7 +146,7 @@ async function refreshRates() {
     });
     if (rates) {
       currentRates = rates;
-      currentConflicts = RatesUtil.getConflicts(rates);
+      currentConflicts = RatesUtil.getEffectiveConflicts(currentSettings, currentRates);
       renderConflictBanner();
       renderSourceTimestamp(currentRates);
       if (converterInput.value.trim()) {
@@ -177,7 +177,8 @@ function renderConflictBanner() {
   const unresolvedCount = Object.keys(currentConflicts).filter(pairKey => {
     const reverseKey = pairKey.split(':').reverse().join(':');
     if (!pairKeys.has(pairKey) && !pairKeys.has(reverseKey)) return false;
-    return !RatesUtil.isConflictResolved(pairKey, currentSettings, currentRates);
+    const [from, to] = pairKey.split(':');
+    return !RatesUtil.findSelection(from, to, currentSettings.rateSourceSelections);
   }).length;
 
   if (unresolvedCount > 0) {
@@ -200,7 +201,11 @@ async function handleCustomRateChange(e) {
   if (isNaN(val) || val <= 0) return;
 
   if (!currentSettings.customRates) currentSettings.customRates = {};
-  currentSettings.customRates[`${base}:${quote}`] = val;
+  currentSettings.customRates[`${base}:${quote}`] = { amount: 1, rate: val };
+
+  // Auto-select custom source if no selection exists for this pair
+  RatesUtil.setSelection(currentSettings, base, quote, RatesUtil.CUSTOM_SOURCE);
+
   await RatesUtil.saveSettings(currentSettings);
 
   RateCards.invalidateCache();
@@ -220,6 +225,7 @@ async function handleCustomRateReset(e) {
 
   if (!currentSettings.customRates) return;
   delete currentSettings.customRates[`${base}:${quote}`];
+  // Don't remove the selection — resolveActiveEntry will fall through to next source
   await RatesUtil.saveSettings(currentSettings);
 
   RateCards.invalidateCache();
@@ -236,7 +242,9 @@ async function handleSourcePickerClick(e) {
   const el = e.currentTarget;
   const customPairKey = el.dataset.pair;
   const reversePairKey = customPairKey.split(':').reverse().join(':');
-  const conflictData = currentConflicts[customPairKey] || currentConflicts[reversePairKey];
+  const effectiveRates = RateCards.getEffectiveRates(currentSettings, currentRates);
+  const allConflicts = RatesUtil.getConflicts(effectiveRates);
+  const conflictData = allConflicts[customPairKey] || allConflicts[reversePairKey];
   if (!conflictData) return;
 
   SourcePicker.createDropdown({
@@ -245,14 +253,13 @@ async function handleSourcePickerClick(e) {
     conflictData,
     activeSource: RatesUtil.getActiveSourceForPair(customPairKey, reversePairKey, currentSettings, currentRates),
     settings: currentSettings,
-    rates: currentRates,
     appendTo: document.querySelector('.popup'),
     onSelected: async (sourceId) => {
-      if (!currentSettings.rateSourceOverrides) currentSettings.rateSourceOverrides = {};
-      currentSettings.rateSourceOverrides[customPairKey] = sourceId;
+      const [from, to] = customPairKey.split(':');
+      RatesUtil.setSelection(currentSettings, from, to, sourceId);
       await RatesUtil.saveSettings(currentSettings);
       RateCards.invalidateCache();
-      RateCards.render({ rateCardsEl, rateSearchEl, cachedRates: currentRates, settings: currentSettings, currentConflicts, isRefreshing, onCustomRateChange: handleCustomRateChange, onCustomRateReset: handleCustomRateReset, onSourcePickerClick: handleSourcePickerClick });
+      RateCards.render({ rateCardsEl, rateSearchEl, cachedRates: currentRates, settings: currentSettings, currentConflicts, onCustomRateChange: handleCustomRateChange, onCustomRateReset: handleCustomRateReset, onSourcePickerClick: handleSourcePickerClick });
       renderConflictBanner();
     },
   });
@@ -428,7 +435,7 @@ async function loadPopup() {
 
   currentSettings = settings;
   currentRates = rates;
-  currentConflicts = RatesUtil.getConflicts(rates);
+  currentConflicts = RatesUtil.getEffectiveConflicts(currentSettings, currentRates);
 
   await I18n.init(settings.language);
   I18n.applyToPage();

@@ -74,11 +74,18 @@
   }
 
   function getRatesForConversion(settings, cachedRates) {
+    const rates = RatesUtil.getEffectiveRates(settings, cachedRates);
+    const selections = settings.rateSourceSelections || [];
+    const displayInfo = RatesUtil.getDisplayInfoMap(rates, selections);
+    const usedSources = RatesUtil.getUsedSources(cachedRates);
+    const conflicts = RatesUtil.getConflicts(rates);
+
     return {
-      rates: RatesUtil.getEffectiveRates(settings, cachedRates),
-      conflicts: RatesUtil.getConflicts(cachedRates),
-      usedSources: RatesUtil.getUsedSources(cachedRates),
-      overrides: settings.rateSourceOverrides || {},
+      rates,
+      displayInfo,
+      usedSources,
+      selections,
+      conflicts,
     };
   }
 

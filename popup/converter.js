@@ -42,7 +42,8 @@ const PopupConverter = (() => {
     }
 
     const rates = getEffectiveRates(settings, cachedRates);
-    const converted = RateTables.convert(amount, from, to, rates);
+    const selections = settings.rateSourceSelections || [];
+    const converted = RateTables.convert(amount, from, to, rates, selections);
     if (converted === null) {
       converterResult.innerHTML = '';
       return;

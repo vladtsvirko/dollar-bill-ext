@@ -1,5 +1,11 @@
 const RateTables = (() => {
-  const META_KEYS = new Set(['timestamp', '_conflicts', '_usedSources', '_sourceErrors']);
+  const META_KEYS = new Set(['timestamp', '_usedSources', '_sourceErrors']);
+
+  const RATE_TYPE = { PLAIN: 'plain', PLAIN_INVERSED: 'plain_inversed', CROSS: 'cross' };
+  const CUSTOM_SOURCE = 'custom';
+
+  // Type preference order for auto-selection: plain > plain_inversed > cross
+  const TYPE_PREFERENCE = { plain: 1, plain_inversed: 2, cross: 3 };
 
   function getSourceCurrencies(settings) {
     return [...new Set((settings.conversionPairs || []).map(p => p.from))];
@@ -28,8 +34,54 @@ const RateTables = (() => {
     return map;
   }
 
-  function buildRateTable(baseRates, sources, targets) {
+  // --- Resolution helpers ---
+
+  function findSelection(from, to, selections) {
+    if (!selections) return null;
+    return selections.find(s => (s.from === from && s.to === to) || (s.from === to && s.to === from)) || null;
+  }
+
+  function setSelection(settings, from, to, sourceId) {
+    if (!settings.rateSourceSelections) settings.rateSourceSelections = [];
+    const idx = settings.rateSourceSelections.findIndex(s => s.from === from && s.to === to);
+    if (idx >= 0) {
+      settings.rateSourceSelections[idx].source = sourceId;
+    } else {
+      settings.rateSourceSelections.push({ from, to, source: sourceId });
+    }
+  }
+
+  function resolveActiveEntry(from, to, sourceMap, selections, usedSources) {
+    if (!sourceMap || Object.keys(sourceMap).length === 0) return null;
+
+    // 1. Check user selection
+    const sel = findSelection(from, to, selections);
+    if (sel && sourceMap[sel.source]) return { ...sourceMap[sel.source], source: sel.source };
+
+    // 2. Auto-select by preference: custom > plain > plain_inversed > cross
+    let best = null;
+    let bestPriority = Infinity;
+
+    const sourceOrder = usedSources || Object.keys(sourceMap);
+    for (const sourceId of sourceOrder) {
+      const entry = sourceMap[sourceId];
+      if (!entry) continue;
+      const priority = TYPE_PREFERENCE[entry.type] !== undefined ? TYPE_PREFERENCE[entry.type] : 99;
+      if (priority < bestPriority) {
+        bestPriority = priority;
+        best = sourceId;
+      }
+    }
+
+    if (best && sourceMap[best]) return { ...sourceMap[best], source: best };
+    return null;
+  }
+
+  // --- Build rate table from a single source ---
+
+  function buildRateTable(baseRates, sources, targets, sourceId) {
     const { base, rates } = baseRates;
+    const convention = baseRates.convention;
     const result = {};
     const all = [...new Set([...sources, ...targets])];
     if (!all.includes(base)) all.push(base);
@@ -40,78 +92,86 @@ const RateTables = (() => {
 
     for (let i = 0; i < all.length; i++) {
       for (let j = i + 1; j < all.length; j++) {
-        const from = all[i];
-        const to = all[j];
-        const fromInBase = rates[from];
-        const toInBase = rates[to];
-        if (fromInBase == null || toInBase == null) continue;
+        const c1 = all[i];
+        const c2 = all[j];
+        const c1Data = rates[c1];
+        const c2Data = rates[c2];
+        if (c1Data == null || c2Data == null) continue;
 
-        let crossRate;
-        if (baseRates.convention === 'indirect') {
-          crossRate = toInBase / fromInBase;
-        } else {
-          crossRate = fromInBase / toInBase;
-        }
+        // Skip if same as base (no conversion needed for base→base)
+        const c1IsBase = c1 === base;
+        const c2IsBase = c2 === base;
 
-        if (crossRate >= 1) {
-          result[from][to] = crossRate;
+        if (c1IsBase || c2IsBase) {
+          // Direct pair with base currency — identify non-base currency
+          const nonBase = c1IsBase ? c2 : c1;
+          const nonBaseData = c1IsBase ? c2Data : c1Data;
+
+          if (convention === RateSources.CONVENTION.DIRECT) {
+            // rates[nonBase]={rate:X,amount:A} means A nonBase = X base
+            result[nonBase][base] = { [sourceId]: { amount: nonBaseData.amount, rate: nonBaseData.rate, type: RATE_TYPE.PLAIN } };
+            result[base][nonBase] = { [sourceId]: { amount: 1, rate: nonBaseData.amount / nonBaseData.rate, type: RATE_TYPE.PLAIN_INVERSED } };
+          } else {
+            // Indirect: rates[nonBase]={rate:X,amount:A} means 1 base = X/A nonBase
+            result[base][nonBase] = { [sourceId]: { amount: 1, rate: nonBaseData.rate / nonBaseData.amount, type: RATE_TYPE.PLAIN } };
+            result[nonBase][base] = { [sourceId]: { amount: 1, rate: nonBaseData.amount / nonBaseData.rate, type: RATE_TYPE.PLAIN_INVERSED } };
+          }
         } else {
-          result[to][from] = 1 / crossRate;
+          // Cross-rate between two non-base currencies
+          let crossRate;
+          if (convention === RateSources.CONVENTION.DIRECT) {
+            // c1→base rate (per-unit) = c1Data.rate / c1Data.amount
+            // c2→base rate (per-unit) = c2Data.rate / c2Data.amount
+            // c1→c2 = (c1→base) / (c2→base) = (c1Data.rate/c1Data.amount) / (c2Data.rate/c2Data.amount)
+            crossRate = (c1Data.rate / c1Data.amount) / (c2Data.rate / c2Data.amount);
+          } else {
+            // Indirect: rates[c1] means 1 base = c1Data.rate/c1Data.amount c1
+            // base→c1 (per-unit) = c1Data.rate / c1Data.amount
+            // base→c2 (per-unit) = c2Data.rate / c2Data.amount
+            // c1→c2 = (base→c2) / (base→c1) = (c2Data.rate/c2Data.amount) / (c1Data.rate/c1Data.amount)
+            crossRate = (c2Data.rate / c2Data.amount) / (c1Data.rate / c1Data.amount);
+          }
+
+          if (crossRate >= 1) {
+            result[c1][c2] = { [sourceId]: { amount: 1, rate: crossRate, type: RATE_TYPE.CROSS } };
+            result[c2][c1] = { [sourceId]: { amount: 1, rate: 1 / crossRate, type: RATE_TYPE.CROSS } };
+          } else {
+            result[c2][c1] = { [sourceId]: { amount: 1, rate: 1 / crossRate, type: RATE_TYPE.CROSS } };
+            result[c1][c2] = { [sourceId]: { amount: 1, rate: crossRate, type: RATE_TYPE.CROSS } };
+          }
         }
       }
     }
+
     return result;
   }
 
   function buildMergedRateTable(sourceRatesMap, orderedSourceIds, sourceCurrencies, targetCurrencies) {
     const all = [...new Set([...sourceCurrencies, ...targetCurrencies])];
-
     const rateTables = {};
     for (const sourceId of Object.keys(sourceRatesMap)) {
       const baseRates = sourceRatesMap[sourceId];
       if (!all.includes(baseRates.base)) all.push(baseRates.base);
-      rateTables[sourceId] = buildRateTable(baseRates, sourceCurrencies, targetCurrencies);
+      rateTables[sourceId] = buildRateTable(baseRates, sourceCurrencies, targetCurrencies, sourceId);
     }
 
     const merged = {};
     for (const c of all) merged[c] = {};
 
-    const pairSources = {};
     for (const [sourceId, table] of Object.entries(rateTables)) {
       for (const [from, toMap] of Object.entries(table)) {
-        for (const [to, rate] of Object.entries(toMap)) {
-          const key = `${from}:${to}`;
-          if (!pairSources[key]) pairSources[key] = {};
-          pairSources[key][sourceId] = rate;
+        for (const [to, sourceMap] of Object.entries(toMap)) {
+          if (!merged[from]) merged[from] = {};
+          if (!merged[from][to]) merged[from][to] = {};
+          Object.assign(merged[from][to], sourceMap);
         }
       }
     }
 
-    const conflicts = {};
-    const activeSourceIds = orderedSourceIds.filter(id => rateTables[id]);
-
-    for (const [pairKey, sourcesMap] of Object.entries(pairSources)) {
-      const [from, to] = pairKey.split(':');
-      const providingSources = Object.keys(sourcesMap);
-
-      if (providingSources.length === 1) {
-        merged[from][to] = sourcesMap[providingSources[0]];
-      } else {
-        const rates = Object.values(sourcesMap);
-        const allSame = rates.every(r => Math.abs(r - rates[0]) < 1e-10);
-
-        if (allSame) {
-          merged[from][to] = rates[0];
-        } else {
-          const defaultSource = activeSourceIds.find(id => sourcesMap[id] !== undefined) || providingSources[0];
-          merged[from][to] = sourcesMap[defaultSource];
-          conflicts[pairKey] = { ...sourcesMap };
-        }
-      }
-    }
-
-    return { rates: merged, conflicts };
+    return { rates: merged };
   }
+
+  // --- Custom rates ---
 
   function getCustomRates(settings) {
     const c = settings.customRates || {};
@@ -127,62 +187,132 @@ const RateTables = (() => {
       if (val == null) continue;
       const parts = key.split(':');
       if (parts.length !== 2) continue;
-      let [from, to] = parts;
-      let rate = val;
-      if (rate > 0 && rate < 1) {
-        [from, to] = [to, from];
-        rate = 1 / rate;
+      const [rawFrom, rawTo] = parts;
+
+      let amount, rate;
+      if (typeof val === 'number') {
+        // Legacy format
+        amount = 1;
+        rate = val;
+      } else {
+        amount = val.amount || 1;
+        rate = val.rate;
       }
+
+      let from = rawFrom, to = rawTo;
+      // Normalize so rate per-unit >= 1
+      const perUnit = rate / amount;
+      if (perUnit > 0 && perUnit < 1) {
+        [from, to] = [to, from];
+        rate = amount / rate;
+        amount = 1;
+      }
+
       if (!result[from]) result[from] = {};
-      result[from][to] = rate;
+      result[from][to] = { [CUSTOM_SOURCE]: { amount, rate, type: RATE_TYPE.PLAIN } };
     }
     return result;
   }
+
+  // --- Deep clone ---
 
   function deepCloneRateTable(table) {
     const clone = {};
     for (const [from, toMap] of Object.entries(table)) {
       if (META_KEYS.has(from)) continue;
-      clone[from] = { ...toMap };
+      clone[from] = {};
+      if (toMap && typeof toMap === 'object') {
+        for (const [to, sourceMap] of Object.entries(toMap)) {
+          if (sourceMap && typeof sourceMap === 'object') {
+            clone[from][to] = {};
+            for (const [sourceId, entry] of Object.entries(sourceMap)) {
+              clone[from][to][sourceId] = { ...entry };
+            }
+          }
+        }
+      }
     }
     return clone;
   }
+
+  // --- Cache validity ---
 
   function isCacheValid(rates, ttlMs = 30 * 60 * 1000) {
     if (!rates || !rates.timestamp) return false;
     return Date.now() - rates.timestamp < ttlMs;
   }
 
-  function getEffectiveRates(settings, cachedApiRates) {
-    const base = (cachedApiRates && isCacheValid(cachedApiRates))
-      ? deepCloneRateTable(cachedApiRates)
-      : {};
-
-    if (cachedApiRates && cachedApiRates._conflicts) {
-      const overrides = settings.rateSourceOverrides || {};
-      for (const [pairKey, sourceRates] of Object.entries(cachedApiRates._conflicts)) {
-        const overrideSource = overrides[pairKey];
-        if (overrideSource && sourceRates[overrideSource] !== undefined) {
-          const [from, to] = pairKey.split(':');
-          if (!base[from]) base[from] = {};
-          base[from][to] = sourceRates[overrideSource];
+  function isNewRateFormat(rates) {
+    if (!rates) return false;
+    // Check first non-meta key for source-tagged structure
+    for (const [from, toMap] of Object.entries(rates)) {
+      if (META_KEYS.has(from)) continue;
+      if (!toMap || typeof toMap !== 'object') continue;
+      for (const [to, sourceMap] of Object.entries(toMap)) {
+        if (!sourceMap || typeof sourceMap !== 'object') continue;
+        for (const entry of Object.values(sourceMap)) {
+          return entry && typeof entry === 'object' && 'amount' in entry && 'rate' in entry;
         }
       }
     }
+    return false;
+  }
 
+  // --- Effective rates ---
+
+  function getEffectiveRates(settings, cachedApiRates) {
+    let base;
+    if (cachedApiRates && isCacheValid(cachedApiRates)) {
+      base = deepCloneRateTable(cachedApiRates);
+    } else {
+      base = {};
+    }
+
+    // Merge custom rates
     const customNormalized = getCustomRates(settings);
     for (const [from, toMap] of Object.entries(customNormalized)) {
       if (!base[from]) base[from] = {};
-      for (const [to, rate] of Object.entries(toMap)) {
-        base[from][to] = rate;
+      for (const [to, customSourceMap] of Object.entries(toMap)) {
+        if (!base[from][to]) base[from][to] = {};
+        Object.assign(base[from][to], customSourceMap);
       }
+    }
+
+    // Update _usedSources to include custom source if any custom rates exist
+    const hasCustom = Object.values(settings.customRates || {}).some(v => v != null);
+    if (hasCustom && base._usedSources && !base._usedSources.includes(CUSTOM_SOURCE)) {
+      base._usedSources = [CUSTOM_SOURCE, ...base._usedSources];
     }
 
     return base;
   }
 
+  // --- Conflicts ---
+
+  function getEffectiveConflicts(settings, cachedRates) {
+    return getConflicts(getEffectiveRates(settings, cachedRates));
+  }
+
   function getConflicts(cachedRates) {
-    return (cachedRates && cachedRates._conflicts) || {};
+    if (!cachedRates) return {};
+    const conflicts = {};
+    for (const [from, toMap] of Object.entries(cachedRates)) {
+      if (META_KEYS.has(from)) continue;
+      if (!toMap || typeof toMap !== 'object') continue;
+      for (const [to, sourceMap] of Object.entries(toMap)) {
+        if (!sourceMap || typeof sourceMap !== 'object') continue;
+        const sources = Object.keys(sourceMap).filter(k => k !== CUSTOM_SOURCE);
+        if (sources.length > 1) {
+          const pairKey = `${from}:${to}`;
+          const apiEntries = {};
+          for (const sid of sources) {
+            apiEntries[sid] = sourceMap[sid];
+          }
+          conflicts[pairKey] = apiEntries;
+        }
+      }
+    }
+    return conflicts;
   }
 
   function getUsedSources(cachedRates) {
@@ -190,30 +320,108 @@ const RateTables = (() => {
   }
 
   function isConflictResolved(pairKey, settings, cachedRates) {
-    const conflicts = getConflicts(cachedRates);
-    if (!conflicts[pairKey]) return true;
-    const overrides = settings.rateSourceOverrides || {};
-    const reverseKey = pairKey.includes(':') ? pairKey.split(':').reverse().join(':') : null;
-    return overrides[pairKey] !== undefined || (reverseKey && overrides[reverseKey] !== undefined);
+    // Accept pre-computed effective rates to avoid N+1 scans
+    const rates = (cachedRates && cachedRates._usedSources) ? cachedRates : getEffectiveRates(settings, cachedRates);
+    const [from, to] = pairKey.split(':');
+    const sourceMap = rates[from] && rates[from][to];
+    if (!sourceMap || typeof sourceMap !== 'object') return true;
+    const apiSources = Object.keys(sourceMap).filter(k => k !== CUSTOM_SOURCE);
+    if (apiSources.length <= 1) return true;
+    const selections = settings.rateSourceSelections || [];
+    return !!findSelection(from, to, selections);
   }
 
   function getActiveSourceForPair(pairKey, reverseKey, settings, cachedRates) {
-    const overrides = settings.rateSourceOverrides || {};
-    return overrides[pairKey] || (reverseKey && overrides[reverseKey]) || getUsedSources(cachedRates)[0] || '';
+    const selections = settings.rateSourceSelections || [];
+    const usedSources = getUsedSources(cachedRates);
+
+    const [from, to] = pairKey.split(':');
+    const sel = findSelection(from, to, selections);
+    if (sel) return sel.source;
+
+    // Check reverse
+    if (reverseKey) {
+      const [rFrom, rTo] = reverseKey.split(':');
+      const rSel = findSelection(rFrom, rTo, selections);
+      if (rSel) return rSel.source;
+    }
+
+    // Auto-select: use resolveActiveEntry with type preference
+    const sourceMap = (cachedRates && cachedRates[from] && cachedRates[from][to]) ||
+                      (reverseKey && cachedRates && cachedRates[rFrom] && cachedRates[rFrom][rTo]);
+    if (sourceMap) {
+      const entry = resolveActiveEntry(from, to, sourceMap, null, usedSources);
+      if (entry) return entry.source;
+    }
+    return usedSources[0] || '';
+  }
+
+  // --- Display helpers ---
+
+  function getDisplayInfoMap(rates, selections) {
+    const result = {};
+    const usedSources = rates._usedSources || [];
+
+    for (const [from, toMap] of Object.entries(rates)) {
+      if (META_KEYS.has(from)) continue;
+      if (!toMap || typeof toMap !== 'object') continue;
+      for (const [to, sourceMap] of Object.entries(toMap)) {
+        if (!sourceMap || typeof sourceMap !== 'object') continue;
+        const entry = resolveActiveEntry(from, to, sourceMap, selections, usedSources);
+        if (entry) {
+          result[`${from}:${to}`] = {
+            from,
+            to,
+            amount: entry.amount,
+            rate: entry.rate,
+            source: entry.source,
+            type: entry.type,
+          };
+        }
+      }
+    }
+    return result;
   }
 
   function formatRateForDisplay(from, to, rates) {
+    // Works with both old flat and new source-tagged structure
     const direct = rates[from] && rates[from][to];
-    if (direct != null && direct >= 1) {
-      return { base: from, quote: to, rate: direct };
+
+    if (direct != null && typeof direct === 'object') {
+      // New source-tagged structure — resolve active entry
+      const usedSources = rates._usedSources || [];
+      const entry = resolveActiveEntry(from, to, direct, null, usedSources);
+      if (entry) {
+        const perUnit = entry.rate / entry.amount;
+        if (perUnit >= 1) {
+          return { base: from, quote: to, rate: perUnit, amount: entry.amount, source: entry.source, type: entry.type };
+        }
+        return { base: to, quote: from, rate: 1 / perUnit, amount: 1, source: entry.source, type: entry.type };
+      }
+      return null;
     }
-    const reverse = rates[to] && rates[to][from];
-    if (reverse != null) {
-      return { base: to, quote: from, rate: reverse };
-    }
-    if (direct != null) {
+
+    if (direct != null && typeof direct === 'number') {
+      // Old flat format
+      if (direct >= 1) return { base: from, quote: to, rate: direct };
       return { base: to, quote: from, rate: 1 / direct };
     }
+
+    // Try reverse
+    const reverse = rates[to] && rates[to][from];
+    if (reverse != null && typeof reverse === 'object') {
+      const usedSources = rates._usedSources || [];
+      const entry = resolveActiveEntry(to, from, reverse, null, usedSources);
+      if (entry) {
+        return { base: to, quote: from, rate: entry.rate / entry.amount, amount: entry.amount, source: entry.source, type: entry.type };
+      }
+      return null;
+    }
+
+    if (reverse != null && typeof reverse === 'number') {
+      return { base: to, quote: from, rate: reverse };
+    }
+
     return null;
   }
 
@@ -230,16 +438,35 @@ const RateTables = (() => {
     return codes;
   }
 
-  function convert(amount, fromCurrency, toCurrency, rates) {
-    const direct = rates[fromCurrency] && rates[fromCurrency][toCurrency];
-    if (direct != null) return amount * direct;
-    const reverse = rates[toCurrency] && rates[toCurrency][fromCurrency];
-    if (reverse != null) return amount / reverse;
-    return null;
+  // --- Convert ---
+
+  function convert(amount, fromCurrency, toCurrency, rates, selections) {
+    const direct = resolveAndCompute(amount, fromCurrency, toCurrency, rates, selections);
+    if (direct !== null) return direct;
+    const reverse = resolveAndComputeInverse(amount, fromCurrency, toCurrency, rates, selections);
+    return reverse;
+  }
+
+  function resolveAndCompute(amount, from, to, rates, selections) {
+    const sourceMap = rates[from] && rates[from][to];
+    if (!sourceMap || typeof sourceMap !== 'object') return null;
+    const entry = resolveActiveEntry(from, to, sourceMap, selections, rates._usedSources);
+    if (!entry) return null;
+    return amount * (entry.rate / entry.amount);
+  }
+
+  function resolveAndComputeInverse(amount, from, to, rates, selections) {
+    const sourceMap = rates[to] && rates[to][from];
+    if (!sourceMap || typeof sourceMap !== 'object') return null;
+    const entry = resolveActiveEntry(to, from, sourceMap, selections, rates._usedSources);
+    if (!entry) return null;
+    return amount / (entry.rate / entry.amount);
   }
 
   return {
-    META_KEYS,
+    RATE_TYPE,
+    CUSTOM_SOURCE,
+    TYPE_PREFERENCE,
     getSourceCurrencies,
     getTargetCurrencies,
     getTargetCurrenciesForSource,
@@ -249,11 +476,17 @@ const RateTables = (() => {
     getCustomRates,
     deepCloneRateTable,
     isCacheValid,
+    isNewRateFormat,
     getEffectiveRates,
     getConflicts,
+    getEffectiveConflicts,
     getUsedSources,
     isConflictResolved,
     getActiveSourceForPair,
+    getDisplayInfoMap,
+    resolveActiveEntry,
+    findSelection,
+    setSelection,
     formatRateForDisplay,
     getCurrencyRateAvailability,
     convert,

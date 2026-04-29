@@ -29,7 +29,7 @@ const ContentConverter = (() => {
   }
 
   function processTextNode(textNode, ratesData, conversionMap, ambiguousCurrency, currentSettings, compiledUnambiguous, compiledAmbiguous) {
-    const { rates, conflicts, usedSources, overrides } = ratesData;
+    const { rates, displayInfo, usedSources, selections, conflicts } = ratesData;
     const text = textNode.nodeValue;
     if (!text || text.length < 2) return;
 
@@ -64,6 +64,8 @@ const ContentConverter = (() => {
     let lastIndex = 0;
     let hasConversion = false;
 
+    const nf = currentSettings ? currentSettings.numberFormat : null;
+
     for (const m of matches) {
       if (m.index < lastIndex) continue;
 
@@ -76,32 +78,46 @@ const ContentConverter = (() => {
 
       const targets = conversionMap[m.currency] || [];
       for (const tc of targets) {
-        const converted = RateTables.convert(m.amount, m.currency, tc, rates);
+        const converted = RateTables.convert(m.amount, m.currency, tc, rates, selections);
         if (converted !== null && converted > 0) {
           hasConversion = true;
           const pill = document.createElement('span');
 
-          const dispInfo = RateTables.formatRateForDisplay(m.currency, tc, rates);
-          const pairKey = dispInfo ? `${dispInfo.base}:${dispInfo.quote}` : null;
-          const reverseKey = dispInfo ? `${dispInfo.quote}:${dispInfo.base}` : null;
-          const conflictData = (pairKey && conflicts[pairKey]) || (reverseKey && conflicts[reverseKey]);
+          // Look up display info for this pair
+          const pairKey = `${m.currency}:${tc}`;
+          const reversePairKey = `${tc}:${m.currency}`;
+          const info = displayInfo[pairKey] || displayInfo[reversePairKey];
+
+          // Detect conflict
+          const conflictData = conflicts[pairKey] || conflicts[reversePairKey];
           const hasConflict = !!conflictData;
-          const isResolved = hasConflict && (overrides[pairKey] !== undefined || overrides[reverseKey] !== undefined);
+          const sel = RateTables.findSelection(m.currency, tc, selections);
+          const isResolved = hasConflict && !!sel;
 
           pill.className = PILL_CLASS + (hasConflict && !isResolved ? ' db-pill-conflict' : '');
           const dp = Math.max(m.precision, 2);
 
-          pill.textContent = formatConverted(converted, tc, dp, currentSettings);
+          if (info) {
+            // Show denomination-aware pill: "100 JPY = 2.16 BYN"
+            const fromCode = info.from;
+            const toCode = info.to;
+            pill.textContent = `${info.amount} ${fromCode} = ${FormatUtils.formatNumber(info.rate, dp, nf)} ${toCode}`;
+          } else {
+            // Fallback to simple format
+            pill.textContent = formatConverted(converted, tc, dp, currentSettings);
+          }
 
-          const curInfo = currentSettings.currencies[tc];
+          // Build tooltip
+          const curInfo = currentSettings.currencies[tc] || {};
           const symbol = curInfo ? curInfo.symbol : tc;
-          const nf = currentSettings.numberFormat;
-          let rateStr = dispInfo
-            ? ` (1 ${dispInfo.base} = ${FormatUtils.formatNumber(dispInfo.rate, 4, nf)} ${dispInfo.quote})`
-            : '';
+          let rateStr = '';
+          if (info) {
+            const sourceName = RateSources.getSourceDisplayName(info.source);
+            rateStr = ` (${info.amount} ${info.from} = ${FormatUtils.formatNumber(info.rate, 4, nf)} ${info.to} \u00B7 ${sourceName}, ${info.type})`;
+          }
 
           if (hasConflict) {
-            const activeSource = overrides[pairKey] || overrides[reverseKey] || usedSources[0] || '';
+            const activeSource = info ? info.source : (usedSources[0] || '');
             const sourceName = RateSources.getSourceDisplayName(activeSource);
             if (!isResolved) {
               rateStr += ' ' + I18n.t('converter.conflictUsing', { source: sourceName });

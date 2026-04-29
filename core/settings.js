@@ -9,7 +9,7 @@ const Settings = (() => {
       { from: 'EUR', to: 'USD' },
     ],
     rateSources: ['ecb'],
-    rateSourceOverrides: {},
+    rateSourceSelections: [],
     customRates: {},
     domainCurrencyMap: {},
     siteMode: 'all',
@@ -18,7 +18,7 @@ const Settings = (() => {
     timeFormat: null,
     numberFormat: null,
     language: null,
-    _settingsVersion: 1,
+    _settingsVersion: 2,
   };
 
   async function getSettings() {

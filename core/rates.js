@@ -4,6 +4,7 @@ const RatesUtil = (() => {
   const POPULAR_CURRENCIES = Currencies.POPULAR_CURRENCIES;
   const RATE_SOURCES = RateSources.RATE_SOURCES;
   const getSourceDisplayName = RateSources.getSourceDisplayName;
+  const CONVENTION = RateSources.CONVENTION;
   const DEFAULT_SETTINGS = Settings.DEFAULT_SETTINGS;
   const SETTINGS_KEY = Settings.SETTINGS_KEY;
 
@@ -13,6 +14,9 @@ const RatesUtil = (() => {
     POPULAR_CURRENCIES,
     RATE_SOURCES,
     getSourceDisplayName,
+    CONVENTION,
+    RATE_TYPE: RateTables.RATE_TYPE,
+    CUSTOM_SOURCE: RateTables.CUSTOM_SOURCE,
 
     // From RateFetch
     getSettings: RateFetch.getSettings,
@@ -33,16 +37,22 @@ const RatesUtil = (() => {
     buildMergedRateTable: RateTables.buildMergedRateTable,
     convert: RateTables.convert,
     isCacheValid: RateTables.isCacheValid,
+    isNewRateFormat: RateTables.isNewRateFormat,
     formatRateForDisplay: RateTables.formatRateForDisplay,
+    getDisplayInfoMap: RateTables.getDisplayInfoMap,
     getCurrencyRateAvailability: RateTables.getCurrencyRateAvailability,
     getSourceCurrencies: RateTables.getSourceCurrencies,
     getTargetCurrencies: RateTables.getTargetCurrencies,
     getTargetCurrenciesForSource: RateTables.getTargetCurrenciesForSource,
     buildConversionMap: RateTables.buildConversionMap,
     getConflicts: RateTables.getConflicts,
+    getEffectiveConflicts: RateTables.getEffectiveConflicts,
     getUsedSources: RateTables.getUsedSources,
     isConflictResolved: RateTables.isConflictResolved,
     getActiveSourceForPair: RateTables.getActiveSourceForPair,
+    resolveActiveEntry: RateTables.resolveActiveEntry,
+    findSelection: RateTables.findSelection,
+    setSelection: RateTables.setSelection,
 
     // From FormatUtils
     escapeHtml: FormatUtils.escapeHtml,

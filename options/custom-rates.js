@@ -8,7 +8,9 @@ const CustomRates = (() => {
     }
 
     const normalizedRates = RatesUtil.getCustomRates(settings);
-    const conflicts = RatesUtil.getConflicts(rates);
+    const effectiveRates = rates ? RatesUtil.getEffectiveRates(settings, rates) : normalizedRates;
+    const selections = settings.rateSourceSelections || [];
+    const conflicts = RatesUtil.getConflicts(effectiveRates);
 
     const seen = new Set();
     let html = '';
@@ -17,13 +19,20 @@ const CustomRates = (() => {
       if (seen.has(pairKey)) continue;
       seen.add(pairKey);
 
-      const rateInfo = RatesUtil.formatRateForDisplay(pair.from, pair.to, normalizedRates);
+      const rateInfo = RatesUtil.formatRateForDisplay(pair.from, pair.to, effectiveRates);
       const displayFrom = rateInfo ? rateInfo.base : pair.from;
       const displayTo = rateInfo ? rateInfo.quote : pair.to;
+      const displayAmount = rateInfo && rateInfo.amount ? rateInfo.amount : 1;
       const val = rateInfo ? rateInfo.rate : '';
 
       const inputKey = `${displayFrom}:${displayTo}`;
       const reverseInputKey = `${displayTo}:${displayFrom}`;
+
+      // Look up stored custom rate for amount
+      const storedCustom = settings.customRates || {};
+      const customEntry = storedCustom[inputKey] || storedCustom[reverseInputKey];
+      const customAmount = (customEntry && typeof customEntry === 'object' && customEntry.amount) || displayAmount;
+
       const conflictData = conflicts[inputKey] || conflicts[reverseInputKey];
       const conflictHtml = conflictData
         ? `<span class="rate-source-picker" data-pair="${inputKey}" title="${FormatUtils.escapeHtml(I18n.t('options.clickToChangeSource'))}">${FormatUtils.escapeHtml(RateSources.getSourceDisplayName(RatesUtil.getActiveSourceForPair(inputKey, reverseInputKey, settings, rates)))}</span>`
@@ -33,7 +42,8 @@ const CustomRates = (() => {
 
       html += `<div class="custom-rate-row" data-search="${searchData}">
         <span class="custom-rate-pair">
-          <span>1 ${FormatUtils.escapeHtml(displayFrom)}</span>
+          <input type="number" step="1" min="1" class="custom-rate-amount-input" data-pair="${inputKey}" value="${customAmount}">
+          <span>${FormatUtils.escapeHtml(displayFrom)}</span>
         </span>
         <span class="custom-rate-equals">=</span>
         ${conflictHtml}

@@ -36,7 +36,7 @@ const RateFetch = (() => {
   async function fetchAndCacheRates(sourceIds, settings) {
     if (typeof sourceIds === 'string') sourceIds = [sourceIds];
     if (!sourceIds || sourceIds.length === 0) {
-      const emptyRates = { timestamp: Date.now(), _conflicts: {}, _usedSources: [] };
+      const emptyRates = { timestamp: Date.now(), _usedSources: [], _sourceErrors: {} };
       await chrome.storage.local.set({ [CACHE_KEY]: emptyRates, [LOADED_RATES_KEY]: {} });
       return emptyRates;
     }
@@ -66,11 +66,16 @@ const RateFetch = (() => {
       if (result.status === 'fulfilled') {
         const { id, baseRates } = result.value;
         sourceRatesMap[id] = baseRates;
+        // Store loaded rates with {rate, amount} objects
+        const ratesCopy = {};
+        for (const [code, val] of Object.entries(baseRates.rates)) {
+          ratesCopy[code] = (typeof val === 'object' && val !== null) ? { ...val } : val;
+        }
         loadedRatesMap[id] = {
           source: id,
           base: baseRates.base,
           convention: baseRates.convention,
-          rates: { ...baseRates.rates },
+          rates: ratesCopy,
           timestamp: Date.now(),
         };
         if (baseRates.rateDate) {
@@ -90,11 +95,10 @@ const RateFetch = (() => {
     const sourceCurrencies = RateTables.getSourceCurrencies(settings);
     const targetCurrencies = RateTables.getTargetCurrencies(settings);
 
-    const { rates, conflicts } = RateTables.buildMergedRateTable(
+    const { rates } = RateTables.buildMergedRateTable(
       sourceRatesMap, sourceIds, sourceCurrencies, targetCurrencies
     );
     rates.timestamp = Date.now();
-    rates._conflicts = conflicts;
     rates._usedSources = Object.keys(sourceRatesMap);
     rates._sourceErrors = sourceErrors;
 
