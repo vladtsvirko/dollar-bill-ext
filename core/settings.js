@@ -17,6 +17,7 @@ const Settings = (() => {
     theme: null,
     timeFormat: null,
     numberFormat: null,
+    language: null,
     _settingsVersion: 1,
   };
 

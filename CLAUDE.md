@@ -15,11 +15,14 @@ dollar-bill-ext/
 ├── manifest.json
 ├── background.js               (service worker)
 ├── content.js                   (slim entry — calls content/ modules)
+├── locales/
+│   └── en.json                  (flat key-value English strings for i18n)
 ├── core/
 │   ├── currencies.js            (Currencies IIFE — 150+ currency database)
 │   ├── rate-sources.js          (RateSources IIFE — API definitions + fetch)
 │   ├── migrations.js            (Migrations IIFE — v1→v6 migration chain)
 │   ├── settings.js              (Settings IIFE — schema + persistence)
+│   ├── i18n.js                  (I18n IIFE — locale loading, t(), applyToPage())
 │   ├── patterns.js              (Patterns IIFE — regex compilation)
 │   ├── rate-tables.js           (RateTables IIFE — cross-rate math, merge, convert)
 │   ├── format-utils.js          (FormatUtils IIFE — escapeHtml, timestamps, numbers)
@@ -69,6 +72,7 @@ dollar-bill-ext/
 - `Patterns.buildPatternsFromIdentifiers()` generates regex patterns from currency identifiers.
 - `RatesUtil` (in `core/rates.js`) is a **facade** — it re-exports everything from `Patterns`, `RateTables`, `FormatUtils`, and `RateFetch` as a single backward-compatible global. All existing callers use `RatesUtil.convert()`, `RatesUtil.getSettings()`, etc.
 - Settings migrations run sequentially via `Migrations.migrate()` called from `Settings.getSettings()`.
+- **i18n**: `I18n.init(locale?)` loads locale JSON from `locales/`. `I18n.t(key, params?)` looks up strings with `{{param}}` interpolation. `I18n.applyToPage()` scans `data-i18n`, `data-i18n-placeholder`, `data-i18n-title` attributes. Adding a language = add entry to `LOCALE_REGISTRY` in `core/i18n.js` + create `locales/<code>.json`. Settings field `language` (null = auto/system).
 
 ## Module Load Order
 
@@ -77,7 +81,7 @@ The IIFE modules have hard dependencies and must load in this order:
 ### manifest.json content_scripts
 ```
 core/currencies.js → core/rate-sources.js → core/migrations.js →
-core/settings.js → core/patterns.js → core/rate-tables.js →
+core/settings.js → core/i18n.js → core/patterns.js → core/rate-tables.js →
 core/format-utils.js → core/rate-fetch.js → core/rates.js →
 content/scanner.js → content/converter.js → content/picker-bar.js →
 content/observer.js → content.js
@@ -87,10 +91,10 @@ content/observer.js → content.js
 Same as above minus content/ modules.
 
 ### popup.html scripts
-Core 9 files → ui/ 6 files → popup/rate-cards.js → popup/converter.js → popup/popup.js
+Core 10 files → ui/ 6 files → popup/rate-cards.js → popup/converter.js → popup/popup.js
 
 ### options.html scripts
-Core 9 files → ui/ 6 files → options/ 5 feature files → options/options.js
+Core 10 files → ui/ 6 files → options/ 5 feature files → options/options.js
 
 ## Development
 

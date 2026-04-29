@@ -90,6 +90,8 @@
 
     if (!shouldProcessPage(settings)) return;
 
+    await I18n.init(settings.language);
+
     compilePatterns(settings);
 
     const ratesData = getRatesForConversion(settings, cachedRates);

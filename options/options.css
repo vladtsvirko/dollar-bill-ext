@@ -318,6 +318,8 @@ h3 {
   color: var(--text-tertiary);
 }
 
+/* ---- Language picker — uses .currency-picker shared in components.css ---- */
+
 /* ---- Toggle switch — shared in components.css ---- */
 
 /* ---- Theme selector ---- */

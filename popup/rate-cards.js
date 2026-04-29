@@ -23,7 +23,7 @@ const RateCards = (() => {
     const currencies = settings.currencies || {};
 
     if (pairs.length === 0) {
-      rateCardsEl.innerHTML = '<div class="rate-card-skeleton">No rates available</div>';
+      rateCardsEl.innerHTML = '<div class="rate-card-skeleton">' + I18n.t('popup.noRatesAvailable') + '</div>';
       return;
     }
 
@@ -38,7 +38,7 @@ const RateCards = (() => {
 
       if (!rateInfo) {
         const loadingClass = isRefreshing ? ' rate-card-loading' : ' rate-card-no-rate';
-        const placeholder = isRefreshing ? 'Loading\u2026' : 'rate';
+        const placeholder = isRefreshing ? I18n.t('popup.loadingEllipsis') : I18n.t('popup.rate');
         const disabled = isRefreshing ? ' disabled' : '';
         const symbol = (currencies[pair.from] || {}).symbol || pair.from;
         cards.push(`
@@ -91,7 +91,7 @@ const RateCards = (() => {
                 data-base="${rateInfo.base}" data-quote="${rateInfo.quote}">
               <span class="rate-input-code">${rateInfo.quote}</span>
             </div>
-            ${hasOverride ? `<button class="rate-card-reset" title="Reset to fetched rate" data-base="${rateInfo.base}" data-quote="${rateInfo.quote}">${RESET_SVG}</button>` : ''}
+            ${hasOverride ? `<button class="rate-card-reset" title="${I18n.t('options.resetToFetchedRate')}" data-base="${rateInfo.base}" data-quote="${rateInfo.quote}">${RESET_SVG}</button>` : ''}
           </div>
           ${sourceTag}
         </div>
@@ -101,7 +101,7 @@ const RateCards = (() => {
     const savedScroll = rateCardsEl.scrollTop;
     rateCardsEl.innerHTML = cards.length
       ? cards.join('')
-      : '<div class="rate-card-skeleton">No rates available</div>';
+      : '<div class="rate-card-skeleton">' + I18n.t('popup.noRatesAvailable') + '</div>';
     rateCardsEl.scrollTop = savedScroll;
 
     rateCardsEl.querySelectorAll('.rate-card-value-input').forEach(input => {

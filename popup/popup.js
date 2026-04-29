@@ -63,9 +63,9 @@ sourceTrigger.addEventListener('mouseleave', () => sourceTooltip.classList.remov
 
 function renderSourceDropdown(settings) {
   const selectedSources = settings.rateSources || [];
-  if (selectedSources.length === 0) sourceNameEl.textContent = 'No source';
+  if (selectedSources.length === 0) sourceNameEl.textContent = I18n.t('popup.noSource');
   else if (selectedSources.length === 1) sourceNameEl.textContent = RateSources.getSourceDisplayName(selectedSources[0]);
-  else sourceNameEl.textContent = selectedSources.length + ' sources';
+  else sourceNameEl.textContent = I18n.t('popup.sourcesCount', { count: selectedSources.length });
 
   const options = [];
   for (const [id, src] of Object.entries(RatesUtil.RATE_SOURCES)) {
@@ -73,7 +73,7 @@ function renderSourceDropdown(settings) {
   }
 
   sourceDropdown.innerHTML = `
-    <input type="text" class="source-dropdown-search" id="sourceDropdownSearch" placeholder="Search sources...">
+    <input type="text" class="source-dropdown-search" id="sourceDropdownSearch" placeholder="${FormatUtils.escapeHtml(I18n.t('popup.searchSources'))}">
     <div class="source-dropdown-list" id="sourceDropdownList">
       ${options.map(opt => `
         <div class="source-option${selectedSources.includes(opt.id) ? ' active' : ''}" data-source="${opt.id}" data-label="${FormatUtils.escapeHtml(opt.name.toLowerCase())}">
@@ -183,8 +183,8 @@ function renderConflictBanner() {
   if (unresolvedCount > 0) {
     conflictBanner.style.display = 'flex';
     conflictBannerText.textContent = unresolvedCount === 1
-      ? '1 rate has conflicting values between sources'
-      : unresolvedCount + ' rates have conflicting values between sources';
+      ? I18n.t('popup.conflictOneRate')
+      : I18n.t('popup.conflictManyRates', { count: unresolvedCount });
   } else {
     conflictBanner.style.display = 'none';
   }
@@ -304,29 +304,29 @@ function renderAddPairForm() {
     <div class="add-pair-row">
       <div class="currency-picker" id="fromPicker">
         <button class="currency-picker-trigger" id="fromPickerTrigger">
-          <span class="currency-picker-text placeholder">From...</span>
+          <span class="currency-picker-text placeholder">${FormatUtils.escapeHtml(I18n.t('popup.fromPlaceholder'))}</span>
           <span class="source-chevron">&#9662;</span>
         </button>
         <div class="currency-picker-dropdown" id="fromPickerDropdown">
-          <input type="text" class="currency-picker-search" id="fromPickerSearch" placeholder="Search...">
+          <input type="text" class="currency-picker-search" id="fromPickerSearch" placeholder="${FormatUtils.escapeHtml(I18n.t('popup.searchPlaceholder'))}">
           <div class="currency-picker-list" id="fromPickerList"></div>
         </div>
       </div>
       <span class="converter-arrow">&rarr;</span>
       <div class="currency-picker" id="toPicker">
         <button class="currency-picker-trigger" id="toPickerTrigger">
-          <span class="currency-picker-text placeholder">To...</span>
+          <span class="currency-picker-text placeholder">${FormatUtils.escapeHtml(I18n.t('popup.toPlaceholder'))}</span>
           <span class="source-chevron">&#9662;</span>
         </button>
         <div class="currency-picker-dropdown" id="toPickerDropdown">
-          <input type="text" class="currency-picker-search" id="toPickerSearch" placeholder="Search...">
+          <input type="text" class="currency-picker-search" id="toPickerSearch" placeholder="${FormatUtils.escapeHtml(I18n.t('popup.searchPlaceholder'))}">
           <div class="currency-picker-list" id="toPickerList"></div>
         </div>
       </div>
     </div>
     <div class="add-pair-actions">
-      <button class="add-pair-btn" id="addPairConfirmBtn">Add</button>
-      <button class="add-pair-cancel" id="addPairCancelBtn">Cancel</button>
+      <button class="add-pair-btn" id="addPairConfirmBtn">${FormatUtils.escapeHtml(I18n.t('popup.addBtn'))}</button>
+      <button class="add-pair-cancel" id="addPairCancelBtn">${FormatUtils.escapeHtml(I18n.t('popup.cancelBtn'))}</button>
     </div>
     <div class="add-pair-error" id="addPairError"></div>
   `;
@@ -370,12 +370,12 @@ async function handleAddPair() {
   errorEl.textContent = '';
   errorEl.style.display = 'none';
   if (!selectedFrom || !selectedTo) {
-    errorEl.textContent = 'Select both currencies';
+    errorEl.textContent = I18n.t('popup.selectBothCurrencies');
     errorEl.style.display = 'block';
     return;
   }
   if (selectedFrom === selectedTo) {
-    errorEl.textContent = 'From and To must differ';
+    errorEl.textContent = I18n.t('popup.fromToMustDiffer');
     errorEl.style.display = 'block';
     return;
   }
@@ -384,7 +384,7 @@ async function handleAddPair() {
     (p.from === selectedFrom && p.to === selectedTo) ||
     (p.from === selectedTo && p.to === selectedFrom)
   )) {
-    errorEl.textContent = 'Pair already exists';
+    errorEl.textContent = I18n.t('popup.pairAlreadyExists');
     errorEl.style.display = 'block';
     return;
   }
@@ -429,6 +429,9 @@ async function loadPopup() {
   currentSettings = settings;
   currentRates = rates;
   currentConflicts = RatesUtil.getConflicts(rates);
+
+  await I18n.init(settings.language);
+  I18n.applyToPage();
 
   enabledEl.checked = settings.enabled;
 

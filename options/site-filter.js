@@ -14,7 +14,7 @@ const SiteFilter = (() => {
   function renderDomainOverrides(listEl, map, onRemove) {
     const entries = Object.entries(map || {});
     if (entries.length === 0) {
-      listEl.innerHTML = '<p class="hint">No domain overrides set.</p>';
+      listEl.innerHTML = '<p class="hint">' + I18n.t('options.noDomainOverrides') + '</p>';
       return;
     }
     listEl.innerHTML = entries.map(([domain, currency]) => `

@@ -24,6 +24,11 @@ const optEnabled = document.getElementById('optEnabled');
 const themeOptions = document.getElementById('themeOptions');
 const timeOptions = document.getElementById('timeOptions');
 const numberOptions = document.getElementById('numberOptions');
+const langTrigger = document.getElementById('langTrigger');
+const langDropdown = document.getElementById('langDropdown');
+const langSearch = document.getElementById('langSearch');
+const langList = document.getElementById('langList');
+const langText = document.getElementById('langText');
 
 const reloadRatesBtn = document.getElementById('reloadRatesBtn');
 const toggleLoadedRatesBtn = document.getElementById('toggleLoadedRates');
@@ -255,12 +260,12 @@ addPairBtn.addEventListener('click', () => {
   errorEl.style.display = 'none';
 
   if (!optSelectedFrom || !optSelectedTo) {
-    errorEl.textContent = 'Select both currencies';
+    errorEl.textContent = I18n.t('options.selectBothCurrencies');
     errorEl.style.display = 'block';
     return;
   }
   if (optSelectedFrom === optSelectedTo) {
-    errorEl.textContent = 'From and To must differ';
+    errorEl.textContent = I18n.t('options.fromToMustDiffer');
     errorEl.style.display = 'block';
     return;
   }
@@ -269,7 +274,7 @@ addPairBtn.addEventListener('click', () => {
     (p.from === optSelectedFrom && p.to === optSelectedTo) ||
     (p.from === optSelectedTo && p.to === optSelectedFrom)
   )) {
-    errorEl.textContent = 'Pair already exists';
+    errorEl.textContent = I18n.t('options.pairAlreadyExists');
     errorEl.style.display = 'block';
     return;
   }
@@ -330,12 +335,12 @@ function renderLoadedRates() {
 function updateLoadedRatesToggleLabel(count) {
   if (count) {
     loadedRatesToggleLabel.textContent = loadedRatesExpanded
-      ? `Hide loaded rates (${count})`
-      : `Show loaded rates (${count})`;
+      ? I18n.t('options.hideLoadedRatesCount', { count })
+      : I18n.t('options.showLoadedRatesCount', { count });
   } else {
     loadedRatesToggleLabel.textContent = loadedRatesExpanded
-      ? 'Hide loaded rates'
-      : 'Show loaded rates';
+      ? I18n.t('options.hideLoadedRates')
+      : I18n.t('options.showLoadedRates');
   }
   loadedRatesChevron.style.transform = loadedRatesExpanded ? 'rotate(180deg)' : '';
 }
@@ -620,21 +625,21 @@ cancelCurrencyBtn.addEventListener('click', () => {
 
 saveCurrencyBtn.addEventListener('click', () => {
   const code = editCode.value.trim().toUpperCase();
-  if (!code) { alert('Currency code is required.'); return; }
-  if (!/^[A-Z]{3}$/.test(code)) { alert('Currency code must be exactly 3 letters (e.g. USD, EUR).'); return; }
-  if (code.includes(':')) { alert('Currency code cannot contain a colon.'); return; }
+  if (!code) { alert(I18n.t('options.currencyCodeRequired')); return; }
+  if (!/^[A-Z]{3}$/.test(code)) { alert(I18n.t('options.currencyCodeFormat')); return; }
+  if (code.includes(':')) { alert(I18n.t('options.currencyCodeNoColon')); return; }
   if (!editingCurrency && currentSettings.currencies[code]) {
-    alert('Currency already exists. Edit it instead.');
+    alert(I18n.t('options.currencyAlreadyExists'));
     return;
   }
   if (editingIdentifiers.length === 0) {
-    alert('Add at least one identifier.');
+    alert(I18n.t('options.addOneIdentifier'));
     return;
   }
   const patterns = RatesUtil.buildPatternsFromIdentifiers(editingIdentifiers);
   for (const pat of patterns) {
     try { new RegExp(pat); }
-    catch { alert(`Invalid identifier pattern:\n${pat}\n\nCheck for special characters.`); return; }
+    catch { alert(I18n.t('options.invalidIdentifierPattern', { pattern: pat })); return; }
   }
   const domains = editDomains.value.split(',').map(s => s.trim()).filter(Boolean);
   currentSettings.currencies[code] = {
@@ -676,6 +681,9 @@ function renderCurrencyLibrary() {
 async function loadSettings() {
   currentSettings = await RatesUtil.getSettings();
 
+  await I18n.init(currentSettings.language);
+  I18n.applyToPage();
+
   [currentRates, currentFetchStatus, currentLoadedRates] = await Promise.all([
     RatesUtil.getCachedRates(),
     RatesUtil.getFetchStatus(),
@@ -686,6 +694,7 @@ async function loadSettings() {
   renderThemeSelector();
   renderTimeFormatSelector();
   renderNumberFormatSelector();
+  renderLanguageSelector();
 
   optEnabled.checked = currentSettings.enabled !== false;
 
@@ -711,6 +720,87 @@ async function loadSettings() {
   updateVisibility();
   Preview.render(document.getElementById('previewContent'), currentSettings);
 }
+
+function renderLanguageSelector() {
+  const locales = I18n.getAvailableLocales();
+  const current = currentSettings ? currentSettings.language : null;
+  const label = current
+    ? (locales.find(l => l.code === current) || {}).name || current
+    : I18n.t('options.languageAuto');
+  langText.textContent = label;
+  langText.classList.toggle('placeholder', !current);
+  langList.innerHTML = renderLanguageList(locales, current);
+}
+
+function renderLanguageList(locales, selected, filter) {
+  const q = (filter || '').toLowerCase();
+  const items = [{ code: '', name: I18n.t('options.languageAuto') }, ...locales];
+  const filtered = items.filter(l => !q || l.name.toLowerCase().includes(q) || l.code.toLowerCase().includes(q));
+  if (filtered.length === 0) {
+    return `<div class="currency-picker-item empty">${I18n.t('ui.noResults')}</div>`;
+  }
+  return filtered.map(l =>
+    `<div class="currency-picker-item${selected === l.code ? ' selected' : ''}" data-lang="${l.code}">${l.name}</div>`
+  ).join('');
+}
+
+function closeLangDropdown() {
+  langDropdown.classList.remove('open');
+  langTrigger.classList.remove('active');
+}
+
+async function applyLanguageChange(value) {
+  if (value === currentSettings.language) return;
+  currentSettings.language = value;
+  await RatesUtil.saveSettings(currentSettings);
+  await I18n.init(value);
+  I18n.applyToPage();
+  renderThemeSelector();
+  renderTimeFormatSelector();
+  renderNumberFormatSelector();
+  renderLanguageSelector();
+  renderPairChips();
+  renderCurrencyLibrary();
+  renderCustomRatesGrid();
+  renderFetchStatus();
+  renderLoadedRates();
+  renderWhitelistChips();
+  renderDomainOverrides();
+  Preview.render(document.getElementById('previewContent'), currentSettings);
+  showSaveToast();
+}
+
+langTrigger.addEventListener('click', (e) => {
+  e.stopPropagation();
+  const isOpen = langDropdown.classList.contains('open');
+  closeLangDropdown();
+  if (!isOpen) {
+    langDropdown.classList.add('open');
+    langTrigger.classList.add('active');
+    langSearch.value = '';
+    const locales = I18n.getAvailableLocales();
+    const current = currentSettings ? currentSettings.language : null;
+    langList.innerHTML = renderLanguageList(locales, current);
+    langSearch.focus();
+  }
+});
+
+langSearch.addEventListener('input', () => {
+  const locales = I18n.getAvailableLocales();
+  const current = currentSettings ? currentSettings.language : null;
+  langList.innerHTML = renderLanguageList(locales, current, langSearch.value);
+});
+
+langList.addEventListener('click', async (e) => {
+  const item = e.target.closest('.currency-picker-item');
+  if (!item || item.classList.contains('empty')) return;
+  closeLangDropdown();
+  await applyLanguageChange(item.dataset.lang || null);
+});
+
+document.addEventListener('click', (e) => {
+  if (!e.target.closest('#langPicker')) closeLangDropdown();
+});
 
 loadSettings();
 

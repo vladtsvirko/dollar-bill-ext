@@ -15,7 +15,7 @@
     <div class="header">
       <div class="header-left">
         <img class="logo" src="../icons/icon128.png" alt="$">
-        <span class="title">Dollar Bill</span>
+        <span class="title" data-i18n="popup.title">Dollar Bill</span>
       </div>
       <div class="header-right">
         <div class="theme-segmented" id="themeSegmented">
@@ -45,7 +45,7 @@
         </button>
         <span class="source-time" id="sourceTime"></span>
       </div>
-      <button class="source-reload" id="sourceReload" title="Refresh rates">
+      <button class="source-reload" id="sourceReload" data-i18n-title="popup.refreshRates" title="Refresh rates">
         <span class="reload-icon">&#8635;</span>
       </button>
       <div class="source-dropdown" id="sourceDropdown"></div>
@@ -58,15 +58,15 @@
     </div>
 
     <div class="rate-cards-wrapper" id="rateCardsWrapper">
-      <input type="text" class="rate-search" id="rateSearch" placeholder="Search currencies...">
+      <input type="text" class="rate-search" id="rateSearch" data-i18n-placeholder="popup.searchCurrencies" placeholder="Search currencies...">
       <div class="rate-cards" id="rateCards">
-        <div class="rate-card-skeleton">Loading rates...</div>
+        <div class="rate-card-skeleton" data-i18n="popup.loadingRates">Loading rates...</div>
       </div>
     </div>
 
     <div class="section-divider">
       <div class="section-divider-line"></div>
-      <span class="section-divider-label">Conversion pairs</span>
+      <span class="section-divider-label" data-i18n="popup.conversionPairs">Conversion pairs</span>
       <div class="section-divider-line"></div>
     </div>
 
@@ -76,25 +76,26 @@
     </div>
 
     <div class="converter">
-      <div class="converter-header">Quick Convert</div>
+      <div class="converter-header" data-i18n="popup.quickConvert">Quick Convert</div>
       <div class="converter-selects">
         <select id="converterFrom" class="converter-select"></select>
         <span class="converter-arrow">&rarr;</span>
         <select id="converterTo" class="converter-select"></select>
       </div>
-      <input type="text" id="converterInput" class="converter-input" placeholder="Type amount...">
+      <input type="text" id="converterInput" class="converter-input" data-i18n-placeholder="popup.typeAmount" placeholder="Type amount...">
       <div id="converterResult" class="converter-result"></div>
     </div>
 
     <div class="footer">
       <div class="site-indicator" id="siteIndicator"></div>
-      <a href="#" id="settingsLink" class="settings-link">Settings</a>
+      <a href="#" id="settingsLink" class="settings-link" data-i18n="popup.settings">Settings</a>
     </div>
   </div>
   <script src="../core/currencies.js"></script>
   <script src="../core/rate-sources.js"></script>
   <script src="../core/migrations.js"></script>
   <script src="../core/settings.js"></script>
+  <script src="../core/i18n.js"></script>
   <script src="../core/patterns.js"></script>
   <script src="../core/rate-tables.js"></script>
   <script src="../core/format-utils.js"></script>

@@ -6,7 +6,7 @@ const Preview = (() => {
     const currencies = settings.currencies;
 
     if (pairs.length === 0) {
-      previewContentEl.innerHTML = '<span style="color:var(--text-tertiary)">Add conversion pairs to see a preview.</span>';
+      previewContentEl.innerHTML = '<span style="color:var(--text-tertiary)">' + I18n.t('options.addConversionPairsPreview') + '</span>';
       return;
     }
 

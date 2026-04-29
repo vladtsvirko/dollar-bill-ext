@@ -1,7 +1,7 @@
 const Migrations = (() => {
   async function migrate(stored) {
-  //no migrations for now, insert migration calls in sequential order
-    const MIGRATIONS = [
+  const MIGRATIONS = [
+        //no migrations for now, insert migration calls in sequential order
         ];
 
         const SETTINGS_KEY = Settings.SETTINGS_KEY;

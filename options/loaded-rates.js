@@ -1,7 +1,7 @@
 const LoadedRates = (() => {
   function render({ listEl, loadedRatesMap, settings }) {
     if (!loadedRatesMap || typeof loadedRatesMap !== 'object' || Object.keys(loadedRatesMap).length === 0) {
-      listEl.innerHTML = '<p class="hint">No rates loaded yet.</p>';
+      listEl.innerHTML = '<p class="hint">' + I18n.t('options.noRatesLoaded') + '</p>';
       return { count: 0 };
     }
 
@@ -26,11 +26,11 @@ const LoadedRates = (() => {
 
       totalCount += entries.length;
       const age = loadedRates.timestamp ? FormatUtils.formatCacheAge(loadedRates) : '';
-      const rateDateMeta = loadedRates.rateDate ? ` &middot; rates from ${FormatUtils.escapeHtml(formatRateDate(loadedRates.rateDate))}` : '';
+      const rateDateMeta = loadedRates.rateDate ? ` &middot; ${I18n.t('fetchStatus.ratesFrom')} ${FormatUtils.escapeHtml(formatRateDate(loadedRates.rateDate))}` : '';
 
-      html += `<div class="loaded-rates-meta">${FormatUtils.escapeHtml(sourceName)} &middot; ${entries.length} currencies${rateDateMeta}${age ? ' &middot; fetched ' + FormatUtils.escapeHtml(age) + ' ago' : ''}</div>`;
+      html += `<div class="loaded-rates-meta">${FormatUtils.escapeHtml(sourceName)} &middot; ${entries.length} ${I18n.t('fetchStatus.currencies')}${rateDateMeta}${age ? ' &middot; ' + I18n.t('fetchStatus.fetchedAgo', { age: FormatUtils.escapeHtml(age) }) : ''}</div>`;
       html += '<div class="loaded-rates-grid">';
-      html += `<div class="loaded-rates-header"><span>Code</span><span>1 ${FormatUtils.escapeHtml(base)} =</span></div>`;
+      html += `<div class="loaded-rates-header"><span>${I18n.t('loadedRates.code')}</span><span>${I18n.t('loadedRates.baseRate', { base: FormatUtils.escapeHtml(base) })}</span></div>`;
       for (const [code, rate] of entries) {
         const displayRate = convention === 'direct'
           ? (rate > 0 ? FormatUtils.formatNumber(1 / rate, 4, nf) : '&mdash;')
@@ -40,7 +40,7 @@ const LoadedRates = (() => {
       html += '</div>';
     }
 
-    listEl.innerHTML = html || '<p class="hint">No rates loaded yet.</p>';
+    listEl.innerHTML = html || '<p class="hint">' + I18n.t('options.noRatesLoaded') + '</p>';
     return { count: totalCount };
   }
 

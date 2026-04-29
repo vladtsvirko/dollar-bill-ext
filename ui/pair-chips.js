@@ -2,9 +2,9 @@ const PairChips = (() => {
   function renderPopupChips(pairs, container, onRemove, onAdd) {
     container.innerHTML = pairs.map((p, i) => `
       <span class="pair-chip">${p.from} <span class="pair-chip-arrow">&rarr;</span> ${p.to}
-        <button class="pair-chip-remove" data-index="${i}" title="Remove pair">&times;</button>
+        <button class="pair-chip-remove" data-index="${i}" title="${I18n.t('options.cancel')}">&times;</button>
       </span>
-    `).join('') + '<button class="pair-chip-add" id="addPairPopup" title="Add conversion pair">+</button>';
+    `).join('') + `<button class="pair-chip-add" id="addPairPopup" title="${I18n.t('options.addBtn')}">+</button>`;
 
     container.querySelectorAll('.pair-chip-remove').forEach(btn => {
       btn.addEventListener('click', () => onRemove(parseInt(btn.dataset.index)));

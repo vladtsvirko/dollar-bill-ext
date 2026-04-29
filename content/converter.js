@@ -104,9 +104,9 @@ const ContentConverter = (() => {
             const activeSource = overrides[pairKey] || overrides[reverseKey] || usedSources[0] || '';
             const sourceName = RateSources.getSourceDisplayName(activeSource);
             if (!isResolved) {
-              rateStr += ` [CONFLICT — using ${sourceName}]`;
+              rateStr += ' ' + I18n.t('converter.conflictUsing', { source: sourceName });
             } else {
-              rateStr += ` [Source: ${sourceName}]`;
+              rateStr += ' ' + I18n.t('converter.source', { source: sourceName });
             }
           }
 

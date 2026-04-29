@@ -33,7 +33,7 @@ const UICommon = (() => {
     });
 
     if (filtered.length === 0) {
-      return '<div class="currency-picker-item empty">No results</div>';
+      return '<div class="currency-picker-item empty">' + I18n.t('ui.noResults') + '</div>';
     }
 
     // When searching, show flat filtered list
@@ -51,7 +51,7 @@ const UICommon = (() => {
 
     let html = '';
     if (popularCodes.length > 0) {
-      html += '<div class="currency-picker-group-label">Popular</div>';
+      html += '<div class="currency-picker-group-label">' + I18n.t('ui.popular') + '</div>';
       for (const code of popularCodes) {
         const name = currencies[code].name || '';
         const isSelected = code === selectedCode ? ' selected' : '';

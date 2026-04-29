@@ -17,8 +17,8 @@
       <div class="options-header-left">
         <img class="options-logo" src="../icons/icon128.png" alt="$">
         <div>
-          <h1>Dollar Bill</h1>
-          <p class="options-subtitle">Settings</p>
+          <h1 data-i18n="popup.title">Dollar Bill</h1>
+          <p class="options-subtitle" data-i18n="options.settingsSubtitle">Settings</p>
         </div>
       </div>
     </div>
@@ -31,8 +31,8 @@
         <section class="section">
           <div class="setting-row">
             <div class="setting-info">
-              <span class="setting-label">Enabled</span>
-              <span class="setting-desc">Convert prices on web pages</span>
+              <span class="setting-label" data-i18n="options.enabled">Enabled</span>
+              <span class="setting-desc" data-i18n="options.enabledDesc">Convert prices on web pages</span>
             </div>
             <label class="toggle-switch">
               <input type="checkbox" id="optEnabled">
@@ -42,26 +42,26 @@
 
           <div class="setting-row">
             <div class="setting-info">
-              <span class="setting-label">Appearance</span>
-              <span class="setting-desc">Choose color theme</span>
+              <span class="setting-label" data-i18n="options.appearance">Appearance</span>
+              <span class="setting-desc" data-i18n="options.appearanceDesc">Choose color theme</span>
             </div>
             <div class="theme-options" id="themeOptions">
               <button class="theme-opt" data-theme-value="light" title="Light theme">
-                <span class="theme-opt-label">Light</span>
+                <span class="theme-opt-label" data-i18n="options.light">Light</span>
               </button>
               <button class="theme-opt" data-theme-value="dark" title="Dark theme">
-                <span class="theme-opt-label">Dark</span>
+                <span class="theme-opt-label" data-i18n="options.dark">Dark</span>
               </button>
               <button class="theme-opt" data-theme-value="" title="Follow system preference">
-                <span class="theme-opt-label">System</span>
+                <span class="theme-opt-label" data-i18n="options.system">System</span>
               </button>
             </div>
           </div>
 
           <div class="setting-row">
             <div class="setting-info">
-              <span class="setting-label">Time format</span>
-              <span class="setting-desc">Clock display in timestamps</span>
+              <span class="setting-label" data-i18n="options.timeFormat">Time format</span>
+              <span class="setting-desc" data-i18n="options.timeFormatDesc">Clock display in timestamps</span>
             </div>
             <div class="time-options" id="timeOptions">
               <button class="time-opt" data-time-value="12h">12h</button>
@@ -72,8 +72,8 @@
 
           <div class="setting-row">
             <div class="setting-info">
-              <span class="setting-label">Number format</span>
-              <span class="setting-desc">How converted prices are displayed</span>
+              <span class="setting-label" data-i18n="options.numberFormat">Number format</span>
+              <span class="setting-desc" data-i18n="options.numberFormatDesc">How converted prices are displayed</span>
             </div>
             <div class="time-options" id="numberOptions">
               <button class="time-opt" data-num-value="en-US">1,234.56</button>
@@ -81,34 +81,51 @@
               <button class="time-opt" data-num-value="" title="Follow locale preference">Auto</button>
             </div>
           </div>
+
+          <div class="setting-row">
+            <div class="setting-info">
+              <span class="setting-label" data-i18n="options.language">Language</span>
+              <span class="setting-desc" data-i18n="options.languageDesc">Display language</span>
+            </div>
+            <div class="currency-picker" id="langPicker">
+              <button class="currency-picker-trigger" id="langTrigger" type="button">
+                <span class="currency-picker-text" id="langText"></span>
+                <span class="currency-picker-chevron">&#9662;</span>
+              </button>
+              <div class="currency-picker-dropdown" id="langDropdown">
+                <input type="text" class="currency-picker-search" id="langSearch" data-i18n-placeholder="options.searchLanguage" placeholder="Search language...">
+                <div class="currency-picker-list" id="langList"></div>
+              </div>
+            </div>
+          </div>
         </section>
 
         <!-- Site Filtering -->
         <section class="section">
-          <h2><span class="section-icon">&#127760;</span> Site Filtering</h2>
+          <h2><span class="section-icon">&#127760;</span> <span data-i18n="options.siteFiltering">Site Filtering</span></h2>
           <div class="toggle-group">
             <label class="toggle-option">
               <input type="radio" name="siteMode" value="all">
-              <span class="toggle-option-label">Auto-scan all websites</span>
+              <span class="toggle-option-label" data-i18n="options.scanAllSites">Auto-scan all websites</span>
             </label>
             <label class="toggle-option">
               <input type="radio" name="siteMode" value="whitelist">
-              <span class="toggle-option-label">Only scan whitelisted sites</span>
+              <span class="toggle-option-label" data-i18n="options.scanWhitelist">Only scan whitelisted sites</span>
             </label>
           </div>
           <div id="whitelistSection" style="display:none;">
             <div id="whitelistChips" class="chip-list"></div>
             <div class="whitelist-add-row">
-              <input type="text" id="whitelistInput" placeholder="e.g. onliner.by" />
-              <button id="addWhitelistBtn" class="btn btn-sm btn-primary">Add</button>
+              <input type="text" id="whitelistInput" data-i18n-placeholder="options.whitelistPlaceholder" placeholder="e.g. onliner.by" />
+              <button id="addWhitelistBtn" class="btn btn-sm btn-primary" data-i18n="options.addBtn">Add</button>
             </div>
           </div>
         </section>
 
         <!-- Preview Panel -->
         <section class="section preview-section">
-          <h2><span class="section-icon">&#128065;</span> Live Preview</h2>
-          <p class="hint">How converted prices will look on web pages.</p>
+          <h2><span class="section-icon">&#128065;</span> <span data-i18n="options.livePreview">Live Preview</span></h2>
+          <p class="hint" data-i18n="options.previewHint">How converted prices will look on web pages.</p>
           <div class="preview-mock">
             <div class="preview-site-bar">
               <span class="preview-dot preview-dot-red"></span>
@@ -123,7 +140,7 @@
         </section>
 
         <div class="options-footer">
-          <a href="../privacy-policy.html" class="footer-link">Privacy Policy</a>
+          <a href="../privacy-policy.html" class="footer-link" data-i18n="options.privacyPolicy">Privacy Policy</a>
         </div>
       </div>
 
@@ -132,13 +149,13 @@
         <!-- Rate Source -->
         <section class="section">
           <div class="section-header-row">
-            <h2><span class="section-icon">&#128200;</span> Exchange Rate Source</h2>
-            <button id="reloadRatesBtn" class="btn btn-sm btn-reload" title="Reload rates from selected source">
-              <span class="reload-icon">&#8635;</span> Reload
+            <h2><span class="section-icon">&#128200;</span> <span data-i18n="options.rateSource">Exchange Rate Source</span></h2>
+            <button id="reloadRatesBtn" class="btn btn-sm btn-reload" data-i18n-title="options.reloadRatesTitle" title="Reload rates from selected source">
+              <span class="reload-icon">&#8635;</span> <span data-i18n="options.reload">Reload</span>
             </button>
           </div>
           <div class="rate-source-search-wrap">
-            <input type="text" id="rateSourceSearch" class="rate-source-search" placeholder="Search sources...">
+            <input type="text" id="rateSourceSearch" class="rate-source-search" data-i18n-placeholder="options.searchSources" placeholder="Search sources...">
           </div>
           <div class="rate-source-scroll">
             <div class="toggle-group" id="rateSourceList"></div>
@@ -160,10 +177,10 @@
             </div>
           </div>
           <div id="customRatesSection" class="custom-rates">
-            <h3>Custom Rate Overrides</h3>
-            <p class="hint">Override specific pair rates regardless of the API source above.</p>
+            <h3 data-i18n="options.customRateOverrides">Custom Rate Overrides</h3>
+            <p class="hint" data-i18n="options.customRateHint">Override specific pair rates regardless of the API source above.</p>
             <div class="custom-rates-search-wrap">
-              <input type="text" id="customRatesSearch" class="custom-rates-search" placeholder="Search pairs...">
+              <input type="text" id="customRatesSearch" class="custom-rates-search" data-i18n-placeholder="options.searchPairs" placeholder="Search pairs...">
             </div>
             <div class="custom-rates-scroll">
               <div id="customRatesGrid" class="custom-rates-list"></div>
@@ -173,48 +190,48 @@
 
         <!-- Conversion Pairs -->
         <section class="section">
-          <h2><span class="section-icon">&#128259;</span> Conversion Pairs</h2>
-          <p class="hint">Configure which currencies to detect and convert into. Source currencies are derived automatically.</p>
+          <h2><span class="section-icon">&#128259;</span> <span data-i18n="options.conversionPairs">Conversion Pairs</span></h2>
+          <p class="hint" data-i18n="options.conversionPairsHint">Configure which currencies to detect and convert into. Source currencies are derived automatically.</p>
           <div id="pairChips" class="chip-list"></div>
           <div class="add-row">
             <div class="currency-picker" id="optFromPicker">
               <button class="currency-picker-trigger" id="optFromTrigger" type="button">
-                <span class="currency-picker-text placeholder">From...</span>
+                <span class="currency-picker-text placeholder" data-i18n="popup.fromPlaceholder">From...</span>
                 <span class="currency-picker-chevron">&#9662;</span>
               </button>
               <div class="currency-picker-dropdown" id="optFromDropdown">
-                <input type="text" class="currency-picker-search" id="optFromSearch" placeholder="Search currency...">
+                <input type="text" class="currency-picker-search" id="optFromSearch" data-i18n-placeholder="options.searchCurrency" placeholder="Search currency...">
                 <div class="currency-picker-list" id="optFromList"></div>
               </div>
             </div>
             <span class="pair-arrow">&rarr;</span>
             <div class="currency-picker" id="optToPicker">
               <button class="currency-picker-trigger" id="optToTrigger" type="button">
-                <span class="currency-picker-text placeholder">To...</span>
+                <span class="currency-picker-text placeholder" data-i18n="popup.toPlaceholder">To...</span>
                 <span class="currency-picker-chevron">&#9662;</span>
               </button>
               <div class="currency-picker-dropdown" id="optToDropdown">
-                <input type="text" class="currency-picker-search" id="optToSearch" placeholder="Search currency...">
+                <input type="text" class="currency-picker-search" id="optToSearch" data-i18n-placeholder="options.searchCurrency" placeholder="Search currency...">
                 <div class="currency-picker-list" id="optToList"></div>
               </div>
             </div>
-            <button id="addPairBtn" class="btn btn-sm btn-primary">Add</button>
+            <button id="addPairBtn" class="btn btn-sm btn-primary" data-i18n="options.addBtn">Add</button>
           </div>
           <div class="add-pair-error" id="addPairError"></div>
         </section>
 
         <!-- Advanced -->
         <section class="section">
-          <h2><span class="section-icon">&#128295;</span> Advanced</h2>
+          <h2><span class="section-icon">&#128295;</span> <span data-i18n="options.advanced">Advanced</span></h2>
 
           <div id="domainOverridesSection" class="advanced-subsection">
-            <h3>Domain Currency Overrides</h3>
-            <p class="hint">Override the base currency for ambiguous prices on specific domains.</p>
+            <h3 data-i18n="options.domainOverrides">Domain Currency Overrides</h3>
+            <p class="hint" data-i18n="options.domainOverridesHint">Override the base currency for ambiguous prices on specific domains.</p>
             <div id="domainOverridesList" class="domain-list"></div>
             <div class="domain-add-row">
-              <input type="text" id="domainAddInput" placeholder="e.g. amazon.ca" />
+              <input type="text" id="domainAddInput" data-i18n-placeholder="options.domainPlaceholder" placeholder="e.g. amazon.ca" />
               <select id="domainAddCurrency"></select>
-              <button id="domainAddBtn" class="btn-small">Add</button>
+              <button id="domainAddBtn" class="btn-small" data-i18n="options.addBtn">Add</button>
             </div>
           </div>
         </section>
@@ -224,27 +241,27 @@
       <div class="col col-library">
         <section class="section">
           <div class="section-header-row">
-            <h2><span class="section-icon">&#128218;</span> Currency Library</h2>
-            <button id="addCurrencyBtn" class="btn btn-sm btn-primary">+ Add</button>
+            <h2><span class="section-icon">&#128218;</span> <span data-i18n="options.currencyLibrary">Currency Library</span></h2>
+            <button id="addCurrencyBtn" class="btn btn-sm btn-primary" data-i18n="options.addCurrency">+ Add</button>
           </div>
           <div id="currencyEditor" class="currency-editor" style="display:none">
             <div class="editor-row">
-              <label>ISO Code <input type="text" id="editCode" placeholder="USD" class="short-input"></label>
-              <label>Name <input type="text" id="editName" placeholder="US Dollar"></label>
-              <label>Symbol <input type="text" id="editSymbol" placeholder="$" class="short-input"></label>
+              <label><span data-i18n="options.isoCode">ISO Code</span> <input type="text" id="editCode" data-i18n-placeholder="options.isoCodePlaceholder" placeholder="USD" class="short-input"></label>
+              <label><span data-i18n="options.name">Name</span> <input type="text" id="editName" data-i18n-placeholder="options.namePlaceholder" placeholder="US Dollar"></label>
+              <label><span data-i18n="options.symbol">Symbol</span> <input type="text" id="editSymbol" data-i18n-placeholder="options.symbolPlaceholder" placeholder="$" class="short-input"></label>
             </div>
-            <label>Domains <input type="text" id="editDomains" placeholder=".by, .бел" class="long-input"> (domains likely to use this currency, comma-separated)</label>
+            <label><span data-i18n="options.domains">Domains</span> <input type="text" id="editDomains" data-i18n-placeholder="options.domainsPlaceholder" placeholder=".by, .бел" class="long-input"> <span data-i18n="options.domainsHint">(domains likely to use this currency, comma-separated)</span></label>
             <div class="block-label">
-              <span>Identifiers</span>
+              <span data-i18n="options.identifiers">Identifiers</span>
               <div id="editIdentifiers" class="identifier-list"></div>
               <div class="add-identifier-row">
-                <input type="text" id="addIdentifierInput" placeholder="e.g. BYN, Br, бел. руб.">
-                <button id="addIdentifierBtn" class="btn btn-sm">Add</button>
+                <input type="text" id="addIdentifierInput" data-i18n-placeholder="options.identifierPlaceholder" placeholder="e.g. BYN, Br, бел. руб.">
+                <button id="addIdentifierBtn" class="btn btn-sm" data-i18n="options.addBtn">Add</button>
               </div>
             </div>
             <div class="editor-actions">
-              <button id="saveCurrencyBtn" class="btn btn-primary btn-sm">Save Currency</button>
-              <button id="cancelCurrencyBtn" class="btn btn-sm">Cancel</button>
+              <button id="saveCurrencyBtn" class="btn btn-primary btn-sm" data-i18n="options.saveCurrency">Save Currency</button>
+              <button id="cancelCurrencyBtn" class="btn btn-sm" data-i18n="options.cancel">Cancel</button>
             </div>
           </div>
           <div id="currencyLibrary"></div>
@@ -254,12 +271,13 @@
     </div>
 
     <!-- Auto-save toast -->
-    <div id="saveToast" class="save-toast">Saved</div>
+    <div id="saveToast" class="save-toast" data-i18n="options.saved">Saved</div>
   </div>
   <script src="../core/currencies.js"></script>
   <script src="../core/rate-sources.js"></script>
   <script src="../core/migrations.js"></script>
   <script src="../core/settings.js"></script>
+  <script src="../core/i18n.js"></script>
   <script src="../core/patterns.js"></script>
   <script src="../core/rate-tables.js"></script>
   <script src="../core/format-utils.js"></script>

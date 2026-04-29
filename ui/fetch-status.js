@@ -5,22 +5,22 @@ const FetchStatusUI = (() => {
 
     const lines = [];
     if (fetchStatus && fetchStatus.lastFetchTime) {
-      lines.push('Last fetch: ' + FormatUtils.formatTimestamp(fetchStatus.lastFetchTime, timeFormat));
+      lines.push(I18n.t('fetchStatus.lastFetch', { time: FormatUtils.formatTimestamp(fetchStatus.lastFetchTime, timeFormat) }));
     }
     if (fetchStatus && fetchStatus.lastSuccessTime) {
-      lines.push('Last success: ' + FormatUtils.formatTimestamp(fetchStatus.lastSuccessTime, timeFormat));
+      lines.push(I18n.t('fetchStatus.lastSuccess', { time: FormatUtils.formatTimestamp(fetchStatus.lastSuccessTime, timeFormat) }));
     }
     if (rates && rates.timestamp) {
-      lines.push('Cache age: ' + FormatUtils.formatCacheAge(rates));
+      lines.push(I18n.t('fetchStatus.cacheAge', { age: FormatUtils.formatCacheAge(rates) }));
     }
     if (fetchStatus && fetchStatus.lastError) {
-      lines.push('Error: ' + fetchStatus.lastError);
+      lines.push(I18n.t('fetchStatus.error', { error: fetchStatus.lastError }));
       if (fetchStatus.consecutiveFailures > 1) {
-        lines.push('Failed ' + fetchStatus.consecutiveFailures + ' times in a row');
+        lines.push(I18n.t('fetchStatus.failedTimes', { count: fetchStatus.consecutiveFailures }));
       }
     }
     if (lines.length === 0) {
-      lines.push('No fetch data yet');
+      lines.push(I18n.t('fetchStatus.noFetchData'));
     }
     tooltipEl.innerHTML = lines.map(l => FormatUtils.escapeHtml(l)).join('<br>');
   }
@@ -33,41 +33,41 @@ const FetchStatusUI = (() => {
 
     if (state === 'error') {
       dotEl.className = 'fetch-status-dot fetch-status-dot-error';
-      titleEl.textContent = 'Fetch failed';
+      titleEl.textContent = I18n.t('fetchStatus.fetchFailed');
       titleEl.className = 'fetch-status-title fetch-status-title-error';
     } else if (sourceErrors.length > 0) {
       dotEl.className = 'fetch-status-dot fetch-status-dot-stale';
-      titleEl.textContent = `${sourceErrors.length} source${sourceErrors.length > 1 ? 's' : ''} failed`;
+      titleEl.textContent = I18n.t('fetchStatus.sourcesFailed', { count: sourceErrors.length, suffix: sourceErrors.length > 1 ? 's' : '' });
       titleEl.className = 'fetch-status-title fetch-status-title-error';
     } else if (state === 'stale') {
       dotEl.className = 'fetch-status-dot fetch-status-dot-stale';
-      titleEl.textContent = (fetchStatus && fetchStatus.lastFetchTime) ? 'Rates are stale' : 'No fetch data';
+      titleEl.textContent = (fetchStatus && fetchStatus.lastFetchTime) ? I18n.t('fetchStatus.ratesStale') : I18n.t('fetchStatus.noFetchDataShort');
       titleEl.className = 'fetch-status-title';
     } else {
       dotEl.className = 'fetch-status-dot fetch-status-dot-ok';
-      titleEl.textContent = 'Up to date';
+      titleEl.textContent = I18n.t('fetchStatus.upToDate');
       titleEl.className = 'fetch-status-title';
     }
 
     const rows = [];
     if (fetchStatus && fetchStatus.lastFetchTime) {
-      rows.push(['Last fetch attempt', FormatUtils.formatTimestamp(fetchStatus.lastFetchTime, timeFormat, 'Never')]);
+      rows.push([I18n.t('fetchStatus.lastFetchAttempt'), FormatUtils.formatTimestamp(fetchStatus.lastFetchTime, timeFormat, 'Never')]);
     }
     if (fetchStatus && fetchStatus.lastSuccessTime) {
-      rows.push(['Last successful fetch', FormatUtils.formatTimestamp(fetchStatus.lastSuccessTime, timeFormat, 'Never')]);
+      rows.push([I18n.t('fetchStatus.lastSuccessfulFetch'), FormatUtils.formatTimestamp(fetchStatus.lastSuccessTime, timeFormat, 'Never')]);
     }
     if (rates && rates.timestamp) {
-      rows.push(['Cache age', FormatUtils.formatCacheAge(rates)]);
-      rows.push(['Cache timestamp', FormatUtils.formatTimestamp(rates.timestamp, timeFormat, 'Never')]);
+      rows.push([I18n.t('fetchStatus.cacheAgeShort'), FormatUtils.formatCacheAge(rates)]);
+      rows.push([I18n.t('fetchStatus.cacheTimestamp'), FormatUtils.formatTimestamp(rates.timestamp, timeFormat, 'Never')]);
     }
     const usedSources = RateTables.getUsedSources(rates);
     if (usedSources.length > 0) {
-      rows.push(['Sources', usedSources.map(id => RateSources.getSourceDisplayName(id)).join(', ')]);
+      rows.push([I18n.t('fetchStatus.sources'), usedSources.map(id => RateSources.getSourceDisplayName(id)).join(', ')]);
     }
     if (fetchStatus && fetchStatus.lastError) {
-      rows.push(['Error', fetchStatus.lastError]);
+      rows.push([I18n.t('fetchStatus.errorLabel'), fetchStatus.lastError]);
       if (fetchStatus.consecutiveFailures > 1) {
-        rows.push(['Consecutive failures', fetchStatus.consecutiveFailures]);
+        rows.push([I18n.t('fetchStatus.consecutiveFailures'), fetchStatus.consecutiveFailures]);
       }
     }
     if (loadedRates) {

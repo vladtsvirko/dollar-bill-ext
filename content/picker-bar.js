@@ -17,8 +17,8 @@ const PickerBar = (() => {
     }).join('');
 
     bar.innerHTML = `
-      <span class="dbp-label">Dollar Bill: ambiguous prices detected on <strong>${host}</strong></span>
-      <span class="dbp-label">Choose base currency:</span>
+      <span class="dbp-label">${I18n.t('picker.ambiguousDetected', { host: FormatUtils.escapeHtml(host) })}</span>
+      <span class="dbp-label">${I18n.t('picker.chooseBaseCurrency')}</span>
       ${buttonsHtml}
       <button class="dbp-dismiss" title="Dismiss">&times;</button>
     `;

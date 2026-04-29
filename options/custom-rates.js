@@ -3,7 +3,7 @@ const CustomRates = (() => {
     const pairs = settings.conversionPairs || [];
 
     if (pairs.length === 0) {
-      grid.innerHTML = '<p class="hint" style="padding:10px 12px;">Add conversion pairs first.</p>';
+      grid.innerHTML = '<p class="hint" style="padding:10px 12px;">' + I18n.t('options.addPairsFirst') + '</p>';
       return;
     }
 
@@ -26,7 +26,7 @@ const CustomRates = (() => {
       const reverseInputKey = `${displayTo}:${displayFrom}`;
       const conflictData = conflicts[inputKey] || conflicts[reverseInputKey];
       const conflictHtml = conflictData
-        ? `<span class="rate-source-picker" data-pair="${inputKey}" title="Click to change source">${FormatUtils.escapeHtml(RateSources.getSourceDisplayName(RatesUtil.getActiveSourceForPair(inputKey, reverseInputKey, settings, rates)))}</span>`
+        ? `<span class="rate-source-picker" data-pair="${inputKey}" title="${FormatUtils.escapeHtml(I18n.t('options.clickToChangeSource'))}">${FormatUtils.escapeHtml(RateSources.getSourceDisplayName(RatesUtil.getActiveSourceForPair(inputKey, reverseInputKey, settings, rates)))}</span>`
         : '';
 
       const searchData = [displayFrom, displayTo, inputKey].join(' ').toLowerCase();
@@ -37,7 +37,7 @@ const CustomRates = (() => {
         </span>
         <span class="custom-rate-equals">=</span>
         ${conflictHtml}
-        <input type="number" step="0.0001" class="custom-rate-input" data-pair="${inputKey}" value="${val}" placeholder="rate">
+        <input type="number" step="0.0001" class="custom-rate-input" data-pair="${inputKey}" value="${val}" placeholder="${I18n.t('options.ratePlaceholder')}">
         <span class="custom-rate-target">${FormatUtils.escapeHtml(displayTo)}</span>
       </div>`;
     }
