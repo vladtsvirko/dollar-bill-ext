@@ -6,9 +6,9 @@ const RateSources = (() => {
         const resp = await fetch('https://api.nbrb.by/exrates/rates?periodicity=0');
         if (!resp.ok) throw new Error(`NBRB API error: ${resp.status}`);
         const data = await resp.json();
-        const rates = { BYN: { rate: 1, amount: 1 } };
+        const rates = { BYN: { rate: "1", amount: "1" } };
         for (const item of data) {
-          rates[item.Cur_Abbreviation] = { rate: item.Cur_OfficialRate, amount: item.Cur_Scale };
+          rates[item.Cur_Abbreviation] = { rate: MathOps.fromNumber(item.Cur_OfficialRate), amount: MathOps.parseInt(item.Cur_Scale) };
         }
         return { base: 'BYN', rates };
       },
@@ -19,12 +19,11 @@ const RateSources = (() => {
         const resp = await fetch('https://www.ecb.europa.eu/stats/eurofxref/eurofxref-daily.xml');
         if (!resp.ok) throw new Error(`ECB API error: ${resp.status}`);
         const text = await resp.text();
-        const rates = { EUR: { rate: 1, amount: 1 } };
+        const rates = { EUR: { rate: "1", amount: "1" } };
         const re = /currency='([A-Z]{3})'\s+rate='([\d.]+)'/g;
         let match;
         while ((match = re.exec(text)) !== null) {
-          const val = parseFloat(match[2]);
-          rates[match[1]] = { rate: val, amount: 1 };
+          rates[match[1]] = { rate: MathOps.fromNumber(parseFloat(match[2])), amount: "1" };
         }
         return { base: 'EUR', rates, indirect: true };
       },
@@ -35,10 +34,10 @@ const RateSources = (() => {
         const resp = await fetch('https://api.nbp.pl/api/exchangerates/tables/A/');
         if (!resp.ok) throw new Error(`NBP API error: ${resp.status}`);
         const data = await resp.json();
-        const rates = { PLN: { rate: 1, amount: 1 } };
+        const rates = { PLN: { rate: "1", amount: "1" } };
         if (Array.isArray(data) && data[0] && data[0].rates) {
           for (const item of data[0].rates) {
-            rates[item.code] = { rate: item.mid, amount: 1 };
+            rates[item.code] = { rate: MathOps.fromNumber(item.mid), amount: "1" };
           }
         }
         return { base: 'PLN', rates };
@@ -52,9 +51,9 @@ const RateSources = (() => {
         const resp = await fetch(`https://bank.gov.ua/NBUStatService/v1/statdirectory/exchange?json&date=${dateStr}`);
         if (!resp.ok) throw new Error(`NBU API error: ${resp.status}`);
         const data = await resp.json();
-        const rates = { UAH: { rate: 1, amount: 1 } };
+        const rates = { UAH: { rate: "1", amount: "1" } };
         for (const item of data) {
-          rates[item.cc] = { rate: item.rate, amount: 1 };
+          rates[item.cc] = { rate: MathOps.fromNumber(item.rate), amount: "1" };
         }
         return { base: 'UAH', rates };
       },
@@ -65,12 +64,12 @@ const RateSources = (() => {
         const resp = await fetch('https://www.cbr.ru/scripts/XML_daily_eng.asp');
         if (!resp.ok) throw new Error(`CBR API error: ${resp.status}`);
         const text = await resp.text();
-        const rates = { RUB: { rate: 1, amount: 1 } };
+        const rates = { RUB: { rate: "1", amount: "1" } };
         const re = /<CharCode>([A-Z]{3})<\/CharCode>\s*<Nominal>(\d+)<\/Nominal>\s*<Name>[^<]*<\/Name>\s*<Value>([\d.,]+)<\/Value>/g;
         let match;
         while ((match = re.exec(text)) !== null) {
           const [, code, nominal, value] = match;
-          rates[code] = { rate: parseFloat(value.replace(',', '.')), amount: parseInt(nominal, 10) };
+          rates[code] = { rate: MathOps.fromNumber(parseFloat(value.replace(',', '.'))), amount: MathOps.parseInt(nominal) };
         }
         return { base: 'RUB', rates };
       },
@@ -81,12 +80,12 @@ const RateSources = (() => {
         const resp = await fetch('https://www.cnb.cz/cs/financni-trhy/devizovy-trh/kurzy-devizoveho-trhu/kurzy-devizoveho-trhu/denni_kurz.xml');
         if (!resp.ok) throw new Error(`CNB API error: ${resp.status}`);
         const text = await resp.text();
-        const rates = { CZK: { rate: 1, amount: 1 } };
+        const rates = { CZK: { rate: "1", amount: "1" } };
         const re = /<radek\s[^>]*kod="([A-Z]{3})"[^>]*mnozstvi="(\d+)"[^>]*kurz="([\d.,]+)"/g;
         let match;
         while ((match = re.exec(text)) !== null) {
           const [, code, amount, rate] = match;
-          rates[code] = { rate: parseFloat(rate.replace(',', '.')), amount: parseInt(amount, 10) };
+          rates[code] = { rate: MathOps.fromNumber(parseFloat(rate.replace(',', '.'))), amount: MathOps.parseInt(amount) };
         }
         return { base: 'CZK', rates };
       },
@@ -97,12 +96,12 @@ const RateSources = (() => {
         const resp = await fetch('https://www.tcmb.gov.tr/kurlar/today.xml');
         if (!resp.ok) throw new Error(`TCMB API error: ${resp.status}`);
         const text = await resp.text();
-        const rates = { TRY: { rate: 1, amount: 1 } };
+        const rates = { TRY: { rate: "1", amount: "1" } };
         const re = /<Currency\s[^>]*CurrencyCode="([A-Z]{3})"[^>]*>[\s\S]*?<Unit>(\d+)<\/Unit>[\s\S]*?<ForexBuying>([\d.,]+)<\/ForexBuying>/g;
         let match;
         while ((match = re.exec(text)) !== null) {
           const [, code, unit, buying] = match;
-          rates[code] = { rate: parseFloat(buying.replace(',', '.')), amount: parseInt(unit, 10) };
+          rates[code] = { rate: MathOps.fromNumber(parseFloat(buying.replace(',', '.'))), amount: MathOps.parseInt(unit) };
         }
         return { base: 'TRY', rates };
       },
@@ -117,7 +116,7 @@ const RateSources = (() => {
         const resp = await fetch(`https://www.bankofcanada.ca/valet/observations/${series}/json?start_date=${startDate}`);
         if (!resp.ok) throw new Error(`BOC API error: ${resp.status}`);
         const data = await resp.json();
-        const rates = { CAD: { rate: 1, amount: 1 } };
+        const rates = { CAD: { rate: "1", amount: "1" } };
         const observations = data.observations;
         if (!observations || observations.length === 0) {
           throw new Error('BOC API: no observations returned');
@@ -130,7 +129,7 @@ const RateSources = (() => {
           const match = key.match(/^FX([A-Z]{3})CAD$/);
           if (match && val && val.v) {
             // FXUSDCAD = 1 USD in CAD, so rate for USD in CAD base = val.v
-            rates[match[1]] = { rate: parseFloat(val.v), amount: 1 };
+            rates[match[1]] = { rate: MathOps.fromNumber(parseFloat(val.v)), amount: "1" };
           }
         }
         return { base: 'CAD', rates };
@@ -139,7 +138,7 @@ const RateSources = (() => {
     bcb: {
       name: 'Central Bank of Brazil',
       fetchBaseRates: async () => {
-        const rates = { BRL: { rate: 1, amount: 1 } };
+        const rates = { BRL: { rate: "1", amount: "1" } };
         // Try up to 5 previous days to handle weekends/holidays
         for (let daysBack = 0; daysBack < 5; daysBack++) {
           const d = new Date();
@@ -150,7 +149,7 @@ const RateSources = (() => {
           const data = await resp.json();
           if (data.value && data.value.length > 0) {
             const cotacao = data.value[0];
-            rates.USD = { rate: cotacao.cotacaoCompra, amount: 1 };
+            rates.USD = { rate: MathOps.fromNumber(cotacao.cotacaoCompra), amount: "1" };
             return { base: 'BRL', rates, rateDate: cotacao.dataHoraCotacao };
           }
         }
@@ -166,9 +165,9 @@ const RateSources = (() => {
         if (!resp.ok) throw new Error(`BOE API error: ${resp.status}`);
         const data = await resp.json();
         if (!data || typeof data.rates !== 'object') throw new Error('BOE API: invalid response');
-        const rates = { GBP: { rate: 1, amount: 1 } };
+        const rates = { GBP: { rate: "1", amount: "1" } };
         for (const [code, val] of Object.entries(data.rates)) {
-          rates[code] = { rate: val, amount: 1 };
+          rates[code] = { rate: MathOps.fromNumber(val), amount: "1" };
         }
         return { base: 'GBP', rates, indirect: true };
       },
@@ -182,7 +181,7 @@ const RateSources = (() => {
         const records = data && data.result && data.result.records;
         if (!records || records.length === 0) throw new Error('HKMA API: no records returned');
         const latest = records[0];
-        const rates = { HKD: { rate: 1, amount: 1 } };
+        const rates = { HKD: { rate: "1", amount: "1" } };
         const fieldMap = {
           usd: 'USD', gbp: 'GBP', jpy: 'JPY', cad: 'CAD', aud: 'AUD',
           sgd: 'SGD', twd: 'TWD', chf: 'CHF', cny: 'CNY', krw: 'KRW',
@@ -191,7 +190,7 @@ const RateSources = (() => {
         };
         for (const [field, code] of Object.entries(fieldMap)) {
           const val = latest[field];
-          if (val != null) rates[code] = { rate: parseFloat(val), amount: 1 };
+          if (val != null) rates[code] = { rate: MathOps.fromNumber(parseFloat(val)), amount: "1" };
         }
         return { base: 'HKD', rates };
       },
@@ -204,12 +203,12 @@ const RateSources = (() => {
         const resp = await fetch(`https://nationalbank.kz/rss/get_rates.cfm?fdate=${dateStr}`);
         if (!resp.ok) throw new Error(`NBK API error: ${resp.status}`);
         const text = await resp.text();
-        const rates = { KZT: { rate: 1, amount: 1 } };
+        const rates = { KZT: { rate: "1", amount: "1" } };
         const re = /<item>\s*<fullname>[^<]*<\/fullname>\s*<title>([A-Z]{3})<\/title>\s*<description>([\d.]+)<\/description>\s*<quant>(\d+)<\/quant>/g;
         let match;
         while ((match = re.exec(text)) !== null) {
           const [, code, rate, quant] = match;
-          rates[code] = { rate: parseFloat(rate), amount: parseInt(quant, 10) };
+          rates[code] = { rate: MathOps.fromNumber(parseFloat(rate)), amount: MathOps.parseInt(quant) };
         }
         return { base: 'KZT', rates };
       },
