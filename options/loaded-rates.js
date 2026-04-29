@@ -34,7 +34,12 @@ const LoadedRates = (() => {
         let displayRate;
         if (typeof rateData === 'object' && rateData !== null && rateData.rate !== undefined) {
           const amount = rateData.amount || 1;
-          displayRate = `${amount} ${code} = ${FormatUtils.formatNumber(rateData.rate, 4, nf)} ${base}`;
+          const isIndirect = loadedRates.indirect;
+          if (isIndirect) {
+            displayRate = `1 ${base} = ${FormatUtils.formatNumber(rateData.rate / amount, 4, nf)} ${code}`;
+          } else {
+            displayRate = `${amount} ${code} = ${FormatUtils.formatNumber(rateData.rate, 4, nf)} ${base}`;
+          }
         } else {
           displayRate = '\u2014';
         }

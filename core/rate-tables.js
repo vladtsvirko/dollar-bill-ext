@@ -80,7 +80,7 @@ const RateTables = (() => {
   // --- Build rate table from a single source ---
 
   function buildRateTable(baseRates, sources, targets, sourceId) {
-    const { base, rates } = baseRates;
+    const { base, rates, indirect } = baseRates;
     const result = {};
     const all = [...new Set([...sources, ...targets])];
     if (!all.includes(base)) all.push(base);
@@ -89,41 +89,43 @@ const RateTables = (() => {
       result[c] = {};
     }
 
+    // Pass 1: base pairs (currency ↔ base)
+    for (const c of all) {
+      if (c === base) continue;
+      const cData = rates[c];
+      if (cData == null) continue;
+
+      if (indirect) {
+        // Indirect source: rates[c]={rate:X,amount:A} means 1 base = X/A c
+        // base→c: amount=1, rate=X (per 1 base)
+        // c→base: inverse
+        result[base][c] = { [sourceId]: { amount: 1, rate: cData.rate / cData.amount, type: RATE_TYPE.PLAIN } };
+        result[c][base] = { [sourceId]: { amount: 1, rate: cData.amount / cData.rate, type: RATE_TYPE.PLAIN_INVERSED } };
+      } else {
+        // Direct source: rates[c]={rate:X,amount:A} means A c = X base
+        // c→base: amount=A, rate=X
+        // base→c: inverse
+        result[c][base] = { [sourceId]: { amount: cData.amount, rate: cData.rate, type: RATE_TYPE.PLAIN } };
+        result[base][c] = { [sourceId]: { amount: 1, rate: cData.amount / cData.rate, type: RATE_TYPE.PLAIN_INVERSED } };
+      }
+    }
+
+    // Pass 2: cross-rates (non-base ↔ non-base)
     for (let i = 0; i < all.length; i++) {
       for (let j = i + 1; j < all.length; j++) {
         const c1 = all[i];
         const c2 = all[j];
-        const c1Data = rates[c1];
-        const c2Data = rates[c2];
-        if (c1Data == null || c2Data == null) continue;
+        if (c1 === base || c2 === base) continue;
+        if (!result[c1][base] || !result[base][c2]) continue;
 
-        // Skip if same as base (no conversion needed for base→base)
-        const c1IsBase = c1 === base;
-        const c2IsBase = c2 === base;
+        const c1ToBase = result[c1][base][sourceId];
+        const baseToC2 = result[base][c2][sourceId];
+        if (!c1ToBase || !baseToC2) continue;
 
-        if (c1IsBase || c2IsBase) {
-          // Direct pair with base currency — identify non-base currency
-          const nonBase = c1IsBase ? c2 : c1;
-          const nonBaseData = c1IsBase ? c2Data : c1Data;
-
-          // rates[nonBase]={rate:X,amount:A} means A nonBase = X base
-          result[nonBase][base] = { [sourceId]: { amount: nonBaseData.amount, rate: nonBaseData.rate, type: RATE_TYPE.PLAIN } };
-          result[base][nonBase] = { [sourceId]: { amount: 1, rate: nonBaseData.amount / nonBaseData.rate, type: RATE_TYPE.PLAIN_INVERSED } };
-        } else {
-          // Cross-rate between two non-base currencies
-          // c1→base rate (per-unit) = c1Data.rate / c1Data.amount
-          // c2→base rate (per-unit) = c2Data.rate / c2Data.amount
-          // c1→c2 = (c1→base) / (c2→base) = (c1Data.rate/c1Data.amount) / (c2Data.rate/c2Data.amount)
-          const crossRate = (c1Data.rate / c1Data.amount) / (c2Data.rate / c2Data.amount);
-
-          if (crossRate >= 1) {
-            result[c1][c2] = { [sourceId]: { amount: 1, rate: crossRate, type: RATE_TYPE.CROSS } };
-            result[c2][c1] = { [sourceId]: { amount: 1, rate: 1 / crossRate, type: RATE_TYPE.CROSS } };
-          } else {
-            result[c2][c1] = { [sourceId]: { amount: 1, rate: 1 / crossRate, type: RATE_TYPE.CROSS } };
-            result[c1][c2] = { [sourceId]: { amount: 1, rate: crossRate, type: RATE_TYPE.CROSS } };
-          }
-        }
+        // c1→c2 = (c1→base per-unit) × (base→c2 per-unit)
+        const crossRate = (c1ToBase.rate / c1ToBase.amount) * (baseToC2.rate / baseToC2.amount);
+        result[c1][c2] = { [sourceId]: { amount: 1, rate: crossRate, type: RATE_TYPE.CROSS } };
+        result[c2][c1] = { [sourceId]: { amount: 1, rate: 1 / crossRate, type: RATE_TYPE.CROSS } };
       }
     }
 
@@ -183,14 +185,7 @@ const RateTables = (() => {
         rate = val.rate;
       }
 
-      let from = rawFrom, to = rawTo;
-      // Normalize so rate per-unit >= 1
-      const perUnit = rate / amount;
-      if (perUnit > 0 && perUnit < 1) {
-        [from, to] = [to, from];
-        rate = amount / rate;
-        amount = 1;
-      }
+      const from = rawFrom, to = rawTo;
 
       if (!result[from]) result[from] = {};
       result[from][to] = { [CUSTOM_SOURCE]: { amount, rate, type: RATE_TYPE.PLAIN } };

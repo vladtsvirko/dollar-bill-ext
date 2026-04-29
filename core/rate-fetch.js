@@ -1,5 +1,5 @@
 const RateFetch = (() => {
-  const CACHE_KEY = 'dollarbill_rates';
+  const CACHE_KEY = 'dollarbill_rates_v2';
   const FETCH_STATUS_KEY = 'dollarbill_fetch_status';
   const LOADED_RATES_KEY = 'dollarbill_loaded_rates';
 
@@ -75,6 +75,7 @@ const RateFetch = (() => {
           base: baseRates.base,
           rates: ratesCopy,
           timestamp: Date.now(),
+          indirect: baseRates.indirect || false,
         };
         if (baseRates.rateDate) {
           loadedRatesMap[id].rateDate = baseRates.rateDate;

@@ -24,9 +24,9 @@ const RateSources = (() => {
         let match;
         while ((match = re.exec(text)) !== null) {
           const val = parseFloat(match[2]);
-          rates[match[1]] = { rate: val > 0 ? 1 / val : 0, amount: 1 };
+          rates[match[1]] = { rate: val, amount: 1 };
         }
-        return { base: 'EUR', rates };
+        return { base: 'EUR', rates, indirect: true };
       },
     },
     nbp: {
@@ -161,16 +161,16 @@ const RateSources = (() => {
       name: 'Bank of England',
       fetchBaseRates: async () => {
         // BOE retired their IADB API. Using Frankfurter (ECB reference rates) for GBP rates.
-        // Frankfurter returns indirect format (1 GBP = X foreign), inverted to direct here.
+        // Frankfurter returns indirect format (1 GBP = X foreign).
         const resp = await fetch('https://api.frankfurter.app/latest?from=GBP');
         if (!resp.ok) throw new Error(`BOE API error: ${resp.status}`);
         const data = await resp.json();
         if (!data || typeof data.rates !== 'object') throw new Error('BOE API: invalid response');
         const rates = { GBP: { rate: 1, amount: 1 } };
         for (const [code, val] of Object.entries(data.rates)) {
-          rates[code] = { rate: val > 0 ? 1 / val : 0, amount: 1 };
+          rates[code] = { rate: val, amount: 1 };
         }
-        return { base: 'GBP', rates };
+        return { base: 'GBP', rates, indirect: true };
       },
     },
     hkma: {
