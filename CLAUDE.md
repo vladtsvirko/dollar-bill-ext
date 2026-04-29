@@ -67,7 +67,7 @@ dollar-bill-ext/
 
 ### Key patterns
 
-- `RATE_SOURCES` object (in `core/rate-sources.js`) maps source IDs to `{ name, convention, fetchBaseRates }`.
+- `RATE_SOURCES` object (in `core/rate-sources.js`) maps source IDs to `{ name, fetchBaseRates }`.
 - `RateTables.buildMergedRateTable()` merges rates from multiple sources and detects conflicts.
 - `Patterns.buildPatternsFromIdentifiers()` generates regex patterns from currency identifiers.
 - `RatesUtil` (in `core/rates.js`) is a **facade** — it re-exports everything from `Patterns`, `RateTables`, `FormatUtils`, and `RateFetch` as a single backward-compatible global. All existing callers use `RatesUtil.convert()`, `RatesUtil.getSettings()`, etc.

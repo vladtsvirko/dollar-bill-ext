@@ -81,7 +81,6 @@ const RateTables = (() => {
 
   function buildRateTable(baseRates, sources, targets, sourceId) {
     const { base, rates } = baseRates;
-    const convention = baseRates.convention;
     const result = {};
     const all = [...new Set([...sources, ...targets])];
     if (!all.includes(base)) all.push(base);
@@ -107,30 +106,15 @@ const RateTables = (() => {
           const nonBase = c1IsBase ? c2 : c1;
           const nonBaseData = c1IsBase ? c2Data : c1Data;
 
-          if (convention === RateSources.CONVENTION.DIRECT) {
-            // rates[nonBase]={rate:X,amount:A} means A nonBase = X base
-            result[nonBase][base] = { [sourceId]: { amount: nonBaseData.amount, rate: nonBaseData.rate, type: RATE_TYPE.PLAIN } };
-            result[base][nonBase] = { [sourceId]: { amount: 1, rate: nonBaseData.amount / nonBaseData.rate, type: RATE_TYPE.PLAIN_INVERSED } };
-          } else {
-            // Indirect: rates[nonBase]={rate:X,amount:A} means 1 base = X/A nonBase
-            result[base][nonBase] = { [sourceId]: { amount: 1, rate: nonBaseData.rate / nonBaseData.amount, type: RATE_TYPE.PLAIN } };
-            result[nonBase][base] = { [sourceId]: { amount: 1, rate: nonBaseData.amount / nonBaseData.rate, type: RATE_TYPE.PLAIN_INVERSED } };
-          }
+          // rates[nonBase]={rate:X,amount:A} means A nonBase = X base
+          result[nonBase][base] = { [sourceId]: { amount: nonBaseData.amount, rate: nonBaseData.rate, type: RATE_TYPE.PLAIN } };
+          result[base][nonBase] = { [sourceId]: { amount: 1, rate: nonBaseData.amount / nonBaseData.rate, type: RATE_TYPE.PLAIN_INVERSED } };
         } else {
           // Cross-rate between two non-base currencies
-          let crossRate;
-          if (convention === RateSources.CONVENTION.DIRECT) {
-            // c1→base rate (per-unit) = c1Data.rate / c1Data.amount
-            // c2→base rate (per-unit) = c2Data.rate / c2Data.amount
-            // c1→c2 = (c1→base) / (c2→base) = (c1Data.rate/c1Data.amount) / (c2Data.rate/c2Data.amount)
-            crossRate = (c1Data.rate / c1Data.amount) / (c2Data.rate / c2Data.amount);
-          } else {
-            // Indirect: rates[c1] means 1 base = c1Data.rate/c1Data.amount c1
-            // base→c1 (per-unit) = c1Data.rate / c1Data.amount
-            // base→c2 (per-unit) = c2Data.rate / c2Data.amount
-            // c1→c2 = (base→c2) / (base→c1) = (c2Data.rate/c2Data.amount) / (c1Data.rate/c1Data.amount)
-            crossRate = (c2Data.rate / c2Data.amount) / (c1Data.rate / c1Data.amount);
-          }
+          // c1→base rate (per-unit) = c1Data.rate / c1Data.amount
+          // c2→base rate (per-unit) = c2Data.rate / c2Data.amount
+          // c1→c2 = (c1→base) / (c2→base) = (c1Data.rate/c1Data.amount) / (c2Data.rate/c2Data.amount)
+          const crossRate = (c1Data.rate / c1Data.amount) / (c2Data.rate / c2Data.amount);
 
           if (crossRate >= 1) {
             result[c1][c2] = { [sourceId]: { amount: 1, rate: crossRate, type: RATE_TYPE.CROSS } };

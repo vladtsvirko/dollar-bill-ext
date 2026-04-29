@@ -19,7 +19,6 @@ const LoadedRates = (() => {
 
       if (!loadedRates || !loadedRates.rates) continue;
       const base = loadedRates.base;
-      const convention = loadedRates.convention;
       const entries = Object.entries(loadedRates.rates)
         .filter(([code]) => code !== base)
         .sort((a, b) => a[0].localeCompare(b[0]));
@@ -34,15 +33,10 @@ const LoadedRates = (() => {
       for (const [code, rateData] of entries) {
         let displayRate;
         if (typeof rateData === 'object' && rateData !== null && rateData.rate !== undefined) {
-          // New format: { rate, amount }
           const amount = rateData.amount || 1;
           displayRate = `${amount} ${code} = ${FormatUtils.formatNumber(rateData.rate, 4, nf)} ${base}`;
         } else {
-          // Legacy format: plain number
-          const rate = rateData;
-          displayRate = convention === RateSources.CONVENTION.DIRECT
-            ? (rate > 0 ? FormatUtils.formatNumber(1 / rate, 4, nf) : '\u2014')
-            : (rate > 0 ? FormatUtils.formatNumber(rate, 4, nf) : '\u2014');
+          displayRate = '\u2014';
         }
         html += `<div class="loaded-rates-row"><span class="loaded-rates-code">${FormatUtils.escapeHtml(code)}</span><span class="loaded-rates-value">${displayRate}</span></div>`;
       }

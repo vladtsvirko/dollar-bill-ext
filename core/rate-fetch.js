@@ -49,7 +49,6 @@ const RateFetch = (() => {
           const source = RATE_SOURCES[id];
           if (!source) throw new Error(`Unknown rate source: ${id}`);
           const baseRates = await source.fetchBaseRates();
-          baseRates.convention = source.convention;
           return { id, baseRates };
         } catch (err) {
           err.sourceId = id;
@@ -74,7 +73,6 @@ const RateFetch = (() => {
         loadedRatesMap[id] = {
           source: id,
           base: baseRates.base,
-          convention: baseRates.convention,
           rates: ratesCopy,
           timestamp: Date.now(),
         };

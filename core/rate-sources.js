@@ -1,10 +1,7 @@
 const RateSources = (() => {
-  const CONVENTION = { DIRECT: 'direct', INDIRECT: 'indirect' };
-
   const RATE_SOURCES = {
     nbrb: {
       name: 'National Bank of Belarus',
-      convention: CONVENTION.DIRECT,
       fetchBaseRates: async () => {
         const resp = await fetch('https://api.nbrb.by/exrates/rates?periodicity=0');
         if (!resp.ok) throw new Error(`NBRB API error: ${resp.status}`);
@@ -18,7 +15,6 @@ const RateSources = (() => {
     },
     ecb: {
       name: 'European Central Bank',
-      convention: CONVENTION.INDIRECT,
       fetchBaseRates: async () => {
         const resp = await fetch('https://www.ecb.europa.eu/stats/eurofxref/eurofxref-daily.xml');
         if (!resp.ok) throw new Error(`ECB API error: ${resp.status}`);
@@ -27,14 +23,14 @@ const RateSources = (() => {
         const re = /currency='([A-Z]{3})'\s+rate='([\d.]+)'/g;
         let match;
         while ((match = re.exec(text)) !== null) {
-          rates[match[1]] = { rate: parseFloat(match[2]), amount: 1 };
+          const val = parseFloat(match[2]);
+          rates[match[1]] = { rate: val > 0 ? 1 / val : 0, amount: 1 };
         }
         return { base: 'EUR', rates };
       },
     },
     nbp: {
       name: 'National Bank of Poland',
-      convention: CONVENTION.DIRECT,
       fetchBaseRates: async () => {
         const resp = await fetch('https://api.nbp.pl/api/exchangerates/tables/A/');
         if (!resp.ok) throw new Error(`NBP API error: ${resp.status}`);
@@ -50,7 +46,6 @@ const RateSources = (() => {
     },
     nbu: {
       name: 'National Bank of Ukraine',
-      convention: CONVENTION.DIRECT,
       fetchBaseRates: async () => {
         const today = new Date();
         const dateStr = `${String(today.getFullYear())}${String(today.getMonth() + 1).padStart(2, '0')}${String(today.getDate()).padStart(2, '0')}`;
@@ -66,7 +61,6 @@ const RateSources = (() => {
     },
     cbr: {
       name: 'Bank of Russia',
-      convention: CONVENTION.DIRECT,
       fetchBaseRates: async () => {
         const resp = await fetch('https://www.cbr.ru/scripts/XML_daily_eng.asp');
         if (!resp.ok) throw new Error(`CBR API error: ${resp.status}`);
@@ -83,7 +77,6 @@ const RateSources = (() => {
     },
     cnb: {
       name: 'Czech National Bank',
-      convention: CONVENTION.DIRECT,
       fetchBaseRates: async () => {
         const resp = await fetch('https://www.cnb.cz/cs/financni-trhy/devizovy-trh/kurzy-devizoveho-trhu/kurzy-devizoveho-trhu/denni_kurz.xml');
         if (!resp.ok) throw new Error(`CNB API error: ${resp.status}`);
@@ -100,7 +93,6 @@ const RateSources = (() => {
     },
     tcmb: {
       name: 'Central Bank of Turkey',
-      convention: CONVENTION.DIRECT,
       fetchBaseRates: async () => {
         const resp = await fetch('https://www.tcmb.gov.tr/kurlar/today.xml');
         if (!resp.ok) throw new Error(`TCMB API error: ${resp.status}`);
@@ -117,7 +109,6 @@ const RateSources = (() => {
     },
     boc: {
       name: 'Bank of Canada',
-      convention: CONVENTION.DIRECT,
       fetchBaseRates: async () => {
         const d = new Date();
         d.setDate(d.getDate() - 5);
@@ -147,7 +138,6 @@ const RateSources = (() => {
     },
     bcb: {
       name: 'Central Bank of Brazil',
-      convention: CONVENTION.DIRECT,
       fetchBaseRates: async () => {
         const rates = { BRL: { rate: 1, amount: 1 } };
         // Try up to 5 previous days to handle weekends/holidays
@@ -169,23 +159,22 @@ const RateSources = (() => {
     },
     boe: {
       name: 'Bank of England',
-      convention: CONVENTION.INDIRECT,
       fetchBaseRates: async () => {
         // BOE retired their IADB API. Using Frankfurter (ECB reference rates) for GBP rates.
+        // Frankfurter returns indirect format (1 GBP = X foreign), inverted to direct here.
         const resp = await fetch('https://api.frankfurter.app/latest?from=GBP');
         if (!resp.ok) throw new Error(`BOE API error: ${resp.status}`);
         const data = await resp.json();
         if (!data || typeof data.rates !== 'object') throw new Error('BOE API: invalid response');
         const rates = { GBP: { rate: 1, amount: 1 } };
         for (const [code, val] of Object.entries(data.rates)) {
-          rates[code] = { rate: val, amount: 1 };
+          rates[code] = { rate: val > 0 ? 1 / val : 0, amount: 1 };
         }
         return { base: 'GBP', rates };
       },
     },
     hkma: {
       name: 'Hong Kong Monetary Authority',
-      convention: CONVENTION.DIRECT,
       fetchBaseRates: async () => {
         const resp = await fetch('https://api.hkma.gov.hk/public/market-data-and-statistics/monthly-statistical-bulletin/er-ir/er-eeri-daily?offset=0&pagesize=1');
         if (!resp.ok) throw new Error(`HKMA API error: ${resp.status}`);
@@ -209,7 +198,6 @@ const RateSources = (() => {
     },
     nbk: {
       name: 'National Bank of Kazakhstan',
-      convention: CONVENTION.DIRECT,
       fetchBaseRates: async () => {
         const today = new Date();
         const dateStr = `${String(today.getDate()).padStart(2, '0')}.${String(today.getMonth() + 1).padStart(2, '0')}.${today.getFullYear()}`;
@@ -233,5 +221,5 @@ const RateSources = (() => {
     return source ? source.name : sourceId;
   }
 
-  return { RATE_SOURCES, getSourceDisplayName, CONVENTION };
+  return { RATE_SOURCES, getSourceDisplayName };
 })();

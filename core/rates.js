@@ -4,7 +4,6 @@ const RatesUtil = (() => {
   const POPULAR_CURRENCIES = Currencies.POPULAR_CURRENCIES;
   const RATE_SOURCES = RateSources.RATE_SOURCES;
   const getSourceDisplayName = RateSources.getSourceDisplayName;
-  const CONVENTION = RateSources.CONVENTION;
   const DEFAULT_SETTINGS = Settings.DEFAULT_SETTINGS;
   const SETTINGS_KEY = Settings.SETTINGS_KEY;
 
@@ -14,7 +13,6 @@ const RatesUtil = (() => {
     POPULAR_CURRENCIES,
     RATE_SOURCES,
     getSourceDisplayName,
-    CONVENTION,
     RATE_TYPE: RateTables.RATE_TYPE,
     CUSTOM_SOURCE: RateTables.CUSTOM_SOURCE,
 
