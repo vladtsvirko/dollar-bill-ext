@@ -20,11 +20,11 @@ dollar-bill-ext/
 ├── core/
 │   ├── currencies.js            (Currencies IIFE — 150+ currency database)
 │   ├── rate-sources.js          (RateSources IIFE — API definitions + fetch)
-│   ├── migrations.js            (Migrations IIFE — v1→v6 migration chain)
+│   ├── migrations.js            (Migrations IIFE — v1→v3 migration chain)
 │   ├── settings.js              (Settings IIFE — schema + persistence)
 │   ├── i18n.js                  (I18n IIFE — locale loading, t(), applyToPage())
 │   ├── patterns.js              (Patterns IIFE — regex compilation)
-│   ├── rate-tables.js           (RateTables IIFE — cross-rate math, merge, convert)
+│   ├── rate-tables.js           (RateTables IIFE — rate table building, merge, convert)
 │   ├── format-utils.js          (FormatUtils IIFE — escapeHtml, timestamps, numbers)
 │   ├── rate-fetch.js            (RateFetch IIFE — cache, storage, fetch orchestration)
 │   └── rates.js                 (RatesUtil IIFE — facade re-exporting all core modules)
@@ -61,8 +61,8 @@ dollar-bill-ext/
 
 ### Data flow
 
-1. **Rates**: Central bank APIs → `RateFetch.fetchAndCacheRates()` → `chrome.storage.local` → cached as merged cross-rate table with conflict tracking
-2. **Settings**: `chrome.storage.local` under `dollarbill_settings` key. Schema versioned (`_settingsVersion: 7`) with migration chain in `core/migrations.js`.
+1. **Rates**: Central bank APIs → `RateFetch.fetchAndCacheRates()` → `chrome.storage.local` → cached as merged rate table with conflict tracking
+2. **Settings**: `chrome.storage.local` under `dollarbill_settings` key. Schema versioned (`_settingsVersion: 3`) with migration chain in `core/migrations.js`.
 3. **Content script**: Loads core modules, then content modules, then `content.js`. Sends `getSettings`/`getRates` messages to background. Compiles regex patterns from currency identifiers. Ambiguous currencies resolved via domain TLD mapping or picker bar.
 
 ### Key patterns

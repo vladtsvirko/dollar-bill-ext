@@ -1,11 +1,11 @@
 const RateTables = (() => {
   const META_KEYS = new Set(['timestamp', '_usedSources', '_sourceErrors']);
 
-  const RATE_TYPE = { PLAIN: 'plain', PLAIN_INVERSED: 'plain_inversed', CROSS: 'cross' };
+  const RATE_TYPE = { SOURCE: 'source', SOURCE_INVERSED: 'source_inversed' };
   const CUSTOM_SOURCE = 'custom';
 
-  // Type preference order for auto-selection: plain > plain_inversed > cross
-  const TYPE_PREFERENCE = { plain: 1, plain_inversed: 2, cross: 3 };
+  // Type preference order for auto-selection: source > source_inversed
+  const TYPE_PREFERENCE = { source: 1, source_inversed: 2 };
 
   function getSourceCurrencies(settings) {
     return [...new Set((settings.conversionPairs || []).map(p => p.from))];
@@ -58,7 +58,7 @@ const RateTables = (() => {
     const sel = findSelection(from, to, selections);
     if (sel && sourceMap[sel.source]) return { ...sourceMap[sel.source], source: sel.source };
 
-    // 2. Auto-select by preference: custom > plain > plain_inversed > cross
+    // 2. Auto-select by preference: custom > source > source_inversed
     let best = null;
     let bestPriority = Infinity;
 
@@ -99,33 +99,14 @@ const RateTables = (() => {
         // Indirect source: rates[c]={rate:X,amount:A} means 1 base = X/A c
         // base→c: amount=1, rate=X (per 1 base)
         // c→base: inverse
-        result[base][c] = { [sourceId]: { amount: 1, rate: cData.rate / cData.amount, type: RATE_TYPE.PLAIN } };
-        result[c][base] = { [sourceId]: { amount: 1, rate: cData.amount / cData.rate, type: RATE_TYPE.PLAIN_INVERSED } };
+        result[base][c] = { [sourceId]: { amount: 1, rate: cData.rate / cData.amount, type: RATE_TYPE.SOURCE } };
+        result[c][base] = { [sourceId]: { amount: 1, rate: cData.amount / cData.rate, type: RATE_TYPE.SOURCE_INVERSED } };
       } else {
         // Direct source: rates[c]={rate:X,amount:A} means A c = X base
         // c→base: amount=A, rate=X
         // base→c: inverse
-        result[c][base] = { [sourceId]: { amount: cData.amount, rate: cData.rate, type: RATE_TYPE.PLAIN } };
-        result[base][c] = { [sourceId]: { amount: 1, rate: cData.amount / cData.rate, type: RATE_TYPE.PLAIN_INVERSED } };
-      }
-    }
-
-    // Pass 2: cross-rates (non-base ↔ non-base)
-    for (let i = 0; i < all.length; i++) {
-      for (let j = i + 1; j < all.length; j++) {
-        const c1 = all[i];
-        const c2 = all[j];
-        if (c1 === base || c2 === base) continue;
-        if (!result[c1][base] || !result[base][c2]) continue;
-
-        const c1ToBase = result[c1][base][sourceId];
-        const baseToC2 = result[base][c2][sourceId];
-        if (!c1ToBase || !baseToC2) continue;
-
-        // c1→c2 = (c1→base per-unit) × (base→c2 per-unit)
-        const crossRate = (c1ToBase.rate / c1ToBase.amount) * (baseToC2.rate / baseToC2.amount);
-        result[c1][c2] = { [sourceId]: { amount: 1, rate: crossRate, type: RATE_TYPE.CROSS } };
-        result[c2][c1] = { [sourceId]: { amount: 1, rate: 1 / crossRate, type: RATE_TYPE.CROSS } };
+        result[c][base] = { [sourceId]: { amount: cData.amount, rate: cData.rate, type: RATE_TYPE.SOURCE } };
+        result[base][c] = { [sourceId]: { amount: 1, rate: cData.amount / cData.rate, type: RATE_TYPE.SOURCE_INVERSED } };
       }
     }
 
@@ -188,7 +169,7 @@ const RateTables = (() => {
       const from = rawFrom, to = rawTo;
 
       if (!result[from]) result[from] = {};
-      result[from][to] = { [CUSTOM_SOURCE]: { amount, rate, type: RATE_TYPE.PLAIN } };
+      result[from][to] = { [CUSTOM_SOURCE]: { amount, rate, type: RATE_TYPE.SOURCE } };
     }
     return result;
   }

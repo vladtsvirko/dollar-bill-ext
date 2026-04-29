@@ -26,9 +26,16 @@ const Migrations = (() => {
     return stored;
   }
 
+  function migrateV2toV3(stored) {
+    if ((stored._settingsVersion || 0) >= 3) return stored;
+    stored._settingsVersion = 3;
+    return stored;
+  }
+
   async function migrate(stored) {
     const MIGRATIONS = [
       migrateV1toV2,
+      migrateV2toV3,
     ];
 
     const SETTINGS_KEY = Settings.SETTINGS_KEY;
@@ -47,7 +54,7 @@ const Migrations = (() => {
     // Clear cached rates if format changed
     if (versionBumped) {
       try {
-        await chrome.storage.local.remove('dollarbill_rates');
+        await chrome.storage.local.remove(['dollarbill_rates', 'dollarbill_rates_v2']);
       } catch (_) { /* best effort */ }
     }
 

@@ -1,17 +1,17 @@
 # Rate Source Extraction — Deep Dive
 
-This document traces how each of the 12 rate sources extracts exchange rate data, and how the rate pipeline converts it into usable cross-rates.
+This document traces how each of the 12 rate sources extracts exchange rate data, and how the rate pipeline converts it into usable rates.
 
 ## Pipeline Overview
 
 1. `fetchBaseRates()` → raw API → `{ base, rates }` where `rates[code] = { rate, amount }` (inverted to direct format at extraction if needed)
-2. `buildRateTable()` → per-unit cross-rate computation, divides `rate / amount` during calculation
+2. `buildRateTable()` → per-unit rate computation, divides `rate / amount` during calculation
 3. `buildMergedRateTable()` → merge multiple sources, detect conflicts
 4. `getEffectiveRates()` → apply user overrides + custom rates
 
 ### Rate Format
 
-Each rate entry is `{ rate: Number, amount: Number }`. All sources normalize to **direct format** during extraction: `rates[code]` means "A code = rate base" (where A = amount). Sources that return indirect rates (ECB, BOE via Frankfurter) invert at extraction. The `amount` is the denomination (e.g. 100 for JPY in NBRB). Per-unit computation happens during cross-rate calculation and conversion.
+Each rate entry is `{ rate: Number, amount: Number }`. All sources normalize to **direct format** during extraction: `rates[code]` means "A code = rate base" (where A = amount). Sources that return indirect rates (ECB, BOE via Frankfurter) invert at extraction. The `amount` is the denomination (e.g. 100 for JPY in NBRB). Per-unit computation happens during conversion.
 
 Sources that don't use denominations always set `amount: 1`.
 
@@ -23,11 +23,10 @@ Sources that don't use denominations always set `amount: 1`.
 ### Rate Types
 
 After `buildRateTable()`, each entry is tagged with a type:
-- `plain` — direct pair with base currency (rate >= 1)
-- `plain_inversed` — direct pair with base currency (inverted, rate < 1)
-- `cross` — derived cross-rate between two non-base currencies
+- `source` — direct pair from the source (rate as provided)
+- `source_inversed` — inverse of a direct source pair
 
-When multiple sources provide the same pair, auto-selection prefers: `plain > plain_inversed > cross`.
+When multiple sources provide the same pair, auto-selection prefers: `source > source_inversed`.
 
 ### Cross-Source Validation Baseline
 
@@ -62,7 +61,7 @@ rates[item.Cur_Abbreviation] = { rate: item.Cur_OfficialRate, amount: item.Cur_S
 - JPY: `{ rate: 2.1556, amount: 100 }` → no pre-division
 - PLN: `{ rate: 8.2529, amount: 10 }` → no pre-division
 
-`Cur_Scale` is stored as `amount` — the per-unit division happens during cross-rate computation.
+`Cur_Scale` is stored as `amount` — the per-unit division happens during conversion.
 
 **Cross-rate trace** (USD→EUR):
 ```
@@ -503,6 +502,6 @@ All within expected range (~0.85). Minor variations are normal between central b
 2. **TCMB uses bid rate**: Uses `ForexBuying` (bid) rather than mid or ask. This gives marginally conservative conversions.
 3. **BCB also uses bid rate**: Uses `cotacaoCompra` (purchase/bid) for the same reason.
 4. **HKMA monthly staleness**: The EERI dataset updates monthly, so rates can be up to ~30 days stale.
-5. **Denomination handling**: NBRB (`Cur_Scale` → `amount`), CBR (`Nominal` → `amount`), CNB (`mnozstvi` → `amount`), NBK (`quant` → `amount`) all store the raw rate and denomination separately. Per-unit normalization is deferred to cross-rate calculation via `rate / amount`, not done at extraction time.
-6. **Rate type system**: `buildRateTable()` tags each entry as `plain`, `plain_inversed`, or `cross`. When multiple sources provide the same currency pair, auto-selection prefers `plain` over `plain_inversed` over `cross` (via `TYPE_PREFERENCE`). User selections override auto-selection.
+5. **Denomination handling**: NBRB (`Cur_Scale` → `amount`), CBR (`Nominal` → `amount`), CNB (`mnozstvi` → `amount`), NBK (`quant` → `amount`) all store the raw rate and denomination separately. Per-unit normalization is deferred to conversion via `rate / amount`, not done at extraction time.
+6. **Rate type system**: `buildRateTable()` tags each entry as `source` or `source_inversed`. When multiple sources provide the same currency pair, auto-selection prefers `source` over `source_inversed` (via `TYPE_PREFERENCE`). User selections override auto-selection.
 7. **HKMA expanded coverage**: The `fieldMap` includes 17 currencies (USD, GBP, JPY, CAD, AUD, SGD, TWD, CHF, CNY, KRW, THB, MYR, EUR, PHP, INR, IDR, ZAR).
