@@ -61,6 +61,7 @@ let editingIdentifiers = [];
 
 let currentSettings = null;
 let currentRates = null;
+let currentRatesPairCount = 0;
 let currentFetchStatus = null;
 let editingCurrency = null;
 let autoSaveTimer = null;
@@ -317,7 +318,7 @@ async function reloadRates() {
     if (loadedRates) currentLoadedRates = loadedRates;
     renderFetchStatus();
     renderLoadedRates();
-    LoadedRates.renderSourceErrors(currentLoadedRates);
+    LoadedRates.renderSourceErrors(currentRates);
   } finally {
     reloadRatesBtn.classList.remove('loading');
     reloadRatesBtn.disabled = false;
@@ -341,10 +342,11 @@ function renderFetchStatus() {
 function renderLoadedRates() {
   const info = LoadedRates.render({
     listEl: loadedRatesList,
-    loadedRatesMap: currentLoadedRates,
+    cachedRates: currentRates,
     settings: currentSettings,
   });
-  updateLoadedRatesToggleLabel(info.count || null);
+  currentRatesPairCount = info.count || 0;
+  updateLoadedRatesToggleLabel(currentRatesPairCount || null);
 }
 
 function updateLoadedRatesToggleLabel(count) {
@@ -363,10 +365,7 @@ function updateLoadedRatesToggleLabel(count) {
 toggleLoadedRatesBtn.addEventListener('click', () => {
   loadedRatesExpanded = !loadedRatesExpanded;
   loadedRatesContent.style.display = loadedRatesExpanded ? 'block' : 'none';
-  updateLoadedRatesToggleLabel(currentLoadedRates && Object.keys(currentLoadedRates).length > 0
-    ? Object.values(currentLoadedRates).filter(lr => lr && lr.rates).reduce((sum, lr) => sum + Object.keys(lr.rates).length - 1, 0)
-    : null
-  );
+  updateLoadedRatesToggleLabel(currentRatesPairCount || null);
 });
 
 // ---- Theme ----
@@ -721,7 +720,7 @@ async function loadSettings() {
   renderCustomRatesGrid();
   renderFetchStatus();
   renderLoadedRates();
-  LoadedRates.renderSourceErrors(currentLoadedRates);
+  LoadedRates.renderSourceErrors(currentRates);
 
   setRadioValue(siteModeRadios, currentSettings.siteMode);
   renderWhitelistChips();

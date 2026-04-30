@@ -1,4 +1,4 @@
-importScripts('core/currencies.js', 'core/rate-sources.js', 'core/migrations.js', 'core/settings.js', 'core/i18n.js', 'core/patterns.js', 'core/rate-tables.js', 'core/format-utils.js', 'core/rate-fetch.js', 'core/rates.js');
+importScripts('core/currencies.js', 'core/math.js', 'core/rate-sources.js', 'core/migrations.js', 'core/settings.js', 'core/i18n.js', 'core/patterns.js', 'core/rate-tables.js', 'core/number-formatter.js', 'core/format-utils.js', 'core/rate-fetch.js', 'core/rates.js');
 
 const ALARM_NAME = 'dollarbill-update-rates';
 const ALARM_INTERVAL_MIN = 30;
@@ -6,7 +6,7 @@ const ALARM_INTERVAL_MIN = 30;
 async function updateRates() {
   try {
     const settings = await RatesUtil.getSettings();
-    await RatesUtil.fetchAndCacheRates(settings.rateSources || ['nbrb'], settings);
+    await RatesUtil.fetchAndCacheRates(settings.rateSources || ['nbrb']);
     try {
       await RatesUtil.saveFetchStatus({
         lastFetchTime: Date.now(),

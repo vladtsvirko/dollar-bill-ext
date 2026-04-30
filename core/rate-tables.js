@@ -79,10 +79,12 @@ const RateTables = (() => {
 
   // --- Build rate table from a single source ---
 
-  function buildRateTable(baseRates, sources, targets, sourceId) {
+  function buildRateTable(baseRates, sourceId) {
     const { base, rates } = baseRates;
     const result = {};
-    const all = [...new Set([...sources, ...targets])];
+
+    // Derive all currencies from the rates object itself
+    const all = Object.keys(rates);
     if (!all.includes(base)) all.push(base);
 
     for (const c of all) {
@@ -99,23 +101,20 @@ const RateTables = (() => {
       // c→base: amount=A, rate=X
       // base→c: inverse
       result[c][base] = { [sourceId]: { amount: cData.amount, rate: cData.rate, type: RATE_TYPE.SOURCE } };
-      result[base][c] = { [sourceId]: { amount: 1, rate: cData.amount / cData.rate, type: RATE_TYPE.SOURCE_INVERSED } };
+      result[base][c] = { [sourceId]: { amount: MathOps.fromNumber(1), rate: MathOps.div(cData.amount, cData.rate), type: RATE_TYPE.SOURCE_INVERSED } };
     }
 
     return result;
   }
 
-  function buildMergedRateTable(sourceRatesMap, orderedSourceIds, sourceCurrencies, targetCurrencies) {
-    const all = [...new Set([...sourceCurrencies, ...targetCurrencies])];
+  function buildMergedRateTable(sourceRatesMap) {
     const rateTables = {};
     for (const sourceId of Object.keys(sourceRatesMap)) {
       const baseRates = sourceRatesMap[sourceId];
-      if (!all.includes(baseRates.base)) all.push(baseRates.base);
-      rateTables[sourceId] = buildRateTable(baseRates, sourceCurrencies, targetCurrencies, sourceId);
+      rateTables[sourceId] = buildRateTable(baseRates, sourceId);
     }
 
     const merged = {};
-    for (const c of all) merged[c] = {};
 
     for (const [sourceId, table] of Object.entries(rateTables)) {
       for (const [from, toMap] of Object.entries(table)) {
@@ -151,11 +150,11 @@ const RateTables = (() => {
       let amount, rate;
       if (typeof val === 'number') {
         // Legacy format
-        amount = 1;
-        rate = val;
+        amount = MathOps.fromNumber(1);
+        rate = MathOps.fromNumber(val);
       } else {
-        amount = val.amount || 1;
-        rate = val.rate;
+        amount = MathOps.fromNumber(val.amount || 1);
+        rate = MathOps.fromNumber(val.rate);
       }
 
       const from = rawFrom, to = rawTo;
@@ -344,7 +343,7 @@ const RateTables = (() => {
       const usedSources = rates._usedSources || [];
       const entry = resolveActiveEntry(from, to, direct, null, usedSources);
       if (entry) {
-        const perUnit = entry.rate / entry.amount;
+        const perUnit = MathOps.toNumber(MathOps.div(entry.rate, entry.amount));
         if (perUnit >= 1) {
           return { base: from, quote: to, rate: perUnit, amount: entry.amount, source: entry.source, type: entry.type };
         }
@@ -365,7 +364,8 @@ const RateTables = (() => {
       const usedSources = rates._usedSources || [];
       const entry = resolveActiveEntry(to, from, reverse, null, usedSources);
       if (entry) {
-        return { base: to, quote: from, rate: entry.rate / entry.amount, amount: entry.amount, source: entry.source, type: entry.type };
+        const perUnit = MathOps.toNumber(MathOps.div(entry.rate, entry.amount));
+        return { base: to, quote: from, rate: perUnit, amount: entry.amount, source: entry.source, type: entry.type };
       }
       return null;
     }
@@ -404,7 +404,7 @@ const RateTables = (() => {
     if (!sourceMap || typeof sourceMap !== 'object') return null;
     const entry = resolveActiveEntry(from, to, sourceMap, selections, rates._usedSources);
     if (!entry) return null;
-    return amount * (entry.rate / entry.amount);
+    return MathOps.toNumber(MathOps.mul(amount, MathOps.div(entry.rate, entry.amount)));
   }
 
   function resolveAndComputeInverse(amount, from, to, rates, selections) {
@@ -412,10 +412,11 @@ const RateTables = (() => {
     if (!sourceMap || typeof sourceMap !== 'object') return null;
     const entry = resolveActiveEntry(to, from, sourceMap, selections, rates._usedSources);
     if (!entry) return null;
-    return amount / (entry.rate / entry.amount);
+    return MathOps.toNumber(MathOps.div(amount, MathOps.div(entry.rate, entry.amount)));
   }
 
   return {
+    META_KEYS,
     RATE_TYPE,
     CUSTOM_SOURCE,
     TYPE_PREFERENCE,

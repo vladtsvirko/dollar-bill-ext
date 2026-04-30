@@ -19,12 +19,14 @@ dollar-bill-ext/
 │   └── en.json                  (flat key-value English strings for i18n)
 ├── core/
 │   ├── currencies.js            (Currencies IIFE — 150+ currency database)
+│   ├── math.js                  (MathOps IIFE — string-safe arithmetic, all rate values are strings)
 │   ├── rate-sources.js          (RateSources IIFE — API definitions + fetch)
 │   ├── migrations.js            (Migrations IIFE — v1→v3 migration chain)
 │   ├── settings.js              (Settings IIFE — schema + persistence)
 │   ├── i18n.js                  (I18n IIFE — locale loading, t(), applyToPage())
 │   ├── patterns.js              (Patterns IIFE — regex compilation)
 │   ├── rate-tables.js           (RateTables IIFE — rate table building, merge, convert)
+│   ├── number-formatter.js      (NumberFormatter IIFE — display formatting for string rate values)
 │   ├── format-utils.js          (FormatUtils IIFE — escapeHtml, timestamps, numbers)
 │   ├── rate-fetch.js            (RateFetch IIFE — cache, storage, fetch orchestration)
 │   └── rates.js                 (RatesUtil IIFE — facade re-exporting all core modules)
@@ -68,7 +70,8 @@ dollar-bill-ext/
 ### Key patterns
 
 - `RATE_SOURCES` object (in `core/rate-sources.js`) maps source IDs to `{ name, fetchBaseRates }`.
-- `RateTables.buildMergedRateTable()` merges rates from multiple sources and detects conflicts.
+- `RateTables.buildMergedRateTable()` merges rates from multiple sources and detects conflicts. It builds the **full** rate table from all enabled sources — not filtered by `conversionPairs`.
+- `conversionPairs` controls what the content script detects/converts on pages, but does **not** gate the stored rate table.
 - `Patterns.buildPatternsFromIdentifiers()` generates regex patterns from currency identifiers.
 - `RatesUtil` (in `core/rates.js`) is a **facade** — it re-exports everything from `Patterns`, `RateTables`, `FormatUtils`, and `RateFetch` as a single backward-compatible global. All existing callers use `RatesUtil.convert()`, `RatesUtil.getSettings()`, etc.
 - Settings migrations run sequentially via `Migrations.migrate()` called from `Settings.getSettings()`.
@@ -80,9 +83,9 @@ The IIFE modules have hard dependencies and must load in this order:
 
 ### manifest.json content_scripts
 ```
-core/currencies.js → core/rate-sources.js → core/migrations.js →
+core/currencies.js → core/math.js → core/rate-sources.js → core/migrations.js →
 core/settings.js → core/i18n.js → core/patterns.js → core/rate-tables.js →
-core/format-utils.js → core/rate-fetch.js → core/rates.js →
+core/number-formatter.js → core/format-utils.js → core/rate-fetch.js → core/rates.js →
 content/scanner.js → content/converter.js → content/picker-bar.js →
 content/observer.js → content.js
 ```
@@ -91,10 +94,10 @@ content/observer.js → content.js
 Same as above minus content/ modules.
 
 ### popup.html scripts
-Core 10 files → ui/ 6 files → popup/rate-cards.js → popup/converter.js → popup/popup.js
+Core 12 files → ui/ 6 files → popup/rate-cards.js → popup/converter.js → popup/popup.js
 
 ### options.html scripts
-Core 10 files → ui/ 6 files → options/ 5 feature files → options/options.js
+Core 12 files → ui/ 6 files → options/ 5 feature files → options/options.js
 
 ## Development
 
@@ -113,3 +116,4 @@ Load the extension directly in Chrome via `chrome://extensions` → "Load unpack
 - Settings must always be read via `Settings.getSettings()` to run migrations. Never read `chrome.storage.local` directly for settings.
 - `styles/injected.css` uses hardcoded values intentionally — it loads into arbitrary pages and must remain isolated from the design tokens.
 - New modules should be their own IIFE globals. The `RatesUtil` facade in `core/rates.js` provides backward compatibility — new code can import directly from sub-modules (e.g., `RateTables.convert()`) or use `RatesUtil.convert()`.
+- **All stored rate `amount`/`rate` values are strings.** Use `MathOps` (`core/math.js`) for all arithmetic on rate values. Use `NumberFormatter` (`core/number-formatter.js`) for display formatting. No ad-hoc `parseFloat` or raw division outside these modules. `convert()` returns a number via `MathOps.toNumber()` at the boundary.

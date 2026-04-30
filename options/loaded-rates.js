@@ -1,74 +1,81 @@
 const LoadedRates = (() => {
-  function render({ listEl, loadedRatesMap, settings }) {
-    if (!loadedRatesMap || typeof loadedRatesMap !== 'object' || Object.keys(loadedRatesMap).length === 0) {
+  function render({ listEl, cachedRates, settings }) {
+    if (!cachedRates || typeof cachedRates !== 'object') {
+      listEl.innerHTML = '<p class="hint">' + I18n.t('options.noRatesLoaded') + '</p>';
+      return { count: 0 };
+    }
+
+    const usedSources = cachedRates._usedSources || [];
+    const sourceErrors = cachedRates._sourceErrors || {};
+    if (usedSources.length === 0 && Object.keys(sourceErrors).length === 0) {
       listEl.innerHTML = '<p class="hint">' + I18n.t('options.noRatesLoaded') + '</p>';
       return { count: 0 };
     }
 
     let html = '';
-    let totalCount = 0;
     const nf = settings ? settings.numberFormat : null;
 
-    for (const [sourceId, loadedRates] of Object.entries(loadedRatesMap)) {
+    // Show source errors first
+    for (const sourceId of Object.keys(sourceErrors)) {
       const sourceName = RateSources.getSourceDisplayName(sourceId);
-
-      if (loadedRates && loadedRates.error) {
-        html += `<div class="loaded-rates-meta loaded-rates-meta-error">${FormatUtils.escapeHtml(sourceName)} &middot; <span class="source-error-text">${FormatUtils.escapeHtml(loadedRates.error)}</span></div>`;
-        continue;
-      }
-
-      if (!loadedRates || !loadedRates.rates) continue;
-      const base = loadedRates.base;
-      const entries = Object.entries(loadedRates.rates)
-        .filter(([code]) => code !== base)
-        .sort((a, b) => a[0].localeCompare(b[0]));
-
-      totalCount += entries.length;
-      const age = loadedRates.timestamp ? FormatUtils.formatCacheAge(loadedRates) : '';
-      const rateDateMeta = loadedRates.rateDate ? ` &middot; ${I18n.t('fetchStatus.ratesFrom')} ${FormatUtils.escapeHtml(formatRateDate(loadedRates.rateDate))}` : '';
-
-      html += `<div class="loaded-rates-meta">${FormatUtils.escapeHtml(sourceName)} &middot; ${entries.length} ${I18n.t('fetchStatus.currencies')}${rateDateMeta}${age ? ' &middot; ' + I18n.t('fetchStatus.fetchedAgo', { age: FormatUtils.escapeHtml(age) }) : ''}</div>`;
-      html += '<div class="loaded-rates-grid">';
-      html += `<div class="loaded-rates-header"><span>${I18n.t('loadedRates.code')}</span><span>${I18n.t('loadedRates.baseRate', { base: FormatUtils.escapeHtml(base) })}</span></div>`;
-      for (const [code, rateData] of entries) {
-        let displayRate;
-        if (typeof rateData === 'object' && rateData !== null && rateData.rate !== undefined) {
-          const amount = rateData.amount || 1;
-          displayRate = `${amount} ${code} = ${FormatUtils.formatNumber(rateData.rate, 4, nf)} ${base}`;
-        } else {
-          displayRate = '\u2014';
-        }
-        html += `<div class="loaded-rates-row"><span class="loaded-rates-code">${FormatUtils.escapeHtml(code)}</span><span class="loaded-rates-value">${displayRate}</span></div>`;
-      }
-      html += '</div>';
+      html += `<div class="loaded-rates-meta loaded-rates-meta-error">${FormatUtils.escapeHtml(sourceName)} &middot; <span class="source-error-text">${FormatUtils.escapeHtml(sourceErrors[sourceId])}</span></div>`;
     }
+
+    // Collect all currency pairs from the merged table
+    const allPairs = [];
+    for (const [from, toMap] of Object.entries(cachedRates)) {
+      if (RateTables.META_KEYS.has(from) || !toMap || typeof toMap !== 'object') continue;
+      for (const [to, sourceMap] of Object.entries(toMap)) {
+        if (!sourceMap || typeof sourceMap !== 'object') continue;
+        allPairs.push({ from, to, sourceMap });
+      }
+    }
+
+    const totalCount = allPairs.length;
+    const age = cachedRates.timestamp ? FormatUtils.formatCacheAge(cachedRates) : '';
+
+    html += `<div class="loaded-rates-meta">${I18n.t('fetchStatus.currencies')} ${totalCount}${age ? ' &middot; ' + I18n.t('fetchStatus.fetchedAgo', { age: FormatUtils.escapeHtml(age) }) : ''}</div>`;
+    html += '<div class="loaded-rates-grid">';
+    html += `<div class="loaded-rates-header"><span>${I18n.t('loadedRates.code')}</span><span>${I18n.t('loadedRates.rate')}</span></div>`;
+
+    // Group by "from" currency and sort
+    const fromGroups = {};
+    for (const pair of allPairs) {
+      if (!fromGroups[pair.from]) fromGroups[pair.from] = [];
+      fromGroups[pair.from].push(pair);
+    }
+
+    for (const from of Object.keys(fromGroups).sort()) {
+      const pairs = fromGroups[from].sort((a, b) => a.to.localeCompare(b.to));
+      for (const pair of pairs) {
+        const entry = RateTables.resolveActiveEntry(pair.from, pair.to, pair.sourceMap, null, usedSources);
+        if (!entry) continue;
+        const perUnit = MathOps.toNumber(MathOps.div(entry.rate, entry.amount));
+        const displayRate = NumberFormatter.formatNumber(perUnit, 4, nf);
+        html += `<div class="loaded-rates-row"><span class="loaded-rates-code">${FormatUtils.escapeHtml(pair.from)} &rarr; ${FormatUtils.escapeHtml(pair.to)}</span><span class="loaded-rates-value">${displayRate}</span></div>`;
+      }
+    }
+    html += '</div>';
 
     listEl.innerHTML = html || '<p class="hint">' + I18n.t('options.noRatesLoaded') + '</p>';
     return { count: totalCount };
   }
 
-  function renderSourceErrors(loadedRatesMap) {
+  function renderSourceErrors(cachedRates) {
     document.querySelectorAll('.source-error-indicator').forEach(el => el.remove());
-    if (!loadedRatesMap || typeof loadedRatesMap !== 'object') return;
-    for (const [sourceId, loadedRates] of Object.entries(loadedRatesMap)) {
-      if (!loadedRates || !loadedRates.error) continue;
+    if (!cachedRates || typeof cachedRates !== 'object') return;
+    const sourceErrors = cachedRates._sourceErrors || {};
+    for (const [sourceId, errorMsg] of Object.entries(sourceErrors)) {
       const checkbox = document.querySelector(`input[name="rateSource"][value="${CSS.escape(sourceId)}"]`);
       if (!checkbox) continue;
       const label = checkbox.closest('.toggle-option');
       if (!label) continue;
       const span = document.createElement('span');
       span.className = 'source-error-indicator';
-      span.title = loadedRates.error;
+      span.title = errorMsg;
       span.textContent = '!';
       label.appendChild(span);
     }
-  }
-
-  function formatRateDate(rateDate) {
-    if (!rateDate) return '';
-    const d = new Date(rateDate);
-    if (isNaN(d.getTime())) return rateDate;
-    return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
   }
 
   return { render, renderSourceErrors };

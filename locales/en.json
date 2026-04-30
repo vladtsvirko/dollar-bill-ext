@@ -145,5 +145,6 @@
   "ui.popular": "Popular",
 
   "loadedRates.code": "Code",
-  "loadedRates.baseRate": "1 {{base}} ="
+  "loadedRates.baseRate": "1 {{base}} =",
+  "loadedRates.rate": "Rate"
 }

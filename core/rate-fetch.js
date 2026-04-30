@@ -33,7 +33,7 @@ const RateFetch = (() => {
     await chrome.storage.local.remove([CACHE_KEY, LOADED_RATES_KEY]);
   }
 
-  async function fetchAndCacheRates(sourceIds, settings) {
+  async function fetchAndCacheRates(sourceIds) {
     if (typeof sourceIds === 'string') sourceIds = [sourceIds];
     if (!sourceIds || sourceIds.length === 0) {
       const emptyRates = { timestamp: Date.now(), _usedSources: [], _sourceErrors: {} };
@@ -90,12 +90,7 @@ const RateFetch = (() => {
       }
     }
 
-    const sourceCurrencies = RateTables.getSourceCurrencies(settings);
-    const targetCurrencies = RateTables.getTargetCurrencies(settings);
-
-    const { rates } = RateTables.buildMergedRateTable(
-      sourceRatesMap, sourceIds, sourceCurrencies, targetCurrencies
-    );
+    const { rates } = RateTables.buildMergedRateTable(sourceRatesMap);
     rates.timestamp = Date.now();
     rates._usedSources = Object.keys(sourceRatesMap);
     rates._sourceErrors = sourceErrors;
