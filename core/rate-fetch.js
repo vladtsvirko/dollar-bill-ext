@@ -75,7 +75,6 @@ const RateFetch = (() => {
           base: baseRates.base,
           rates: ratesCopy,
           timestamp: Date.now(),
-          indirect: baseRates.indirect || false,
         };
         if (baseRates.rateDate) {
           loadedRatesMap[id].rateDate = baseRates.rateDate;

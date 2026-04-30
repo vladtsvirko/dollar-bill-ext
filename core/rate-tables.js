@@ -80,7 +80,7 @@ const RateTables = (() => {
   // --- Build rate table from a single source ---
 
   function buildRateTable(baseRates, sources, targets, sourceId) {
-    const { base, rates, indirect } = baseRates;
+    const { base, rates } = baseRates;
     const result = {};
     const all = [...new Set([...sources, ...targets])];
     if (!all.includes(base)) all.push(base);
@@ -95,19 +95,11 @@ const RateTables = (() => {
       const cData = rates[c];
       if (cData == null) continue;
 
-      if (indirect) {
-        // Indirect source: rates[c]={rate:X,amount:A} means 1 base = X/A c
-        // base→c: amount=1, rate=X (per 1 base)
-        // c→base: inverse
-        result[base][c] = { [sourceId]: { amount: 1, rate: cData.rate / cData.amount, type: RATE_TYPE.SOURCE } };
-        result[c][base] = { [sourceId]: { amount: 1, rate: cData.amount / cData.rate, type: RATE_TYPE.SOURCE_INVERSED } };
-      } else {
-        // Direct source: rates[c]={rate:X,amount:A} means A c = X base
-        // c→base: amount=A, rate=X
-        // base→c: inverse
-        result[c][base] = { [sourceId]: { amount: cData.amount, rate: cData.rate, type: RATE_TYPE.SOURCE } };
-        result[base][c] = { [sourceId]: { amount: 1, rate: cData.amount / cData.rate, type: RATE_TYPE.SOURCE_INVERSED } };
-      }
+      // rates[c]={rate:X,amount:A} means A c = X base
+      // c→base: amount=A, rate=X
+      // base→c: inverse
+      result[c][base] = { [sourceId]: { amount: cData.amount, rate: cData.rate, type: RATE_TYPE.SOURCE } };
+      result[base][c] = { [sourceId]: { amount: 1, rate: cData.amount / cData.rate, type: RATE_TYPE.SOURCE_INVERSED } };
     }
 
     return result;
