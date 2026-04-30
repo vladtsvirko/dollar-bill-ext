@@ -118,6 +118,10 @@
 
   // Observe dynamic content changes
   ContentObserver.start((nodes) => {
+    if (!chrome.runtime?.id) {
+      ContentObserver.stop();
+      return;
+    }
     Promise.all([
       new Promise((resolve) => chrome.runtime.sendMessage({ type: 'getSettings' }, resolve)),
       new Promise((resolve) => chrome.runtime.sendMessage({ type: 'getRates' }, resolve)),
@@ -133,6 +137,8 @@
           Scanner.scanNode(node, ratesData, conversionMap, ambiguousCurrency, currentSettings, compiledUnambiguous, compiledAmbiguous);
         }
       }
+    }).catch(() => {
+      ContentObserver.stop();
     });
   });
 })();
