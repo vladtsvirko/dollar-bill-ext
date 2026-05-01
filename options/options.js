@@ -1,15 +1,17 @@
 // Generate rate source checkboxes dynamically from RATE_SOURCES
-(function buildSourceList() {
+function renderSourceList() {
   const list = document.getElementById('rateSourceList');
   if (!list || typeof RatesUtil === 'undefined') return;
   const sources = RatesUtil.RATE_SOURCES || {};
-  list.innerHTML = Object.entries(sources).filter(([id]) => id !== RatesUtil.CUSTOM_SOURCE).map(([id, src]) =>
-    `<label class="toggle-option" data-label="${FormatUtils.escapeHtml(src.name)}">
+  list.innerHTML = Object.entries(sources).filter(([id]) => id !== RatesUtil.CUSTOM_SOURCE).map(([id]) => {
+    const name = RateSources.getSourceDisplayName(id);
+    return `<label class="toggle-option" data-label="${FormatUtils.escapeHtml(name)}">
       <input type="checkbox" name="rateSource" value="${id}">
-      <span class="toggle-option-label">${FormatUtils.escapeHtml(src.name)}</span>
-    </label>`
-  ).join('');
-})();
+      <span class="toggle-option-label">${FormatUtils.escapeHtml(name)}</span>
+    </label>`;
+  }).join('');
+}
+renderSourceList();
 
 const rateSourceBoxes = document.querySelectorAll('input[name="rateSource"]');
 const customRatesSection = document.getElementById('customRatesSection');
@@ -585,7 +587,7 @@ function renderNumberFormatList(filter) {
     const autoSample = _formatSample();
     const autoSelected = current === null ? ' selected' : '';
     html += `<div class="currency-picker-item num-fmt-item${autoSelected}" data-num-locale="">
-      <span class="num-fmt-code">Auto</span>
+      <span class="num-fmt-code">${I18n.t('ui.auto')}</span>
       <span class="num-fmt-sample">${autoSample}</span>
     </div>`;
   }
@@ -619,7 +621,7 @@ function renderNumberFormatSelector() {
     numberFormatText.textContent = current;
     numberFormatText.classList.remove('placeholder');
   } else {
-    numberFormatText.textContent = 'Auto';
+    numberFormatText.textContent = I18n.t('ui.auto');
     numberFormatText.classList.add('placeholder');
   }
   numberFormatList.innerHTML = renderNumberFormatList();
@@ -796,7 +798,7 @@ function renderEditorIdentifiers() {
     const example = `100 ${id}`;
     return `<span class="identifier-chip" title="${FormatUtils.escapeHtml(example)}">
       ${FormatUtils.escapeHtml(id)}
-      <button class="identifier-remove" data-idx="${i}" title="Remove">&times;</button>
+      <button class="identifier-remove" data-idx="${i}" title="${I18n.t('ui.tooltip.remove')}">&times;</button>
     </span>`;
   }).join('');
   editIdentifiers.querySelectorAll('.identifier-remove').forEach((btn) => {
@@ -998,6 +1000,8 @@ async function applyLanguageChange(value) {
   await RatesUtil.saveSettings(currentSettings);
   await I18n.init(value);
   I18n.applyToPage();
+  renderSourceList();
+  setCheckboxValues(document.querySelectorAll('input[name="rateSource"]'), currentSettings.rateSources || []);
   renderThemeSelector();
   renderTimeFormatSelector();
   renderNumberFormatSelector();

@@ -20,7 +20,7 @@ const PickerBar = (() => {
       <span class="dbp-label">${I18n.t('picker.ambiguousDetected', { host: FormatUtils.escapeHtml(host) })}</span>
       <span class="dbp-label">${I18n.t('picker.chooseBaseCurrency')}</span>
       ${buttonsHtml}
-      <button class="dbp-dismiss" title="Dismiss">&times;</button>
+      <button class="dbp-dismiss" title="${I18n.t('ui.tooltip.dismiss')}">&times;</button>
     `;
 
     bar.querySelector('.dbp-dismiss').addEventListener('click', () => bar.remove());

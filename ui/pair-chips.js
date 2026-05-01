@@ -21,7 +21,7 @@ const PairChips = (() => {
       const toLabel = toCur ? `${p.to} (${toCur.name})` : p.to;
       return `<span class="chip" draggable="true" data-from="${p.from}" data-to="${p.to}" data-index="${i}">
         ${FormatUtils.escapeHtml(fromLabel)} &rarr; ${FormatUtils.escapeHtml(toLabel)}
-        <button class="chip-remove" data-index="${i}" title="Remove">&times;</button>
+        <button class="chip-remove" data-index="${i}" title="${I18n.t('ui.tooltip.remove')}">&times;</button>
       </span>`;
     }).join('');
 

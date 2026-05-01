@@ -76,8 +76,8 @@ const CurrencyLibrary = (() => {
             <span class="cur-tile-code">${code}</span>
             <span class="cur-tile-symbol">${FormatUtils.escapeHtml(cur.symbol || '')}</span>
             <div class="cur-tile-actions">
-              <button class="cur-tile-btn" data-edit="${code}" title="Edit">&#9998;</button>
-              <button class="cur-tile-btn cur-tile-btn-danger" data-delete="${code}" title="Delete">&times;</button>
+              <button class="cur-tile-btn" data-edit="${code}" title="${I18n.t('ui.tooltip.edit')}">&#9998;</button>
+              <button class="cur-tile-btn cur-tile-btn-danger" data-delete="${code}" title="${I18n.t('ui.tooltip.delete')}">&times;</button>
             </div>
           </div>
           <div class="cur-tile-name">${FormatUtils.escapeHtml(cur.name || '')}</div>

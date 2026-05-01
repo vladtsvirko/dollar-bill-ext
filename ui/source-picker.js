@@ -15,7 +15,10 @@ const SourcePicker = (() => {
           let rateStr = '';
           if (entry && typeof entry === 'object' && entry.rate !== undefined) {
             rateStr = `${entry.amount || 1} ${customPairKey.split(':')[0]} = ${NumberFormatter.formatNumber(entry.rate, 4, nf)} ${customPairKey.split(':')[1]}`;
-            if (entry.type) rateStr += ` (${entry.type})`;
+            if (entry.type) {
+              const typeLabel = entry.type === 'source_inversed' ? I18n.t('ui.typeInversed') : entry.type === 'manual' ? I18n.t('ui.typeManual') : entry.type;
+              rateStr += ` (${typeLabel})`;
+            }
           } else if (typeof entry === 'number') {
             rateStr = NumberFormatter.formatNumber(entry, 4, nf);
           }

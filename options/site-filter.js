@@ -3,7 +3,7 @@ const SiteFilter = (() => {
     chipsEl.innerHTML = sites.map((site, i) =>
       `<span class="chip" data-index="${i}">
         ${FormatUtils.escapeHtml(site)}
-        <button class="chip-remove" data-index="${i}" title="Remove">&times;</button>
+        <button class="chip-remove" data-index="${i}" title="${I18n.t('ui.tooltip.remove')}">&times;</button>
       </span>`
     ).join('');
     chipsEl.querySelectorAll('.chip-remove').forEach((btn) => {
@@ -21,7 +21,7 @@ const SiteFilter = (() => {
       <div class="domain-row">
         <span class="domain-name">${FormatUtils.escapeHtml(domain)}</span>
         <span class="domain-cur">${FormatUtils.escapeHtml(currency)}</span>
-        <button class="domain-remove" data-domain="${FormatUtils.escapeHtml(domain)}" title="Remove">&times;</button>
+        <button class="domain-remove" data-domain="${FormatUtils.escapeHtml(domain)}" title="${I18n.t('ui.tooltip.remove')}">&times;</button>
       </div>
     `).join('');
 

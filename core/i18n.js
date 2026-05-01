@@ -1,6 +1,9 @@
 const I18n = (() => {
   const LOCALE_REGISTRY = [
     { code: 'en', name: 'English' },
+    { code: 'pl', name: 'Polski' },
+    { code: 'be', name: 'Беларуская' },
+    { code: 'ru', name: 'Русский' },
   ];
 
   let _translations = null;

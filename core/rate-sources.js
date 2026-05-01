@@ -217,6 +217,9 @@ const RateSources = (() => {
   };
 
   function getSourceDisplayName(sourceId) {
+    const i18nKey = 'source.' + sourceId;
+    const i18nVal = typeof I18n !== 'undefined' ? I18n.t(i18nKey) : i18nKey;
+    if (i18nVal !== i18nKey) return i18nVal;
     const source = RATE_SOURCES[sourceId];
     return source ? source.name : sourceId;
   }

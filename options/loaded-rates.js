@@ -72,7 +72,7 @@ const LoadedRates = (() => {
       for (const pair of pairs) {
         const perUnit = MathOps.toNumber(MathOps.div(pair.entry.rate, pair.entry.amount));
         const displayRate = NumberFormatter.formatNumber(perUnit, 4, nf);
-        const typeLabel = pair.entry.type === RateTables.RATE_TYPE.SOURCE_INVERSED ? 'inv.' : pair.entry.type === RateTables.RATE_TYPE.MANUAL ? 'man.' : '';
+        const typeLabel = pair.entry.type === RateTables.RATE_TYPE.SOURCE_INVERSED ? I18n.t('ui.typeInversed') : pair.entry.type === RateTables.RATE_TYPE.MANUAL ? I18n.t('ui.typeManual') : '';
         html += `<div class="loaded-rates-row"><span class="loaded-rates-code">${FormatUtils.escapeHtml(pair.from)} &rarr; ${FormatUtils.escapeHtml(pair.to)}</span><span class="loaded-rates-value">${displayRate}</span><span class="loaded-rates-type">${FormatUtils.escapeHtml(typeLabel)}</span></div>`;
       }
 

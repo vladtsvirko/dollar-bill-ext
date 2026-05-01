@@ -72,7 +72,7 @@ function renderSourceDropdown(settings) {
   const options = [];
   for (const [id, src] of Object.entries(RatesUtil.RATE_SOURCES)) {
     if (id === RatesUtil.CUSTOM_SOURCE) continue;
-    options.push({ id, name: src.name });
+    options.push({ id, name: RateSources.getSourceDisplayName(id) });
   }
 
   sourceDropdown.innerHTML = `
