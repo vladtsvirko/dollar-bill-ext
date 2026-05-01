@@ -105,13 +105,20 @@
           <h2><span class="section-icon">&#127760;</span> <span data-i18n="options.siteFiltering">Site Filtering</span></h2>
           <div class="toggle-group">
             <label class="toggle-option">
-              <input type="radio" name="siteMode" value="all">
-              <span class="toggle-option-label" data-i18n="options.scanAllSites">Auto-scan all websites</span>
+              <input type="radio" name="siteMode" value="blacklist">
+              <span class="toggle-option-label" data-i18n="options.scanBlacklist">Block specific sites</span>
             </label>
             <label class="toggle-option">
               <input type="radio" name="siteMode" value="whitelist">
               <span class="toggle-option-label" data-i18n="options.scanWhitelist">Only scan whitelisted sites</span>
             </label>
+          </div>
+          <div id="blacklistSection" style="display:none;">
+            <div id="blacklistChips" class="chip-list"></div>
+            <div class="whitelist-add-row">
+              <input type="text" id="blacklistInput" data-i18n-placeholder="options.blacklistPlaceholder" placeholder="e.g. facebook.com" />
+              <button id="addBlacklistBtn" class="btn btn-sm btn-primary" data-i18n="options.addBtn">Add</button>
+            </div>
           </div>
           <div id="whitelistSection" style="display:none;">
             <div id="whitelistChips" class="chip-list"></div>

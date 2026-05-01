@@ -44,11 +44,23 @@ const Migrations = (() => {
     return stored;
   }
 
+  function migrateV4toV5(stored) {
+    if ((stored._settingsVersion || 0) >= 5) return stored;
+    if (stored.siteMode === 'all') {
+      stored.siteMode = 'blacklist';
+      stored.blacklist = [];
+    }
+    if (!stored.blacklist) stored.blacklist = [];
+    stored._settingsVersion = 5;
+    return stored;
+  }
+
   async function migrate(stored) {
     const MIGRATIONS = [
       migrateV1toV2,
       migrateV2toV3,
       migrateV3toV4,
+      migrateV4toV5,
     ];
 
     const SETTINGS_KEY = Settings.SETTINGS_KEY;

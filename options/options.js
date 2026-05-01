@@ -15,6 +15,10 @@ const rateSourceBoxes = document.querySelectorAll('input[name="rateSource"]');
 const customRatesSection = document.getElementById('customRatesSection');
 const customRatesGrid = document.getElementById('customRatesGrid');
 const siteModeRadios = document.querySelectorAll('input[name="siteMode"]');
+const blacklistSection = document.getElementById('blacklistSection');
+const blacklistChips = document.getElementById('blacklistChips');
+const blacklistInput = document.getElementById('blacklistInput');
+const addBlacklistBtn = document.getElementById('addBlacklistBtn');
 const whitelistSection = document.getElementById('whitelistSection');
 const whitelistChips = document.getElementById('whitelistChips');
 const whitelistInput = document.getElementById('whitelistInput');
@@ -105,7 +109,7 @@ async function autoSave() {
 
   currentSettings.rateSources = getCheckboxValues(rateSourceBoxes);
   currentSettings.customRates = customRates;
-  currentSettings.siteMode = getRadioValue(siteModeRadios) || 'all';
+  currentSettings.siteMode = getRadioValue(siteModeRadios) || 'blacklist';
 
   await RatesUtil.saveSettings(currentSettings);
   showSaveToast();
@@ -114,7 +118,7 @@ async function autoSave() {
 let saveDebounce = null;
 function scheduleAutoSave() {
   clearTimeout(saveDebounce);
-  saveDebounce = setTimeout(autoSave, 600);
+  saveDebounce = setTimeout(() => { saveDebounce = null; autoSave(); }, 600);
 }
 
 // ---- Helpers ----
@@ -138,9 +142,11 @@ function getCheckboxValues(boxes) {
   return result;
 }
 
-function updateVisibility() {
-  whitelistSection.style.display = getRadioValue(siteModeRadios) === 'whitelist' ? 'block' : 'none';
-  scheduleAutoSave();
+function updateVisibility(opts) {
+  const mode = getRadioValue(siteModeRadios);
+  blacklistSection.style.display = mode === 'blacklist' ? 'block' : 'none';
+  whitelistSection.style.display = mode === 'whitelist' ? 'block' : 'none';
+  if (!opts || !opts.skipSave) autoSave();
 }
 
 for (const r of siteModeRadios) r.addEventListener('change', updateVisibility);
@@ -543,14 +549,31 @@ chrome.storage.onChanged.addListener((changes, area) => {
   if (area === 'local' && changes[Settings.SETTINGS_KEY]) {
     const newSettings = changes[Settings.SETTINGS_KEY].newValue;
     if (newSettings && currentSettings) {
-      const oldTheme = currentSettings.theme;
-      currentSettings.theme = newSettings.theme;
-      if (oldTheme !== newSettings.theme) {
+      const fieldsToSync = [
+        'theme', 'timeFormat', 'numberFormat',
+        'siteMode', 'whitelist', 'blacklist',
+        'enabled', 'rateSources', 'rateSourceSelections',
+        'customRates', 'conversionPairs',
+      ];
+      let needsVisibilityUpdate = false;
+      for (const field of fieldsToSync) {
+        if (newSettings[field] !== undefined) {
+          if (field === 'siteMode' && currentSettings[field] !== newSettings[field]) {
+            needsVisibilityUpdate = true;
+          }
+          currentSettings[field] = JSON.parse(JSON.stringify(newSettings[field]));
+        }
+      }
+      if (currentSettings.theme !== undefined) {
         UICommon.applyTheme(UICommon.getEffectiveTheme(currentSettings));
         renderThemeSelector();
       }
-      currentSettings.timeFormat = newSettings.timeFormat;
-      currentSettings.numberFormat = newSettings.numberFormat;
+      if (needsVisibilityUpdate) {
+        setRadioValue(siteModeRadios, currentSettings.siteMode);
+        renderWhitelistChips();
+        renderBlacklistChips();
+        updateVisibility({ skipSave: true });
+      }
     }
   }
 });
@@ -611,36 +634,40 @@ document.getElementById('domainAddBtn').addEventListener('click', () => {
   scheduleAutoSave();
 });
 
-// ---- Whitelist ----
+// ---- Site List Sections ----
 
-function renderWhitelistChips() {
-  SiteFilter.renderWhitelistChips(whitelistChips, currentSettings.whitelist || [], (idx) => {
-    currentSettings.whitelist.splice(idx, 1);
-    renderWhitelistChips();
-    scheduleAutoSave();
+function setupListSection(listKey, chipsEl, inputEl, addBtn) {
+  const renderChips = () => {
+    SiteFilter.renderSiteChips(chipsEl, currentSettings[listKey] || [], async (idx) => {
+      currentSettings[listKey].splice(idx, 1);
+      renderChips();
+      await autoSave();
+    });
+  };
+  addBtn.addEventListener('click', async () => {
+    const domain = inputEl.value.trim().toLowerCase();
+    if (!domain) return;
+    if (!currentSettings[listKey]) currentSettings[listKey] = [];
+    if (currentSettings[listKey].includes(domain)) {
+      inputEl.value = '';
+      return;
+    }
+    currentSettings[listKey].push(domain);
+    inputEl.value = '';
+    renderChips();
+    await autoSave();
   });
+  inputEl.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      addBtn.click();
+    }
+  });
+  return renderChips;
 }
 
-addWhitelistBtn.addEventListener('click', () => {
-  const domain = whitelistInput.value.trim().toLowerCase();
-  if (!domain) return;
-  if (!currentSettings.whitelist) currentSettings.whitelist = [];
-  if (currentSettings.whitelist.includes(domain)) {
-    whitelistInput.value = '';
-    return;
-  }
-  currentSettings.whitelist.push(domain);
-  whitelistInput.value = '';
-  renderWhitelistChips();
-  scheduleAutoSave();
-});
-
-whitelistInput.addEventListener('keydown', (e) => {
-  if (e.key === 'Enter') {
-    e.preventDefault();
-    addWhitelistBtn.click();
-  }
-});
+const renderWhitelistChips = setupListSection('whitelist', whitelistChips, whitelistInput, addWhitelistBtn);
+const renderBlacklistChips = setupListSection('blacklist', blacklistChips, blacklistInput, addBlacklistBtn);
 
 // ---- Currency Editor ----
 
@@ -806,13 +833,14 @@ async function loadSettings() {
 
   setRadioValue(siteModeRadios, currentSettings.siteMode);
   renderWhitelistChips();
+  renderBlacklistChips();
 
   renderDomainOverrides();
   SiteFilter.populateDomainCurrencySelect(
     document.getElementById('domainAddCurrency'),
     currentSettings.currencies || {}
   );
-  updateVisibility();
+  updateVisibility({ skipSave: true });
   Preview.render(document.getElementById('previewContent'), currentSettings);
 }
 
@@ -860,6 +888,7 @@ async function applyLanguageChange(value) {
   renderFetchStatus();
   renderLoadedRates();
   renderWhitelistChips();
+  renderBlacklistChips();
   renderDomainOverrides();
   Preview.render(document.getElementById('previewContent'), currentSettings);
   showSaveToast();
@@ -917,3 +946,11 @@ renderCurrencyLibrary = function() {
 };
 
 window.addEventListener('resize', fitLibraryGrid);
+
+// Safety net: flush pending saves on page unload
+window.addEventListener('beforeunload', () => {
+  if (saveDebounce && currentSettings) {
+    clearTimeout(saveDebounce);
+    chrome.storage.local.set({ [Settings.SETTINGS_KEY]: currentSettings });
+  }
+});

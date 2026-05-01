@@ -40,11 +40,25 @@ const FormatUtils = (() => {
     return ageMin < 1 ? '< 1 min' : ageMin + ' min';
   }
 
+  function matchesHost(hostname, pattern) {
+    try {
+      return hostname === pattern || hostname.endsWith('.' + pattern) || new RegExp(pattern).test(hostname);
+    } catch {
+      return hostname.includes(pattern);
+    }
+  }
+
+  function isHostInList(hostname, patterns) {
+    return (patterns || []).some(p => matchesHost(hostname, p));
+  }
+
   return {
     escapeHtml,
     detectHourCycle,
     formatTimestamp,
     getFetchState,
     formatCacheAge,
+    matchesHost,
+    isHostInList,
   };
 })();

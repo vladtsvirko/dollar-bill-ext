@@ -60,15 +60,12 @@
 
   function shouldProcessPage(settings) {
     if (!settings.enabled) return false;
+    const host = location.hostname;
     if (settings.siteMode === 'whitelist') {
-      const host = location.hostname;
-      return settings.whitelist.some((pattern) => {
-        try {
-          return host === pattern || host.endsWith('.' + pattern) || new RegExp(pattern).test(host);
-        } catch {
-          return host.includes(pattern);
-        }
-      });
+      return FormatUtils.isHostInList(host, settings.whitelist);
+    }
+    if (settings.siteMode === 'blacklist') {
+      return !FormatUtils.isHostInList(host, settings.blacklist);
     }
     return true;
   }
@@ -95,6 +92,7 @@
       new Promise((resolve) => chrome.runtime.sendMessage({ type: 'getRates' }, resolve)),
     ]);
 
+    if (!settings) return;
     if (!shouldProcessPage(settings)) return;
 
     await I18n.init(settings.language);
@@ -114,7 +112,21 @@
   }
 
   // Initial scan
-  runConversion();
+  runConversion().catch(err => {
+    if (chrome.runtime?.id) console.warn('[DollarBill] Initial scan failed:', err?.message || err);
+  });
+
+  // React to live settings changes (e.g. popup toggle, options page saves)
+  let rescanTimer = null;
+  chrome.storage.onChanged.addListener((changes, area) => {
+    if (area !== 'local' || !changes[Settings.SETTINGS_KEY]) return;
+    clearTimeout(rescanTimer);
+    rescanTimer = setTimeout(() => {
+      runConversion().catch(err => {
+        if (chrome.runtime?.id) console.warn('[DollarBill] Re-scan failed:', err?.message || err);
+      });
+    }, 300);
+  });
 
   // Observe dynamic content changes
   ContentObserver.start((nodes) => {

@@ -12,13 +12,14 @@ const Settings = (() => {
     rateSourceSelections: [],
     customRates: {},
     domainCurrencyMap: {},
-    siteMode: 'all',
+    siteMode: 'blacklist',
     whitelist: [],
+    blacklist: [],
     theme: null,
     timeFormat: null,
     numberFormat: null,
     language: null,
-    _settingsVersion: 4,
+    _settingsVersion: 5,
   };
 
   async function getSettings() {

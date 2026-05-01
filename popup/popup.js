@@ -1,4 +1,4 @@
-const enabledEl = document.getElementById('enabled');
+const enabledEl = document.getElementById('siteEnabled');
 const rateCardsEl = document.getElementById('rateCards');
 const rateSearchEl = document.getElementById('rateSearch');
 const sourceTrigger = document.getElementById('sourceTrigger');
@@ -12,7 +12,9 @@ const converterFrom = document.getElementById('converterFrom');
 const converterTo = document.getElementById('converterTo');
 const converterInput = document.getElementById('converterInput');
 const converterResult = document.getElementById('converterResult');
-const siteIndicator = document.getElementById('siteIndicator');
+const siteToggleLabel = document.getElementById('siteToggleLabel');
+const siteToggleHost = document.getElementById('siteToggleHost');
+const siteToggleMode = document.getElementById('siteToggleMode');
 const settingsLink = document.getElementById('settingsLink');
 const themeSegmented = document.getElementById('themeSegmented');
 const pairChipsEl = document.getElementById('pairChips');
@@ -22,7 +24,7 @@ const conflictBannerText = document.getElementById('conflictBannerText');
 let currentSettings = null;
 let currentRates = null;
 let currentConflicts = {};
-
+let currentHostname = null;
 let addPairFormOpen = false;
 let selectedFrom = null;
 let selectedTo = null;
@@ -418,8 +420,6 @@ async function loadPopup() {
   await I18n.init(settings.language);
   I18n.applyToPage();
 
-  enabledEl.checked = settings.enabled;
-
   UICommon.applyTheme(UICommon.getEffectiveTheme(currentSettings));
   ThemeHandler.renderPopupSegmented(themeSegmented, currentSettings.theme);
   renderSourceDropdown(settings);
@@ -434,13 +434,11 @@ async function loadPopup() {
     const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
     if (tab && tab.url) {
       const url = new URL(tab.url);
-      const host = url.hostname;
-      const isActive = settings.enabled;
-      siteIndicator.textContent = isActive ? `\u2713 ${host}` : `\u2717 ${host}`;
-      siteIndicator.style.color = isActive ? 'var(--accent)' : 'var(--text-tertiary)';
+      currentHostname = url.hostname;
+      updateSiteToggle(settings);
     }
   } catch {
-    siteIndicator.textContent = '';
+    currentHostname = null;
   }
 
   converterInput.addEventListener('input', () => {
@@ -448,13 +446,74 @@ async function loadPopup() {
   });
 }
 
+function updateSiteToggle(settings) {
+  if (!currentHostname) {
+    siteToggleLabel.textContent = '';
+    siteToggleHost.textContent = '';
+    siteToggleMode.textContent = '';
+    enabledEl.checked = false;
+    enabledEl.disabled = true;
+    return;
+  }
+  enabledEl.disabled = false;
+
+  const mode = settings.siteMode || 'blacklist';
+  siteToggleMode.textContent = mode === 'whitelist' ? I18n.t('popup.modeWhitelist') : '';
+
+  if (!settings.enabled) {
+    enabledEl.checked = false;
+    siteToggleLabel.textContent = I18n.t('popup.globallyDisabled');
+    siteToggleHost.textContent = currentHostname;
+    siteToggleHost.style.color = 'var(--text-tertiary)';
+    siteToggleLabel.style.color = 'var(--text-tertiary)';
+    return;
+  }
+
+  const list = mode === 'whitelist' ? settings.whitelist : settings.blacklist;
+  const inList = FormatUtils.isHostInList(currentHostname, list);
+  const active = mode === 'whitelist' ? inList : !inList;
+
+  enabledEl.checked = active;
+  siteToggleHost.textContent = currentHostname;
+  if (active) {
+    siteToggleLabel.textContent = I18n.t('popup.enabledOnSite');
+    siteToggleLabel.style.color = 'var(--accent)';
+    siteToggleHost.style.color = 'var(--accent)';
+  } else {
+    siteToggleLabel.textContent = I18n.t('popup.disabledOnSite');
+    siteToggleLabel.style.color = 'var(--text-tertiary)';
+    siteToggleHost.style.color = 'var(--text-tertiary)';
+  }
+}
+
 enabledEl.addEventListener('change', async () => {
+  if (!currentHostname) return;
   const settings = await new Promise((resolve) => {
     chrome.runtime.sendMessage({ type: 'getSettings' }, resolve);
   });
-  settings.enabled = enabledEl.checked;
+
+  if (!settings.enabled) {
+    settings.enabled = true;
+    await RatesUtil.saveSettings(settings);
+    currentSettings = settings;
+    updateSiteToggle(settings);
+    return;
+  }
+
+  const mode = settings.siteMode || 'blacklist';
+  const listKey = mode === 'whitelist' ? 'whitelist' : 'blacklist';
+  const list = settings[listKey] || [];
+  const inList = FormatUtils.isHostInList(currentHostname, list);
+  if (inList) {
+    settings[listKey] = list.filter(p => !FormatUtils.matchesHost(currentHostname, p));
+  } else {
+    list.push(currentHostname);
+    settings[listKey] = list;
+  }
+
   await RatesUtil.saveSettings(settings);
   currentSettings = settings;
+  updateSiteToggle(settings);
 });
 
 settingsLink.addEventListener('click', (e) => {

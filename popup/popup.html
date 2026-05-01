@@ -29,10 +29,6 @@
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
           </button>
         </div>
-        <label class="toggle-switch">
-          <input type="checkbox" id="enabled">
-          <span class="toggle-slider"></span>
-        </label>
       </div>
     </div>
 
@@ -87,7 +83,17 @@
     </div>
 
     <div class="footer">
-      <div class="site-indicator" id="siteIndicator"></div>
+      <div class="site-toggle" id="siteToggle">
+        <label class="toggle-switch">
+          <input type="checkbox" id="siteEnabled">
+          <span class="toggle-slider"></span>
+        </label>
+        <div class="site-toggle-info">
+          <span class="site-toggle-label" id="siteToggleLabel"></span>
+          <span class="site-toggle-host" id="siteToggleHost"></span>
+          <span class="site-toggle-mode" id="siteToggleMode"></span>
+        </div>
+      </div>
       <a href="#" id="settingsLink" class="settings-link" data-i18n="popup.settings">Settings</a>
     </div>
   </div>

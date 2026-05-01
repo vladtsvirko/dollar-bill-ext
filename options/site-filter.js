@@ -1,6 +1,6 @@
 const SiteFilter = (() => {
-  function renderWhitelistChips(chipsEl, whitelist, onRemove) {
-    chipsEl.innerHTML = whitelist.map((site, i) =>
+  function renderSiteChips(chipsEl, sites, onRemove) {
+    chipsEl.innerHTML = sites.map((site, i) =>
       `<span class="chip" data-index="${i}">
         ${FormatUtils.escapeHtml(site)}
         <button class="chip-remove" data-index="${i}" title="Remove">&times;</button>
@@ -39,5 +39,5 @@ const SiteFilter = (() => {
     }).join('');
   }
 
-  return { renderWhitelistChips, renderDomainOverrides, populateDomainCurrencySelect };
+  return { renderSiteChips, renderDomainOverrides, populateDomainCurrencySelect };
 })();

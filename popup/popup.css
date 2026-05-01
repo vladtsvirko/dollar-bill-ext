@@ -847,11 +847,41 @@ body {
   padding: 10px 16px 14px;
 }
 
-.site-indicator {
+.site-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.site-toggle-info {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+
+.site-toggle-label {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--accent);
+  white-space: nowrap;
+}
+
+.site-toggle-host {
   font-size: 11px;
   color: var(--text-tertiary);
   font-family: var(--db-mono);
   font-weight: 300;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.site-toggle-mode {
+  font-size: 10px;
+  color: var(--text-tertiary);
+  opacity: 0.7;
 }
 
 .settings-link {
