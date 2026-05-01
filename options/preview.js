@@ -10,7 +10,9 @@ const Preview = (() => {
     const currencies = settings.currencies;
 
     if (pairs.length === 0) {
-      previewContentEl.innerHTML = '<span style="color:var(--text-tertiary)">' + I18n.t('options.addConversionPairsPreview') + '</span>';
+      previewContentEl.innerHTML =
+        '<span class="preview-price">' + I18n.t('options.previewPriceDefault') + '</span>' +
+        '<br><span style="color:var(--text-tertiary)">' + I18n.t('options.addConversionPairsPreview') + '</span>';
       return;
     }
 
