@@ -10,11 +10,11 @@ Automatically convert prices on any webpage between your chosen currencies using
 
 The extension scans visible text on the pages you visit, detects price amounts and currency symbols, and displays the converted value right next to the original price. You configure which currencies to detect and which to convert into; everything else is automatic.
 
-Exchange rates are fetched from official central bank sources — the National Bank of Belarus, European Central Bank, National Bank of Poland, National Bank of Ukraine, Bank of Russia, Czech National Bank, Central Bank of Turkey, Bank of Canada, Central Bank of Brazil, and the Bank of England — so you get reliable, up-to-date rates with no middleman. Rates are cached locally and refreshed periodically in the background.
+Exchange rates are fetched from official central bank sources — the National Bank of Belarus, European Central Bank, National Bank of Poland, National Bank of Ukraine, Bank of Russia, Czech National Bank, Central Bank of Turkey, Bank of Canada, Central Bank of Brazil, Bank of England, Hong Kong Monetary Authority, and the National Bank of Kazakhstan — so you get reliable, up-to-date rates with no middleman. Rates are cached locally and refreshed periodically in the background.
 
 **Features:**
 - Inline price conversion on any website
-- Rates from 10 central banks: NBRB (Belarus), ECB (EU), NBP (Poland), NBU (Ukraine), CBR (Russia), CNB (Czechia), TCMB (Turkey), BOC (Canada), BCB (Brazil), BOE (UK)
+- Rates from 12 central banks: NBRB (Belarus), ECB (EU), NBP (Poland), NBU (Ukraine), CBR (Russia), CNB (Czechia), TCMB (Turkey), BOC (Canada), BCB (Brazil), BOE (UK), HKMA (Hong Kong), NBK (Kazakhstan)
 - Fully configurable conversion pairs (e.g. BYN → USD, EUR → GBP)
 - Custom rate overrides for specific currency pairs
 - Built-in currency library with support for adding your own currencies
@@ -22,6 +22,7 @@ Exchange rates are fetched from official central bank sources — the National B
 - Site whitelist mode to restrict scanning to specific domains
 - Domain-level currency overrides for sites with ambiguous pricing
 - Live preview of converted price formatting in settings
+- Available in English, Polish, Belarusian, and Russian
 
 **Why does this extension need access to all websites?**
 Dollar Bill needs to read visible page text on any site to detect and convert prices. It does not read form inputs, passwords, or hidden elements. You can restrict scanning to specific sites using the Site Filtering option in settings.
