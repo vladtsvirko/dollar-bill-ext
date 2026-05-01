@@ -44,7 +44,7 @@ const RateFetch = (() => {
     const RATE_SOURCES = RateSources.RATE_SOURCES;
 
     const results = await Promise.allSettled(
-      sourceIds.map(async (id) => {
+      sourceIds.filter(id => id !== RateTables.CUSTOM_SOURCE).map(async (id) => {
         try {
           const source = RATE_SOURCES[id];
           if (!source) throw new Error(`Unknown rate source: ${id}`);

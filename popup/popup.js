@@ -69,6 +69,7 @@ function renderSourceDropdown(settings) {
 
   const options = [];
   for (const [id, src] of Object.entries(RatesUtil.RATE_SOURCES)) {
+    if (id === RatesUtil.CUSTOM_SOURCE) continue;
     options.push({ id, name: src.name });
   }
 
@@ -157,7 +158,7 @@ async function refreshRates() {
   } finally {
     sourceReload.classList.remove('loading');
     isRefreshing = false;
-    RateCards.render({ rateCardsEl, rateSearchEl, cachedRates: currentRates, settings: currentSettings, currentConflicts, isRefreshing, onCustomRateChange: handleCustomRateChange, onCustomRateReset: handleCustomRateReset, onSourcePickerClick: handleSourcePickerClick });
+    RateCards.render({ rateCardsEl, rateSearchEl, cachedRates: currentRates, settings: currentSettings, currentConflicts, isRefreshing, onCustomRateChange: handleCustomRateChange, onSourcePickerClick: handleSourcePickerClick });
   }
 }
 
@@ -203,33 +204,10 @@ async function handleCustomRateChange(e) {
   if (!currentSettings.customRates) currentSettings.customRates = {};
   currentSettings.customRates[`${base}:${quote}`] = { amount: 1, rate: val };
 
-  // Auto-select custom source if no selection exists for this pair
-  RatesUtil.setSelection(currentSettings, base, quote, RatesUtil.CUSTOM_SOURCE);
-
   await RatesUtil.saveSettings(currentSettings);
 
   RateCards.invalidateCache();
-  RateCards.render({ rateCardsEl, rateSearchEl, cachedRates: currentRates, settings: currentSettings, currentConflicts, isRefreshing, onCustomRateChange: handleCustomRateChange, onCustomRateReset: handleCustomRateReset, onSourcePickerClick: handleSourcePickerClick });
-  renderSourceTimestamp(currentRates);
-  renderConflictBanner();
-
-  if (converterInput.value.trim()) {
-    PopupConverter.render({ converterFrom, converterTo, converterInput, converterResult, cachedRates: currentRates, settings: currentSettings, getEffectiveRates: RateCards.getEffectiveRates });
-  }
-}
-
-async function handleCustomRateReset(e) {
-  const btn = e.currentTarget;
-  const base = btn.dataset.base;
-  const quote = btn.dataset.quote;
-
-  if (!currentSettings.customRates) return;
-  delete currentSettings.customRates[`${base}:${quote}`];
-  // Don't remove the selection — resolveActiveEntry will fall through to next source
-  await RatesUtil.saveSettings(currentSettings);
-
-  RateCards.invalidateCache();
-  RateCards.render({ rateCardsEl, rateSearchEl, cachedRates: currentRates, settings: currentSettings, currentConflicts, isRefreshing, onCustomRateChange: handleCustomRateChange, onCustomRateReset: handleCustomRateReset, onSourcePickerClick: handleSourcePickerClick });
+  RateCards.render({ rateCardsEl, rateSearchEl, cachedRates: currentRates, settings: currentSettings, currentConflicts, isRefreshing, onCustomRateChange: handleCustomRateChange, onSourcePickerClick: handleSourcePickerClick });
   renderSourceTimestamp(currentRates);
   renderConflictBanner();
 
@@ -259,7 +237,7 @@ async function handleSourcePickerClick(e) {
       RatesUtil.setSelection(currentSettings, from, to, sourceId);
       await RatesUtil.saveSettings(currentSettings);
       RateCards.invalidateCache();
-      RateCards.render({ rateCardsEl, rateSearchEl, cachedRates: currentRates, settings: currentSettings, currentConflicts, onCustomRateChange: handleCustomRateChange, onCustomRateReset: handleCustomRateReset, onSourcePickerClick: handleSourcePickerClick });
+      RateCards.render({ rateCardsEl, rateSearchEl, cachedRates: currentRates, settings: currentSettings, currentConflicts, onCustomRateChange: handleCustomRateChange, onSourcePickerClick: handleSourcePickerClick });
       renderConflictBanner();
     },
   });
@@ -278,7 +256,7 @@ function renderPairChips(settings) {
     currentSettings.conversionPairs.splice(idx, 1);
     await RatesUtil.saveSettings(currentSettings);
     renderPairChips(currentSettings);
-    RateCards.render({ rateCardsEl, rateSearchEl, cachedRates: currentRates, settings: currentSettings, currentConflicts, isRefreshing, onCustomRateChange: handleCustomRateChange, onCustomRateReset: handleCustomRateReset, onSourcePickerClick: handleSourcePickerClick });
+    RateCards.render({ rateCardsEl, rateSearchEl, cachedRates: currentRates, settings: currentSettings, currentConflicts, isRefreshing, onCustomRateChange: handleCustomRateChange, onSourcePickerClick: handleSourcePickerClick });
     renderConflictBanner();
     PopupConverter.populateSelects({ converterFrom, converterTo, settings: currentSettings });
   }, () => toggleAddPairForm());
@@ -411,7 +389,7 @@ async function handleAddPair() {
   PopupConverter.populateSelects({ converterFrom, converterTo, settings: currentSettings });
 
   isRefreshing = true;
-  RateCards.render({ rateCardsEl, rateSearchEl, cachedRates: currentRates, settings: currentSettings, currentConflicts, isRefreshing, onCustomRateChange: handleCustomRateChange, onCustomRateReset: handleCustomRateReset, onSourcePickerClick: handleSourcePickerClick });
+  RateCards.render({ rateCardsEl, rateSearchEl, cachedRates: currentRates, settings: currentSettings, currentConflicts, isRefreshing, onCustomRateChange: handleCustomRateChange, onSourcePickerClick: handleSourcePickerClick });
   refreshRates();
 }
 
@@ -448,7 +426,7 @@ async function loadPopup() {
   renderSourceTimestamp(rates);
   FetchStatusUI.renderPopup({ dotEl: sourceDot, tooltipEl: sourceTooltip, fetchStatus, rates, timeFormat: currentSettings.timeFormat });
   renderConflictBanner();
-  RateCards.render({ rateCardsEl, rateSearchEl, cachedRates: rates, settings: currentSettings, currentConflicts, isRefreshing, onCustomRateChange: handleCustomRateChange, onCustomRateReset: handleCustomRateReset, onSourcePickerClick: handleSourcePickerClick });
+  RateCards.render({ rateCardsEl, rateSearchEl, cachedRates: rates, settings: currentSettings, currentConflicts, isRefreshing, onCustomRateChange: handleCustomRateChange, onSourcePickerClick: handleSourcePickerClick });
   renderPairChips(settings);
   PopupConverter.populateSelects({ converterFrom, converterTo, settings: currentSettings });
 

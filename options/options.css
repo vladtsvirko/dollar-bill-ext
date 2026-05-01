@@ -147,6 +147,25 @@ html {
     min-width: 120px;
   }
 
+  .mr-add-row {
+    flex-wrap: wrap;
+    gap: 4px;
+  }
+
+  .mr-add-row .currency-picker {
+    flex: 1 1 calc(50% - 40px);
+    min-width: 100px;
+  }
+
+  .mr-add-row .mr-amount-input,
+  .mr-add-row .mr-rate-input {
+    flex: 0 0 auto;
+  }
+
+  .mr-add-row .mr-equals {
+    padding-top: 6px;
+  }
+
   .pair-arrow {
     padding-top: 6px;
   }
@@ -1191,6 +1210,50 @@ h3 {
   font-size: 11px;
 }
 
+/* Manual rate add row */
+.mr-add-row {
+  gap: 6px;
+}
+
+.mr-amount-input,
+.mr-rate-input,
+.custom-rate-amount-input {
+  width: 64px;
+  padding: 4px 8px;
+  border: 1px solid var(--border-default);
+  border-radius: 4px;
+  font-size: 13px;
+  font-family: var(--db-mono);
+  background: var(--bg-input);
+  color: var(--text-primary);
+  outline: none;
+  transition: border-color 0.15s;
+  flex-shrink: 0;
+}
+
+.custom-rate-amount-input {
+  width: 60px;
+}
+
+.mr-amount-input:focus,
+.mr-rate-input:focus,
+.custom-rate-amount-input:focus {
+  border-color: var(--accent);
+}
+
+.mr-amount-input::placeholder,
+.mr-rate-input::placeholder {
+  color: var(--text-tertiary);
+}
+
+.mr-equals {
+  color: var(--text-tertiary);
+  font-size: 14px;
+  font-weight: 500;
+  flex-shrink: 0;
+  padding-top: 6px;
+}
+
 /* Custom rates */
 .custom-rates {
   margin-top: 12px;
@@ -1316,6 +1379,21 @@ h3 {
 .custom-rate-input::placeholder {
   color: var(--text-tertiary);
   text-align: left;
+}
+
+.custom-rate-delete {
+  background: none;
+  border: none;
+  color: var(--text-tertiary);
+  font-size: 16px;
+  cursor: pointer;
+  padding: 0 2px;
+  line-height: 1;
+  margin-left: auto;
+}
+
+.custom-rate-delete:hover {
+  color: var(--color-error);
 }
 
 .custom-rate-target {

@@ -1,6 +1,4 @@
 const RateCards = (() => {
-  const RESET_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>';
-
   let effectiveRatesCache = null;
   let effectiveRatesInput = null;
 
@@ -17,7 +15,7 @@ const RateCards = (() => {
     effectiveRatesInput = null;
   }
 
-  function render({ rateCardsEl, rateSearchEl, cachedRates, settings, currentConflicts, isRefreshing, onCustomRateChange, onCustomRateReset, onSourcePickerClick }) {
+  function render({ rateCardsEl, rateSearchEl, cachedRates, settings, currentConflicts, isRefreshing, onCustomRateChange, onSourcePickerClick }) {
     const rates = getEffectiveRates(settings, cachedRates);
     const selections = settings.rateSourceSelections || [];
     const pairs = settings.conversionPairs || [];
@@ -65,10 +63,6 @@ const RateCards = (() => {
 
       const customPairKey = `${rateInfo.base}:${rateInfo.quote}`;
       const reversePairKey = `${rateInfo.quote}:${rateInfo.base}`;
-      const hasOverride = settings.customRates && (
-        settings.customRates[customPairKey] != null ||
-        settings.customRates[reversePairKey] != null
-      );
 
       const conflictData = currentConflicts[customPairKey] || currentConflicts[reversePairKey];
       const isConflict = !!conflictData;
@@ -83,7 +77,7 @@ const RateCards = (() => {
       const displayAmount = rateInfo.amount || 1;
       const labelPrefix = displayAmount !== 1 ? `${displayAmount} ` : '';
       cards.push(`
-        <div class="rate-card${hasOverride ? ' rate-card-custom' : ''}${isConflict && !hasOverride ? ' rate-card-conflict' : ''}" data-pair="${customPairKey}" data-search="${rateInfo.base.toLowerCase()} ${rateInfo.quote.toLowerCase()} ${FormatUtils.escapeHtml(baseSymbol).toLowerCase()}">
+        <div class="rate-card${isConflict ? ' rate-card-conflict' : ''}" data-pair="${customPairKey}" data-search="${rateInfo.base.toLowerCase()} ${rateInfo.quote.toLowerCase()} ${FormatUtils.escapeHtml(baseSymbol).toLowerCase()}">
           <div class="rate-card-left">
             <div class="rate-card-flag">${FormatUtils.escapeHtml(baseSymbol)}</div>
             <div class="rate-card-label">${labelPrefix}<code>${rateInfo.base}</code> =</div>
@@ -95,7 +89,6 @@ const RateCards = (() => {
                 data-base="${rateInfo.base}" data-quote="${rateInfo.quote}">
               <span class="rate-input-code">${rateInfo.quote}</span>
             </div>
-            ${hasOverride ? `<button class="rate-card-reset" title="${I18n.t('options.resetToFetchedRate')}" data-base="${rateInfo.base}" data-quote="${rateInfo.quote}">${RESET_SVG}</button>` : ''}
           </div>
           ${sourceTag}
         </div>
@@ -112,10 +105,6 @@ const RateCards = (() => {
       input.addEventListener('change', onCustomRateChange);
     });
 
-    rateCardsEl.querySelectorAll('.rate-card-reset').forEach(btn => {
-      btn.addEventListener('click', onCustomRateReset);
-    });
-
     rateCardsEl.querySelectorAll('.rate-source-picker').forEach(el => {
       el.addEventListener('click', onSourcePickerClick);
     });
@@ -130,5 +119,5 @@ const RateCards = (() => {
     });
   }
 
-  return { render, filterRateCards, getEffectiveRates, invalidateCache, RESET_SVG };
+  return { render, filterRateCards, getEffectiveRates, invalidateCache };
 })();

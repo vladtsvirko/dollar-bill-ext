@@ -32,10 +32,23 @@ const Migrations = (() => {
     return stored;
   }
 
+  function migrateV3toV4(stored) {
+    if ((stored._settingsVersion || 0) >= 4) return stored;
+    // Rename old CUSTOM_SOURCE value from 'custom' to 'manual'
+    if (stored.rateSourceSelections) {
+      for (const sel of stored.rateSourceSelections) {
+        if (sel.source === 'custom') sel.source = 'manual';
+      }
+    }
+    stored._settingsVersion = 4;
+    return stored;
+  }
+
   async function migrate(stored) {
     const MIGRATIONS = [
       migrateV1toV2,
       migrateV2toV3,
+      migrateV3toV4,
     ];
 
     const SETTINGS_KEY = Settings.SETTINGS_KEY;

@@ -177,14 +177,41 @@
             </div>
           </div>
           <div id="customRatesSection" class="custom-rates">
-            <h3 data-i18n="options.customRateOverrides">Custom Rate Overrides</h3>
-            <p class="hint" data-i18n="options.customRateHint">Override specific pair rates regardless of the API source above.</p>
+            <h3 data-i18n="options.manualRates">Manual Rates</h3>
+            <p class="hint" data-i18n="options.manualRateHint">Set manual rates for specific pairs. Manual rates participate in conflict resolution alongside API sources.</p>
             <div class="custom-rates-search-wrap">
               <input type="text" id="customRatesSearch" class="custom-rates-search" data-i18n-placeholder="options.searchPairs" placeholder="Search pairs...">
             </div>
             <div class="custom-rates-scroll">
               <div id="customRatesGrid" class="custom-rates-list"></div>
             </div>
+            <div class="add-row mr-add-row" style="margin-top:8px;">
+              <input type="number" step="1" min="1" value="1" class="mr-amount-input" id="mrAmountInput" data-i18n-placeholder="options.amountPlaceholder" placeholder="1">
+              <div class="currency-picker" id="mrFromPicker">
+                <button class="currency-picker-trigger" id="mrFromTrigger" type="button">
+                  <span class="currency-picker-text placeholder" data-i18n="popup.fromPlaceholder">From...</span>
+                  <span class="currency-picker-chevron">&#9662;</span>
+                </button>
+                <div class="currency-picker-dropdown" id="mrFromDropdown">
+                  <input type="text" class="currency-picker-search" id="mrFromSearch" data-i18n-placeholder="options.searchCurrency" placeholder="Search currency...">
+                  <div class="currency-picker-list" id="mrFromList"></div>
+                </div>
+              </div>
+              <span class="mr-equals">=</span>
+              <input type="number" step="0.0001" class="mr-rate-input" id="mrRateInput" data-i18n-placeholder="options.ratePlaceholder" placeholder="rate">
+              <div class="currency-picker" id="mrToPicker">
+                <button class="currency-picker-trigger" id="mrToTrigger" type="button">
+                  <span class="currency-picker-text placeholder" data-i18n="popup.toPlaceholder">To...</span>
+                  <span class="currency-picker-chevron">&#9662;</span>
+                </button>
+                <div class="currency-picker-dropdown" id="mrToDropdown">
+                  <input type="text" class="currency-picker-search" id="mrToSearch" data-i18n-placeholder="options.searchCurrency" placeholder="Search currency...">
+                  <div class="currency-picker-list" id="mrToList"></div>
+                </div>
+              </div>
+              <button id="addManualRateBtn" class="btn btn-sm btn-primary" data-i18n="options.addManualRate">Add</button>
+            </div>
+            <div class="add-pair-error" id="addManualRateError"></div>
           </div>
         </section>
 

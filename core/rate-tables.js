@@ -1,11 +1,11 @@
 const RateTables = (() => {
   const META_KEYS = new Set(['timestamp', '_usedSources', '_sourceErrors']);
 
-  const RATE_TYPE = { SOURCE: 'source', SOURCE_INVERSED: 'source_inversed' };
-  const CUSTOM_SOURCE = 'custom';
+  const RATE_TYPE = { MANUAL: 'manual', SOURCE: 'source', SOURCE_INVERSED: 'source_inversed' };
+  const CUSTOM_SOURCE = 'manual';
 
-  // Type preference order for auto-selection: source > source_inversed
-  const TYPE_PREFERENCE = { source: 1, source_inversed: 2 };
+  // Type preference order for auto-selection: manual > source > source_inversed
+  const TYPE_PREFERENCE = { [RATE_TYPE.MANUAL]: 0, [RATE_TYPE.SOURCE]: 1, [RATE_TYPE.SOURCE_INVERSED]: 2 };
 
   function getSourceCurrencies(settings) {
     return [...new Set((settings.conversionPairs || []).map(p => p.from))];
@@ -160,7 +160,7 @@ const RateTables = (() => {
       const from = rawFrom, to = rawTo;
 
       if (!result[from]) result[from] = {};
-      result[from][to] = { [CUSTOM_SOURCE]: { amount, rate, type: RATE_TYPE.SOURCE } };
+      result[from][to] = { [CUSTOM_SOURCE]: { amount, rate, type: RATE_TYPE.MANUAL } };
     }
     return result;
   }
@@ -233,7 +233,7 @@ const RateTables = (() => {
     // Update _usedSources to include custom source if any custom rates exist
     const hasCustom = Object.values(settings.customRates || {}).some(v => v != null);
     if (hasCustom && base._usedSources && !base._usedSources.includes(CUSTOM_SOURCE)) {
-      base._usedSources = [CUSTOM_SOURCE, ...base._usedSources];
+      base._usedSources = [...base._usedSources, CUSTOM_SOURCE];
     }
 
     return base;
@@ -253,7 +253,7 @@ const RateTables = (() => {
       if (!toMap || typeof toMap !== 'object') continue;
       for (const [to, sourceMap] of Object.entries(toMap)) {
         if (!sourceMap || typeof sourceMap !== 'object') continue;
-        const sources = Object.keys(sourceMap).filter(k => k !== CUSTOM_SOURCE);
+        const sources = Object.keys(sourceMap);
         if (sources.length > 1) {
           const pairKey = `${from}:${to}`;
           const apiEntries = {};
@@ -277,8 +277,10 @@ const RateTables = (() => {
     const [from, to] = pairKey.split(':');
     const sourceMap = rates[from] && rates[from][to];
     if (!sourceMap || typeof sourceMap !== 'object') return true;
-    const apiSources = Object.keys(sourceMap).filter(k => k !== CUSTOM_SOURCE);
+    const apiSources = Object.keys(sourceMap);
     if (apiSources.length <= 1) return true;
+    // If manual source is present, TYPE_PREFERENCE resolves it automatically
+    if (sourceMap[CUSTOM_SOURCE]) return true;
     const selections = settings.rateSourceSelections || [];
     return !!findSelection(from, to, selections);
   }

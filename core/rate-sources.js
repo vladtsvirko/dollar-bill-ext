@@ -1,5 +1,6 @@
 const RateSources = (() => {
   const RATE_SOURCES = {
+    manual: { name: 'Manual' },
     nbrb: {
       name: 'National Bank of Belarus',
       fetchBaseRates: async () => {

@@ -3,7 +3,7 @@
   const list = document.getElementById('rateSourceList');
   if (!list || typeof RatesUtil === 'undefined') return;
   const sources = RatesUtil.RATE_SOURCES || {};
-  list.innerHTML = Object.entries(sources).map(([id, src]) =>
+  list.innerHTML = Object.entries(sources).filter(([id]) => id !== RatesUtil.CUSTOM_SOURCE).map(([id, src]) =>
     `<label class="toggle-option" data-label="${FormatUtils.escapeHtml(src.name)}">
       <input type="checkbox" name="rateSource" value="${id}">
       <span class="toggle-option-label">${FormatUtils.escapeHtml(src.name)}</span>
@@ -44,6 +44,10 @@ const addPairBtn = document.getElementById('addPairBtn');
 let optSelectedFrom = null;
 let optSelectedTo = null;
 let optPickerEventsInitialized = false;
+
+let mrSelectedFrom = null;
+let mrSelectedTo = null;
+let mrPickerEventsInitialized = false;
 
 const currencyLibrary = document.getElementById('currencyLibrary');
 const addCurrencyBtn = document.getElementById('addCurrencyBtn');
@@ -92,18 +96,16 @@ async function autoSave() {
       if (!isNaN(num) && num > 0) {
         customRates[pair] = { amount: amt, rate: num };
       }
+    } else if (customRates[pair] != null) {
+      // Preserve existing entries with empty rates (user cleared the input)
+      const amt = parseFloat(amountVal) || 1;
+      customRates[pair] = { amount: amt, rate: '' };
     }
   });
 
   currentSettings.rateSources = getCheckboxValues(rateSourceBoxes);
   currentSettings.customRates = customRates;
   currentSettings.siteMode = getRadioValue(siteModeRadios) || 'all';
-
-  // Auto-select custom source for newly added custom rates
-  for (const pairKey of Object.keys(customRates)) {
-    const [from, to] = pairKey.split(':');
-    RatesUtil.setSelection(currentSettings, from, to, RatesUtil.CUSTOM_SOURCE);
-  }
 
   await RatesUtil.saveSettings(currentSettings);
   showSaveToast();
@@ -226,12 +228,12 @@ function populatePairDropdowns() {
   const toTrigger = document.getElementById('optToTrigger');
   if (fromTrigger) {
     const textEl = fromTrigger.querySelector('.currency-picker-text');
-    textEl.textContent = 'From...';
+    textEl.textContent = I18n.t('popup.fromPlaceholder');
     textEl.classList.add('placeholder');
   }
   if (toTrigger) {
     const textEl = toTrigger.querySelector('.currency-picker-text');
-    textEl.textContent = 'To...';
+    textEl.textContent = I18n.t('popup.toPlaceholder');
     textEl.classList.add('placeholder');
   }
   renderOptCurrencyList('from');
@@ -267,6 +269,110 @@ function initOptPickerEvents() {
     setFrom: (v) => { optSelectedFrom = v; },
     setTo: (v) => { optSelectedTo = v; },
     currencies: currentSettings.currencies || {},
+  });
+}
+
+function populateMrPickerDropdowns() {
+  mrSelectedFrom = null;
+  mrSelectedTo = null;
+  const fromTrigger = document.getElementById('mrFromTrigger');
+  const toTrigger = document.getElementById('mrToTrigger');
+  if (fromTrigger) {
+    const textEl = fromTrigger.querySelector('.currency-picker-text');
+    textEl.textContent = I18n.t('popup.fromPlaceholder');
+    textEl.classList.add('placeholder');
+  }
+  if (toTrigger) {
+    const textEl = toTrigger.querySelector('.currency-picker-text');
+    textEl.textContent = I18n.t('popup.toPlaceholder');
+    textEl.classList.add('placeholder');
+  }
+  renderMrCurrencyList('from');
+  renderMrCurrencyList('to');
+}
+
+function renderMrCurrencyList(which, filter) {
+  const currencies = currentSettings.currencies || {};
+  const listEl = document.getElementById(which === 'from' ? 'mrFromList' : 'mrToList');
+  if (!listEl) return;
+  const selected = which === 'from' ? mrSelectedFrom : mrSelectedTo;
+  listEl.innerHTML = UICommon.renderCurrencyListHTML(currencies, selected, filter);
+}
+
+function initMrPickerEvents() {
+  const fromTrigger = document.getElementById('mrFromTrigger');
+  const fromDropdown = document.getElementById('mrFromDropdown');
+  const fromSearch = document.getElementById('mrFromSearch');
+  const fromList = document.getElementById('mrFromList');
+  const toTrigger = document.getElementById('mrToTrigger');
+  const toDropdown = document.getElementById('mrToDropdown');
+  const toSearch = document.getElementById('mrToSearch');
+  const toList = document.getElementById('mrToList');
+
+  if (mrPickerEventsInitialized) return;
+  mrPickerEventsInitialized = true;
+
+  CurrencyPicker.bindPickerEvents({
+    fromTrigger, fromDropdown, fromSearch, fromList,
+    toTrigger, toDropdown, toSearch, toList,
+    getFrom: () => mrSelectedFrom,
+    getTo: () => mrSelectedTo,
+    setFrom: (v) => { mrSelectedFrom = v; },
+    setTo: (v) => { mrSelectedTo = v; },
+    currencies: currentSettings.currencies || {},
+  });
+}
+
+function addManualRate(from, to, amount, rate) {
+  if (!currentSettings.customRates) currentSettings.customRates = {};
+  const pairKey = from + ':' + to;
+  currentSettings.customRates[pairKey] = { amount: amount ?? 1, rate: rate ?? '' };
+  populateMrPickerDropdowns();
+  renderCustomRatesGrid();
+  scheduleAutoSave();
+}
+
+function deleteManualRate(pairKey) {
+  if (!currentSettings.customRates) return;
+  delete currentSettings.customRates[pairKey];
+  renderCustomRatesGrid();
+  scheduleAutoSave();
+}
+
+const addManualRateBtn = document.getElementById('addManualRateBtn');
+if (addManualRateBtn) {
+  addManualRateBtn.addEventListener('click', () => {
+    const errorEl = document.getElementById('addManualRateError');
+    errorEl.textContent = '';
+    errorEl.style.display = 'none';
+
+    if (!mrSelectedFrom || !mrSelectedTo) {
+      errorEl.textContent = I18n.t('options.selectBothCurrencies');
+      errorEl.style.display = 'block';
+      return;
+    }
+    if (mrSelectedFrom === mrSelectedTo) {
+      errorEl.textContent = I18n.t('options.fromToMustDiffer');
+      errorEl.style.display = 'block';
+      return;
+    }
+    const pairKey = mrSelectedFrom + ':' + mrSelectedTo;
+    const reverseKey = mrSelectedTo + ':' + mrSelectedFrom;
+    if (currentSettings.customRates && (currentSettings.customRates[pairKey] || currentSettings.customRates[reverseKey])) {
+      errorEl.textContent = I18n.t('options.manualRateExists');
+      errorEl.style.display = 'block';
+      return;
+    }
+
+    const amountInput = document.getElementById('mrAmountInput');
+    const rateInput = document.getElementById('mrRateInput');
+    const amountVal = amountInput ? parseFloat(amountInput.value) || 1 : 1;
+    const rateVal = rateInput ? rateInput.value.trim() : '';
+
+    addManualRate(mrSelectedFrom, mrSelectedTo, amountVal, rateVal);
+
+    if (amountInput) amountInput.value = '1';
+    if (rateInput) rateInput.value = '';
   });
 }
 
@@ -462,34 +568,8 @@ function renderCustomRatesGrid() {
   CustomRates.renderGrid({
     grid: customRatesGrid,
     settings: currentSettings,
-    rates: currentRates,
     onScheduleSave: scheduleAutoSave,
-    onSourcePickerClick: handleSourcePickerClick,
-  });
-}
-
-function handleSourcePickerClick(e) {
-  const el = e.currentTarget;
-  const customPairKey = el.dataset.pair;
-  const reversePairKey = customPairKey.split(':').reverse().join(':');
-  const effectiveRates = currentRates ? RatesUtil.getEffectiveRates(currentSettings, currentRates) : {};
-  const conflicts = RatesUtil.getConflicts(effectiveRates);
-  const conflictData = conflicts[customPairKey] || conflicts[reversePairKey];
-  if (!conflictData) return;
-
-  SourcePicker.createDropdown({
-    el,
-    customPairKey,
-    conflictData,
-    activeSource: RatesUtil.getActiveSourceForPair(customPairKey, reversePairKey, currentSettings, currentRates),
-    settings: currentSettings,
-    onSelected: async (sourceId) => {
-      const [from, to] = customPairKey.split(':');
-      RatesUtil.setSelection(currentSettings, from, to, sourceId);
-      await RatesUtil.saveSettings(currentSettings);
-      showSaveToast();
-      renderCustomRatesGrid();
-    },
+    onDelete: deleteManualRate,
   });
 }
 
@@ -714,6 +794,8 @@ async function loadSettings() {
   renderPairChips();
   populatePairDropdowns();
   initOptPickerEvents();
+  populateMrPickerDropdowns();
+  initMrPickerEvents();
   renderCurrencyLibrary();
 
   setCheckboxValues(rateSourceBoxes, currentSettings.rateSources || []);

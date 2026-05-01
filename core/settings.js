@@ -18,7 +18,7 @@ const Settings = (() => {
     timeFormat: null,
     numberFormat: null,
     language: null,
-    _settingsVersion: 3,
+    _settingsVersion: 4,
   };
 
   async function getSettings() {
