@@ -3,7 +3,7 @@
   "name": "Dollar Bill",
   "version": "1.0.0",
   "description": "Instantly convert prices on any webpage between your chosen currencies using official central bank rates.",
-  "permissions": ["storage", "alarms"],
+  "permissions": ["storage", "alarms", "activeTab"],
   "host_permissions": [
     "https://*.nbrb.by/*",
     "https://*.ecb.europa.eu/*",
