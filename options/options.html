@@ -75,10 +75,15 @@
               <span class="setting-label" data-i18n="options.numberFormat">Number format</span>
               <span class="setting-desc" data-i18n="options.numberFormatDesc">How converted prices are displayed</span>
             </div>
-            <div class="time-options" id="numberOptions">
-              <button class="time-opt" data-num-value="en-US">1,234.56</button>
-              <button class="time-opt" data-num-value="de-DE">1.234,56</button>
-              <button class="time-opt" data-num-value="" title="Follow locale preference">Auto</button>
+            <div class="currency-picker" id="numberFormatPicker">
+              <button class="currency-picker-trigger" id="numberFormatTrigger" type="button">
+                <span class="currency-picker-text" id="numberFormatText"></span>
+                <span class="currency-picker-chevron">&#9662;</span>
+              </button>
+              <div class="currency-picker-dropdown" id="numberFormatDropdown">
+                <input type="text" class="currency-picker-search" id="numberFormatSearch" placeholder="Search locale...">
+                <div class="currency-picker-list" id="numberFormatList"></div>
+              </div>
             </div>
           </div>
 

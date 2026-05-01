@@ -27,7 +27,12 @@ const saveToast = document.getElementById('saveToast');
 const optEnabled = document.getElementById('optEnabled');
 const themeOptions = document.getElementById('themeOptions');
 const timeOptions = document.getElementById('timeOptions');
-const numberOptions = document.getElementById('numberOptions');
+const numberFormatPicker = document.getElementById('numberFormatPicker');
+const numberFormatTrigger = document.getElementById('numberFormatTrigger');
+const numberFormatDropdown = document.getElementById('numberFormatDropdown');
+const numberFormatSearch = document.getElementById('numberFormatSearch');
+const numberFormatList = document.getElementById('numberFormatList');
+const numberFormatText = document.getElementById('numberFormatText');
 const langTrigger = document.getElementById('langTrigger');
 const langDropdown = document.getElementById('langDropdown');
 const langSearch = document.getElementById('langSearch');
@@ -524,24 +529,139 @@ timeOptions.addEventListener('click', async (e) => {
   showSaveToast();
 });
 
-function renderNumberFormatSelector() {
-  const saved = currentSettings ? currentSettings.numberFormat : null;
-  const activeValue = saved === null ? '' : saved;
-  numberOptions.querySelectorAll('.time-opt').forEach(btn => {
-    btn.classList.toggle('active', btn.dataset.numValue === activeValue);
-  });
+// --- Number format locale picker ---
+
+const NUMBER_FORMAT_LOCALES = [
+  // Each entry: { locale, group } — locale is BCP 47, group is display label
+  // Group 1: comma thousands, dot decimal
+  { locale: 'en-US', group: '1,234.56' },
+  { locale: 'en-GB', group: '1,234.56' },
+  { locale: 'en-IN', group: '1,234.56' },
+  { locale: 'en-CA', group: '1,234.56' },
+  { locale: 'en-AU', group: '1,234.56' },
+  { locale: 'zh-CN', group: '1,234.56' },
+  { locale: 'ja-JP', group: '1,234.56' },
+  { locale: 'ko-KR', group: '1,234.56' },
+  // Group 2: dot thousands, comma decimal
+  { locale: 'de-DE', group: '1.234,56' },
+  { locale: 'it-IT', group: '1.234,56' },
+  { locale: 'es-ES', group: '1.234,56' },
+  { locale: 'pt-BR', group: '1.234,56' },
+  { locale: 'nl-NL', group: '1.234,56' },
+  { locale: 'tr-TR', group: '1.234,56' },
+  { locale: 'el-GR', group: '1.234,56' },
+  { locale: 'id-ID', group: '1.234,56' },
+  // Group 3: narrow no-break space thousands, comma decimal
+  { locale: 'fr-FR', group: '1\u202F234,56' },
+  { locale: 'fr-CH', group: '1\u202F234,56' },
+  // Group 4: no-break space thousands, comma decimal
+  { locale: 'ru-RU', group: '1\u00A0234,56' },
+  { locale: 'pl-PL', group: '1\u00A0234,56' },
+  { locale: 'uk-UA', group: '1\u00A0234,56' },
+  { locale: 'cs-CZ', group: '1\u00A0234,56' },
+  { locale: 'sv-SE', group: '1\u00A0234,56' },
+  { locale: 'fi-FI', group: '1\u00A0234,56' },
+  { locale: 'hu-HU', group: '1\u00A0234,56' },
+  // Group 5: no-break space thousands, dot decimal
+  { locale: 'xh-ZA', group: '1\u00A0234.56' },
+  // Group 6: apostrophe thousands, dot decimal
+  { locale: 'de-CH', group: "1'234.56" },
+];
+
+function _formatSample(locale) {
+  return new Intl.NumberFormat(locale || undefined, {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(12345.67);
 }
 
-numberOptions.addEventListener('click', async (e) => {
-  const btn = e.target.closest('.time-opt');
-  if (!btn) return;
-  const value = btn.dataset.numValue;
+function renderNumberFormatList(filter) {
+  const current = currentSettings ? currentSettings.numberFormat : null;
+  const q = (filter || '').toLowerCase();
+  let html = '';
+
+  // Auto option
+  if (!q || 'auto'.includes(q)) {
+    const autoSample = _formatSample();
+    const autoSelected = current === null ? ' selected' : '';
+    html += `<div class="currency-picker-item num-fmt-item${autoSelected}" data-num-locale="">
+      <span class="num-fmt-code">Auto</span>
+      <span class="num-fmt-sample">${autoSample}</span>
+    </div>`;
+  }
+
+  // Group by format pattern
+  let currentGroup = '';
+  for (const entry of NUMBER_FORMAT_LOCALES) {
+    const code = entry.locale.toLowerCase();
+    if (q && !code.includes(q)) continue;
+    if (entry.group !== currentGroup) {
+      currentGroup = entry.group;
+      html += `<div class="currency-picker-group-label">${currentGroup}</div>`;
+    }
+    const sample = _formatSample(entry.locale);
+    const selected = current === entry.locale ? ' selected' : '';
+    html += `<div class="currency-picker-item num-fmt-item${selected}" data-num-locale="${entry.locale}">
+      <span class="num-fmt-code">${entry.locale}</span>
+      <span class="num-fmt-sample">${sample}</span>
+    </div>`;
+  }
+
+  if (!html) {
+    html = `<div class="currency-picker-item empty">${I18n.t('ui.noResults')}</div>`;
+  }
+  return html;
+}
+
+function renderNumberFormatSelector() {
+  const current = currentSettings ? currentSettings.numberFormat : null;
+  if (current) {
+    numberFormatText.textContent = current;
+    numberFormatText.classList.remove('placeholder');
+  } else {
+    numberFormatText.textContent = 'Auto';
+    numberFormatText.classList.add('placeholder');
+  }
+  numberFormatList.innerHTML = renderNumberFormatList();
+}
+
+function closeNumberFormatDropdown() {
+  numberFormatDropdown.classList.remove('open');
+  numberFormatTrigger.classList.remove('active');
+}
+
+numberFormatTrigger.addEventListener('click', (e) => {
+  e.stopPropagation();
+  const isOpen = numberFormatDropdown.classList.contains('open');
+  closeNumberFormatDropdown();
+  if (!isOpen) {
+    numberFormatDropdown.classList.add('open');
+    numberFormatTrigger.classList.add('active');
+    numberFormatSearch.value = '';
+    numberFormatList.innerHTML = renderNumberFormatList();
+    numberFormatSearch.focus();
+  }
+});
+
+numberFormatSearch.addEventListener('input', () => {
+  numberFormatList.innerHTML = renderNumberFormatList(numberFormatSearch.value);
+});
+
+numberFormatList.addEventListener('click', async (e) => {
+  const item = e.target.closest('.num-fmt-item');
+  if (!item || item.classList.contains('empty')) return;
+  closeNumberFormatDropdown();
+  const value = item.dataset.numLocale;
   currentSettings.numberFormat = value === '' ? null : value;
   renderNumberFormatSelector();
   Preview.render(document.getElementById('previewContent'), currentSettings);
   renderLoadedRates();
   await RatesUtil.saveSettings(currentSettings);
   showSaveToast();
+});
+
+document.addEventListener('click', (e) => {
+  if (!e.target.closest('#numberFormatPicker')) closeNumberFormatDropdown();
 });
 
 // Sync with popup changes

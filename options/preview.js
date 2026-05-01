@@ -16,7 +16,7 @@ const Preview = (() => {
     const nf = settings ? settings.numberFormat : null;
 
     for (const srcCode of sources) {
-      const amount = 100;
+      const amount = 12345;
       let html = `<span class="preview-price">${amount} ${srcCode}</span>`;
 
       for (const tc of sourceMap[srcCode]) {
