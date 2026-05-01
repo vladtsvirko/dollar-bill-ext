@@ -454,7 +454,7 @@ body {
   display: flex;
   align-items: center;
   gap: 4px;
-  flex-shrink: 1;
+  flex: 1;
   min-width: 0;
 }
 
@@ -903,7 +903,7 @@ body {
 
 /* Rate source picker — popup override (shared base in components.css) */
 .rate-source-picker {
-  width: 46px;
+  flex-shrink: 0;
   justify-content: center;
 }
 

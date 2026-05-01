@@ -33,10 +33,11 @@ const SourcePicker = (() => {
     const container = appendTo || document.body;
     container.appendChild(dropdown);
 
-    // Position below the picker element
+    // Position below the picker element, right-aligned
     const rect = el.getBoundingClientRect();
     const containerRect = container.getBoundingClientRect();
-    dropdown.style.left = (rect.left - containerRect.left) + 'px';
+    dropdown.style.left = 'auto';
+    dropdown.style.right = (containerRect.right - rect.right) + 'px';
     dropdown.style.top = (rect.bottom - containerRect.top + 4) + 'px';
 
     const listEl = dropdown.querySelector('.rate-source-picker-list');

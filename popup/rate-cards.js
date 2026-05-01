@@ -73,9 +73,9 @@ const RateCards = (() => {
         sourceTag = `<span class="rate-source-picker" data-pair="${customPairKey}" title="${FormatUtils.escapeHtml(RateSources.getSourceDisplayName(activeSource))}">${FormatUtils.escapeHtml(activeSource.toUpperCase())}</span>`;
       }
 
-      // Use display amount from rateInfo if available
+      // Always show amount
       const displayAmount = rateInfo.amount || 1;
-      const labelPrefix = displayAmount !== 1 ? `${displayAmount} ` : '';
+      const labelPrefix = `${displayAmount} `;
       cards.push(`
         <div class="rate-card${isConflict ? ' rate-card-conflict' : ''}" data-pair="${customPairKey}" data-search="${rateInfo.base.toLowerCase()} ${rateInfo.quote.toLowerCase()} ${FormatUtils.escapeHtml(baseSymbol).toLowerCase()}">
           <div class="rate-card-left">
