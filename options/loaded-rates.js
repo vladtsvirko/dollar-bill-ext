@@ -12,16 +12,9 @@ const LoadedRates = (() => {
       return { count: 0 };
     }
 
-    let html = '';
     const nf = settings ? settings.numberFormat : null;
 
-    // Show source errors first
-    for (const sourceId of Object.keys(sourceErrors)) {
-      const sourceName = RateSources.getSourceDisplayName(sourceId);
-      html += `<div class="loaded-rates-meta loaded-rates-meta-error">${FormatUtils.escapeHtml(sourceName)} &middot; <span class="source-error-text">${FormatUtils.escapeHtml(sourceErrors[sourceId])}</span></div>`;
-    }
-
-    // Collect all currency pairs from the merged table
+    // Collect all currency pairs with their sourceMap
     const allPairs = [];
     for (const [from, toMap] of Object.entries(cachedRates)) {
       if (RateTables.META_KEYS.has(from) || !toMap || typeof toMap !== 'object') continue;
@@ -34,30 +27,72 @@ const LoadedRates = (() => {
     const totalCount = allPairs.length;
     const age = cachedRates.timestamp ? FormatUtils.formatCacheAge(cachedRates) : '';
 
-    html += `<div class="loaded-rates-meta">${I18n.t('fetchStatus.currencies')} ${totalCount}${age ? ' &middot; ' + I18n.t('fetchStatus.fetchedAgo', { age: FormatUtils.escapeHtml(age) }) : ''}</div>`;
-    html += '<div class="loaded-rates-grid">';
-    html += `<div class="loaded-rates-header"><span>${I18n.t('loadedRates.code')}</span><span>${I18n.t('loadedRates.rate')}</span></div>`;
+    let html = '';
 
-    // Group by "from" currency and sort
-    const fromGroups = {};
-    for (const pair of allPairs) {
-      if (!fromGroups[pair.from]) fromGroups[pair.from] = [];
-      fromGroups[pair.from].push(pair);
+    // Show source errors first
+    for (const sourceId of Object.keys(sourceErrors)) {
+      const sourceName = RateSources.getSourceDisplayName(sourceId);
+      html += `<div class="loaded-rates-meta loaded-rates-meta-error">${FormatUtils.escapeHtml(sourceName)} &middot; <span class="source-error-text">${FormatUtils.escapeHtml(sourceErrors[sourceId])}</span></div>`;
     }
 
-    for (const from of Object.keys(fromGroups).sort()) {
-      const pairs = fromGroups[from].sort((a, b) => a.to.localeCompare(b.to));
-      for (const pair of pairs) {
-        const entry = RateTables.resolveActiveEntry(pair.from, pair.to, pair.sourceMap, null, usedSources);
-        if (!entry) continue;
-        const perUnit = MathOps.toNumber(MathOps.div(entry.rate, entry.amount));
-        const displayRate = NumberFormatter.formatNumber(perUnit, 4, nf);
-        html += `<div class="loaded-rates-row"><span class="loaded-rates-code">${FormatUtils.escapeHtml(pair.from)} &rarr; ${FormatUtils.escapeHtml(pair.to)}</span><span class="loaded-rates-value">${displayRate}</span></div>`;
+    html += `<div class="loaded-rates-meta">${I18n.t('fetchStatus.currencies')} ${totalCount}${age ? ' &middot; ' + I18n.t('fetchStatus.fetchedAgo', { age: FormatUtils.escapeHtml(age) }) : ''}</div>`;
+
+    // Group pairs by source
+    const sourceGroups = {};
+    for (const pair of allPairs) {
+      for (const [sourceId, entry] of Object.entries(pair.sourceMap)) {
+        if (!sourceGroups[sourceId]) sourceGroups[sourceId] = [];
+        sourceGroups[sourceId].push({ from: pair.from, to: pair.to, entry });
       }
+    }
+
+    // Sort sources by display name
+    const sortedSourceIds = Object.keys(sourceGroups).sort((a, b) =>
+      RateSources.getSourceDisplayName(a).localeCompare(RateSources.getSourceDisplayName(b))
+    );
+
+    html += '<div class="loaded-rates-sources">';
+    for (const sourceId of sortedSourceIds) {
+      const pairs = sourceGroups[sourceId].sort((a, b) =>
+        a.from.localeCompare(b.from) || a.to.localeCompare(b.to)
+      );
+      const sourceName = RateSources.getSourceDisplayName(sourceId);
+      const groupId = 'lr-' + sourceId.replace(/[^a-zA-Z0-9]/g, '_');
+
+      html += `<div class="loaded-rates-source-group">`;
+      html += `<div class="loaded-rates-source-header" data-target="${groupId}">`;
+      html += `<span class="loaded-rates-chevron">&#9656;</span>`;
+      html += `<span class="loaded-rates-source-name">${FormatUtils.escapeHtml(sourceName)}</span>`;
+      html += `<span class="loaded-rates-source-count">${pairs.length}</span>`;
+      html += `</div>`;
+      html += `<div class="loaded-rates-source-body" id="${groupId}">`;
+      html += `<div class="loaded-rates-grid">`;
+      html += `<div class="loaded-rates-header"><span>${I18n.t('loadedRates.code')}</span><span>${I18n.t('loadedRates.rate')}</span><span>${I18n.t('loadedRates.source')}</span></div>`;
+
+      for (const pair of pairs) {
+        const perUnit = MathOps.toNumber(MathOps.div(pair.entry.rate, pair.entry.amount));
+        const displayRate = NumberFormatter.formatNumber(perUnit, 4, nf);
+        const typeLabel = pair.entry.type === 'source_inversed' ? 'inv.' : pair.entry.type || '';
+        html += `<div class="loaded-rates-row"><span class="loaded-rates-code">${FormatUtils.escapeHtml(pair.from)} &rarr; ${FormatUtils.escapeHtml(pair.to)}</span><span class="loaded-rates-value">${displayRate}</span><span class="loaded-rates-type">${FormatUtils.escapeHtml(typeLabel)}</span></div>`;
+      }
+
+      html += `</div></div></div>`;
     }
     html += '</div>';
 
     listEl.innerHTML = html || '<p class="hint">' + I18n.t('options.noRatesLoaded') + '</p>';
+
+    // Bind collapsible headers
+    listEl.querySelectorAll('.loaded-rates-source-header').forEach(header => {
+      header.addEventListener('click', () => {
+        const targetId = header.dataset.target;
+        const body = document.getElementById(targetId);
+        if (!body) return;
+        const open = body.classList.toggle('open');
+        header.querySelector('.loaded-rates-chevron').style.transform = open ? 'rotate(90deg)' : '';
+      });
+    });
+
     return { count: totalCount };
   }
 

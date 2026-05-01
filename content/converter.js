@@ -25,7 +25,7 @@ const ContentConverter = (() => {
     if (!currentSettings || !currentSettings.currencies) return '';
     const info = currentSettings.currencies[code];
     if (!info) return '';
-    return `${info.symbol}${FormatUtils.formatNumber(amount, decimals, currentSettings.numberFormat)}`;
+    return `${info.symbol}${NumberFormatter.formatNumber(amount, decimals, currentSettings.numberFormat)}`;
   }
 
   function processTextNode(textNode, ratesData, conversionMap, ambiguousCurrency, currentSettings, compiledUnambiguous, compiledAmbiguous) {
@@ -97,15 +97,7 @@ const ContentConverter = (() => {
           pill.className = PILL_CLASS + (hasConflict && !isResolved ? ' db-pill-conflict' : '');
           const dp = Math.max(m.precision, 2);
 
-          if (info) {
-            // Show denomination-aware pill: "100 JPY = 2.16 BYN"
-            const fromCode = info.from;
-            const toCode = info.to;
-            pill.textContent = `${info.amount} ${fromCode} = ${FormatUtils.formatNumber(info.rate, dp, nf)} ${toCode}`;
-          } else {
-            // Fallback to simple format
-            pill.textContent = formatConverted(converted, tc, dp, currentSettings);
-          }
+          pill.textContent = formatConverted(converted, tc, dp, currentSettings);
 
           // Build tooltip
           const curInfo = currentSettings.currencies[tc] || {};
@@ -113,7 +105,7 @@ const ContentConverter = (() => {
           let rateStr = '';
           if (info) {
             const sourceName = RateSources.getSourceDisplayName(info.source);
-            rateStr = ` (${info.amount} ${info.from} = ${FormatUtils.formatNumber(info.rate, 4, nf)} ${info.to} \u00B7 ${sourceName}, ${info.type})`;
+            rateStr = ` (${info.amount} ${info.from} = ${NumberFormatter.formatNumber(info.rate, 4, nf)} ${info.to} \u00B7 ${sourceName}, ${info.type})`;
           }
 
           if (hasConflict) {
@@ -127,7 +119,7 @@ const ContentConverter = (() => {
           }
 
           pill.setAttribute('data-db-tooltip',
-            `${FormatUtils.formatNumber(m.amount, dp, nf)} ${m.currency} \u2192 ${symbol}${FormatUtils.formatNumber(converted, dp, nf)} ${tc}${rateStr}`
+            `${NumberFormatter.formatNumber(m.amount, dp, nf)} ${m.currency} \u2192 ${symbol}${NumberFormatter.formatNumber(converted, dp, nf)} ${tc}${rateStr}`
           );
 
           fragment.appendChild(pill);

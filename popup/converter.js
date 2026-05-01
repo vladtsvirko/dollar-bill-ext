@@ -56,7 +56,7 @@ const PopupConverter = (() => {
     converterResult.innerHTML = `
       <div class="converter-result-line">
         <span class="converter-result-symbol">${from} \u2192 ${to}</span>
-        <span class="converter-result-value">${symbol}${FormatUtils.formatNumber(converted, 2, nf)}</span>
+        <span class="converter-result-value">${symbol}${NumberFormatter.formatNumber(converted, 2, nf)}</span>
       </div>
     `;
   }

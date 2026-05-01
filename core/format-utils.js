@@ -40,21 +40,11 @@ const FormatUtils = (() => {
     return ageMin < 1 ? '< 1 min' : ageMin + ' min';
   }
 
-  function formatNumber(value, decimals, numberFormat) {
-    if (value == null || isNaN(value)) return '';
-    const locale = numberFormat || undefined;
-    return new Intl.NumberFormat(locale, {
-      minimumFractionDigits: decimals,
-      maximumFractionDigits: decimals,
-    }).format(value);
-  }
-
   return {
     escapeHtml,
     detectHourCycle,
     formatTimestamp,
     getFetchState,
     formatCacheAge,
-    formatNumber,
   };
 })();

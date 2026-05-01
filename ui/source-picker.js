@@ -14,10 +14,10 @@ const SourcePicker = (() => {
           const entry = conflictData[id];
           let rateStr = '';
           if (entry && typeof entry === 'object' && entry.rate !== undefined) {
-            rateStr = `${entry.amount || 1} ${customPairKey.split(':')[0]} = ${FormatUtils.formatNumber(entry.rate, 4, nf)} ${customPairKey.split(':')[1]}`;
+            rateStr = `${entry.amount || 1} ${customPairKey.split(':')[0]} = ${NumberFormatter.formatNumber(entry.rate, 4, nf)} ${customPairKey.split(':')[1]}`;
             if (entry.type) rateStr += ` (${entry.type})`;
           } else if (typeof entry === 'number') {
-            rateStr = FormatUtils.formatNumber(entry, 4, nf);
+            rateStr = NumberFormatter.formatNumber(entry, 4, nf);
           }
           return `<div class="rate-source-picker-item${isActive ? ' active' : ''}" data-source-id="${id}" data-label="${FormatUtils.escapeHtml(RateSources.getSourceDisplayName(id).toLowerCase())}">
             <span class="rate-source-picker-item-check"></span>

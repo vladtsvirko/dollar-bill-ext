@@ -183,6 +183,7 @@ const RateTables = (() => {
         }
       }
     }
+    if (Array.isArray(table._usedSources)) clone._usedSources = [...table._usedSources];
     return clone;
   }
 

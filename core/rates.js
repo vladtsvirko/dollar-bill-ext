@@ -57,7 +57,6 @@ const RatesUtil = (() => {
     formatTimestamp: FormatUtils.formatTimestamp,
     getFetchState: FormatUtils.getFetchState,
     formatCacheAge: FormatUtils.formatCacheAge,
-    formatNumber: FormatUtils.formatNumber,
 
     // From Patterns
     escapeRegex: Patterns.escapeRegex,

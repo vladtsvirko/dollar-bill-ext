@@ -82,8 +82,6 @@ const RateCards = (() => {
       // Use display amount from rateInfo if available
       const displayAmount = rateInfo.amount || 1;
       const labelPrefix = displayAmount !== 1 ? `${displayAmount} ` : '';
-      const typeBadge = rateInfo.type ? `<span class="rate-type-badge">${rateInfo.type}</span>` : '';
-
       cards.push(`
         <div class="rate-card${hasOverride ? ' rate-card-custom' : ''}${isConflict && !hasOverride ? ' rate-card-conflict' : ''}" data-pair="${customPairKey}" data-search="${rateInfo.base.toLowerCase()} ${rateInfo.quote.toLowerCase()} ${FormatUtils.escapeHtml(baseSymbol).toLowerCase()}">
           <div class="rate-card-left">
@@ -97,7 +95,6 @@ const RateCards = (() => {
                 data-base="${rateInfo.base}" data-quote="${rateInfo.quote}">
               <span class="rate-input-code">${rateInfo.quote}</span>
             </div>
-            ${typeBadge}
             ${hasOverride ? `<button class="rate-card-reset" title="${I18n.t('options.resetToFetchedRate')}" data-base="${rateInfo.base}" data-quote="${rateInfo.quote}">${RESET_SVG}</button>` : ''}
           </div>
           ${sourceTag}
