@@ -19,7 +19,7 @@ const Settings = (() => {
     timeFormat: null,
     numberFormat: null,
     language: null,
-    _settingsVersion: 5,
+    _settingsVersion: 0,
   };
 
   async function getSettings() {
