@@ -15,11 +15,13 @@ dollar-bill-ext/
 ├── manifest.json
 ├── background.js               (service worker)
 ├── content.js                   (slim entry — calls content/ modules)
+├── lib/
+│   └── bignumber.js            (BigNumber.js v9.1.2 — arbitrary-precision decimal arithmetic)
 ├── locales/
 │   └── en.json                  (flat key-value English strings for i18n)
 ├── core/
 │   ├── currencies.js            (Currencies IIFE — 150+ currency database)
-│   ├── math.js                  (MathOps IIFE — string-safe arithmetic, all rate values are strings)
+│   ├── math.js                  (MathOps IIFE — BigNumber-backed string-safe arithmetic, all rate values are strings)
 │   ├── rate-sources.js          (RateSources IIFE — API definitions + fetch)
 │   ├── migrations.js            (Migrations IIFE — v1→v3 migration chain)
 │   ├── settings.js              (Settings IIFE — schema + persistence)
@@ -83,7 +85,7 @@ The IIFE modules have hard dependencies and must load in this order:
 
 ### manifest.json content_scripts
 ```
-core/currencies.js → core/math.js → core/rate-sources.js → core/migrations.js →
+lib/bignumber.js → core/currencies.js → core/math.js → core/rate-sources.js → core/migrations.js →
 core/settings.js → core/i18n.js → core/patterns.js → core/rate-tables.js →
 core/number-formatter.js → core/format-utils.js → core/rate-fetch.js → core/rates.js →
 content/scanner.js → content/converter.js → content/picker-bar.js →
@@ -91,13 +93,13 @@ content/observer.js → content.js
 ```
 
 ### background.js importScripts
-Same as above minus content/ modules.
+Same as above minus content/ modules (but still includes lib/bignumber.js first).
 
 ### popup.html scripts
-Core 12 files → ui/ 6 files → popup/rate-cards.js → popup/converter.js → popup/popup.js
+lib/bignumber.js → Core 12 files → ui/ 6 files → popup/rate-cards.js → popup/converter.js → popup/popup.js
 
 ### options.html scripts
-Core 12 files → ui/ 6 files → options/ 5 feature files → options/options.js
+lib/bignumber.js → Core 12 files → ui/ 6 files → options/ 5 feature files → options/options.js
 
 ## Development
 
@@ -116,4 +118,4 @@ Load the extension directly in Chrome via `chrome://extensions` → "Load unpack
 - Settings must always be read via `Settings.getSettings()` to run migrations. Never read `chrome.storage.local` directly for settings.
 - `styles/injected.css` uses hardcoded values intentionally — it loads into arbitrary pages and must remain isolated from the design tokens.
 - New modules should be their own IIFE globals. The `RatesUtil` facade in `core/rates.js` provides backward compatibility — new code can import directly from sub-modules (e.g., `RateTables.convert()`) or use `RatesUtil.convert()`.
-- **All stored rate `amount`/`rate` values are strings.** Use `MathOps` (`core/math.js`) for all arithmetic on rate values. Use `NumberFormatter` (`core/number-formatter.js`) for display formatting. No ad-hoc `parseFloat` or raw division outside these modules. `convert()` returns a number via `MathOps.toNumber()` at the boundary.
+- **All stored rate `amount`/`rate` values are strings.** Use `MathOps` (`core/math.js`) for all arithmetic on rate values. `MathOps` uses `BigNumber` (from `lib/bignumber.js`) internally for arbitrary-precision decimal arithmetic (8 dp, ROUND_HALF_UP). Use `NumberFormatter` (`core/number-formatter.js`) for display formatting. **Never use `parseFloat` anywhere in the codebase** — use `BigNumber` directly or via `MathOps`/`NumberFormatter` to avoid IEEE 754 precision errors. User input parsing: `MathOps.parseNumber(s)` (string→string), `MathOps.fromNumber(n)` (number→string), `MathOps.toNumber(s)` (string→number boundary). `convert()` returns a number via `MathOps.toNumber()` at the boundary.

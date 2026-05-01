@@ -24,7 +24,7 @@ const RateSources = (() => {
         const re = /currency='([A-Z]{3})'\s+rate='([\d.]+)'/g;
         let match;
         while ((match = re.exec(text)) !== null) {
-          rates[match[1]] = { rate: MathOps.inv(MathOps.fromNumber(parseFloat(match[2]))), amount: "1" };
+          rates[match[1]] = { rate: MathOps.inv(match[2]), amount: "1" };
         }
         return { base: 'EUR', rates };
       },
@@ -70,7 +70,7 @@ const RateSources = (() => {
         let match;
         while ((match = re.exec(text)) !== null) {
           const [, code, nominal, value] = match;
-          rates[code] = { rate: MathOps.fromNumber(parseFloat(value.replace(',', '.'))), amount: MathOps.parseInt(nominal) };
+          rates[code] = { rate: MathOps.fromNumber(value.replace(',', '.')), amount: MathOps.parseInt(nominal) };
         }
         return { base: 'RUB', rates };
       },
@@ -86,7 +86,7 @@ const RateSources = (() => {
         let match;
         while ((match = re.exec(text)) !== null) {
           const [, code, amount, rate] = match;
-          rates[code] = { rate: MathOps.fromNumber(parseFloat(rate.replace(',', '.'))), amount: MathOps.parseInt(amount) };
+          rates[code] = { rate: MathOps.fromNumber(rate.replace(',', '.')), amount: MathOps.parseInt(amount) };
         }
         return { base: 'CZK', rates };
       },
@@ -102,7 +102,7 @@ const RateSources = (() => {
         let match;
         while ((match = re.exec(text)) !== null) {
           const [, code, unit, buying] = match;
-          rates[code] = { rate: MathOps.fromNumber(parseFloat(buying.replace(',', '.'))), amount: MathOps.parseInt(unit) };
+          rates[code] = { rate: MathOps.fromNumber(buying.replace(',', '.')), amount: MathOps.parseInt(unit) };
         }
         return { base: 'TRY', rates };
       },
@@ -130,7 +130,7 @@ const RateSources = (() => {
           const match = key.match(/^FX([A-Z]{3})CAD$/);
           if (match && val && val.v) {
             // FXUSDCAD = 1 USD in CAD, so rate for USD in CAD base = val.v
-            rates[match[1]] = { rate: MathOps.fromNumber(parseFloat(val.v)), amount: "1" };
+            rates[match[1]] = { rate: MathOps.fromNumber(val.v), amount: "1" };
           }
         }
         return { base: 'CAD', rates };
@@ -191,7 +191,7 @@ const RateSources = (() => {
         };
         for (const [field, code] of Object.entries(fieldMap)) {
           const val = latest[field];
-          if (val != null) rates[code] = { rate: MathOps.fromNumber(parseFloat(val)), amount: "1" };
+          if (val != null) rates[code] = { rate: MathOps.fromNumber(val), amount: "1" };
         }
         return { base: 'HKD', rates };
       },
@@ -209,7 +209,7 @@ const RateSources = (() => {
         let match;
         while ((match = re.exec(text)) !== null) {
           const [, code, rate, quant] = match;
-          rates[code] = { rate: MathOps.fromNumber(parseFloat(rate)), amount: MathOps.parseInt(quant) };
+          rates[code] = { rate: MathOps.fromNumber(rate), amount: MathOps.parseInt(quant) };
         }
         return { base: 'KZT', rates };
       },

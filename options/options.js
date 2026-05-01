@@ -102,14 +102,14 @@ async function autoSave() {
     const rateVal = rateInput.value.trim();
     const amountVal = amountInput ? amountInput.value.trim() : '1';
     if (rateVal) {
-      const num = parseFloat(rateVal);
-      const amt = parseFloat(amountVal) || 1;
+      const num = MathOps.toNumber(MathOps.parseNumber(rateVal));
+      const amt = MathOps.toNumber(MathOps.parseNumber(amountVal)) || 1;
       if (!isNaN(num) && num > 0) {
         customRates[pair] = { amount: amt, rate: num };
       }
     } else if (customRates[pair] != null) {
       // Preserve existing entries with empty rates (user cleared the input)
-      const amt = parseFloat(amountVal) || 1;
+      const amt = MathOps.toNumber(MathOps.parseNumber(amountVal)) || 1;
       customRates[pair] = { amount: amt, rate: '' };
     }
   });
@@ -379,7 +379,7 @@ if (addManualRateBtn) {
 
     const amountInput = document.getElementById('mrAmountInput');
     const rateInput = document.getElementById('mrRateInput');
-    const amountVal = amountInput ? parseFloat(amountInput.value) || 1 : 1;
+    const amountVal = amountInput ? MathOps.toNumber(MathOps.parseNumber(amountInput.value)) || 1 : 1;
     const rateVal = rateInput ? rateInput.value.trim() : '';
 
     addManualRate(mrSelectedFrom, mrSelectedTo, amountVal, rateVal);

@@ -1,87 +1,31 @@
 const MathOps = (() => {
-  function _toNum(a) {
-    if (typeof a === 'number') return a;
-    return parseFloat(a);
-  }
+  // Configure BigNumber: 8 decimal places, round half up
+  BigNumber.config({ DECIMAL_PLACES: 8, ROUNDING_MODE: BigNumber.ROUND_HALF_UP });
 
-  function add(a, b) {
-    return String(_toNum(a) + _toNum(b));
-  }
+  function _bn(v) { return new BigNumber(v); }
 
-  function sub(a, b) {
-    return String(_toNum(a) - _toNum(b));
-  }
-
-  function mul(a, b) {
-    return String(_toNum(a) * _toNum(b));
-  }
-
-  function div(a, b) {
-    const bn = _toNum(b);
-    if (bn === 0) return '0';
-    return String(_toNum(a) / bn);
-  }
-
-  function round(val, dp) {
-    const factor = Math.pow(10, dp);
-    return String(Math.round(_toNum(val) * factor) / factor);
-  }
-
-  function inv(val) {
-    const n = _toNum(val);
-    if (n === 0) return '0';
-    return String(1 / n);
-  }
-
-  function gt(a, b) {
-    return _toNum(a) > _toNum(b);
-  }
-
-  function gte(a, b) {
-    return _toNum(a) >= _toNum(b);
-  }
-
-  function lt(a, b) {
-    return _toNum(a) < _toNum(b);
-  }
-
-  function eq(a, b) {
-    return _toNum(a) === _toNum(b);
-  }
-
-  function isValid(val) {
-    if (val == null) return false;
-    const n = _toNum(val);
-    return !isNaN(n) && isFinite(n);
-  }
-
-  function isPositive(val) {
-    return _toNum(val) > 0;
-  }
-
-  function isZero(val) {
-    return _toNum(val) === 0;
-  }
-
-  function fromNumber(n) {
-    if (n == null || isNaN(n) || !isFinite(n)) return '0';
-    return String(n);
-  }
-
-  function toNumber(s) {
-    return _toNum(s);
-  }
-
-  function parseInt_(s) {
-    const n = globalThis.parseInt(s, 10);
-    if (isNaN(n)) return '0';
-    return String(n);
-  }
+  function add(a, b)      { return _bn(a).plus(b).toString(); }
+  function sub(a, b)      { return _bn(a).minus(b).toString(); }
+  function mul(a, b)      { return _bn(a).times(b).toString(); }
+  function div(a, b)      { return _bn(b).isZero() ? '0' : _bn(a).div(b).toString(); }
+  function round(val, dp) { return _bn(val).dp(dp).toString(); }
+  function inv(val)       { const n = _bn(val); return n.isZero() ? '0' : _bn(1).div(n).toString(); }
+  function gt(a, b)       { return _bn(a).gt(b); }
+  function gte(a, b)      { return _bn(a).gte(b); }
+  function lt(a, b)       { return _bn(a).lt(b); }
+  function eq(a, b)       { return _bn(a).eq(b); }
+  function isValid(val)   { const n = _bn(val); return !n.isNaN() && n.isFinite(); }
+  function isPositive(val) { const n = _bn(val); return n.isPositive() && !n.isZero(); }
+  function isZero(val)    { return _bn(val).isZero(); }
+  function fromNumber(n)  { if (n == null || isNaN(n) || !isFinite(n)) return '0'; return _bn(n).toString(); }
+  function toNumber(s)    { return _bn(s).toNumber(); }
+  function parseInt_(s)   { const n = _bn(s).integerValue(); return n.isNaN() ? '0' : n.toString(); }
+  function parseNumber(s) { const n = _bn(s); return n.isNaN() || !n.isFinite() ? '0' : n.toString(); }
 
   return {
     add, sub, mul, div, round, inv,
     gt, gte, lt, eq,
     isValid, isPositive, isZero,
-    fromNumber, toNumber, parseInt: parseInt_,
+    fromNumber, toNumber, parseInt: parseInt_, parseNumber,
   };
 })();

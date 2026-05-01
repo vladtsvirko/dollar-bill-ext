@@ -28,8 +28,8 @@ const PopupConverter = (() => {
       return;
     }
 
-    const amount = parseFloat(value);
-    if (isNaN(amount) || amount === 0) {
+    const amount = MathOps.toNumber(MathOps.parseNumber(value));
+    if (!amount || isNaN(amount)) {
       converterResult.innerHTML = '';
       return;
     }

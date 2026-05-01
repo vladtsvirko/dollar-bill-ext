@@ -200,7 +200,7 @@ async function handleCustomRateChange(e) {
   const input = e.target;
   const base = input.dataset.base;
   const quote = input.dataset.quote;
-  const val = parseFloat(input.value);
+  const val = MathOps.toNumber(MathOps.parseNumber(input.value));
   if (isNaN(val) || val <= 0) return;
 
   if (!currentSettings.customRates) currentSettings.customRates = {};

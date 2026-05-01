@@ -6,13 +6,16 @@ const ContentConverter = (() => {
     const s = str.replace(/\s/g, '');
     const lastComma = s.lastIndexOf(',');
     const lastDot = s.lastIndexOf('.');
+    let normalized;
     if (lastComma > lastDot) {
-      return parseFloat(s.replace(/\./g, '').replace(',', '.'));
+      normalized = s.replace(/\./g, '').replace(',', '.');
+    } else if (lastDot > lastComma) {
+      normalized = s.replace(/,/g, '');
+    } else {
+      normalized = s.replace(',', '.');
     }
-    if (lastDot > lastComma) {
-      return parseFloat(s.replace(/,/g, ''));
-    }
-    return parseFloat(s.replace(',', '.'));
+    const n = new BigNumber(normalized);
+    return n.isNaN() || !n.isFinite() ? NaN : n.toNumber();
   }
 
   function detectPrecision(str) {

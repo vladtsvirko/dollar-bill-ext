@@ -1,22 +1,20 @@
 const NumberFormatter = (() => {
   function formatNumber(value, decimals, numberFormat) {
     if (value == null) return '';
-    const num = typeof value === 'number' ? value : parseFloat(value);
-    if (isNaN(num)) return '';
+    const num = new BigNumber(value);
+    if (num.isNaN() || !num.isFinite()) return '';
     const locale = numberFormat || undefined;
     return new Intl.NumberFormat(locale, {
       minimumFractionDigits: decimals,
       maximumFractionDigits: decimals,
-    }).format(num);
+    }).format(num.toNumber());
   }
 
   function formatRate(value, decimals) {
     if (value == null) return '';
-    const num = typeof value === 'number' ? value : parseFloat(value);
-    if (isNaN(num)) return '';
     const dp = decimals != null ? decimals : 4;
-    const factor = Math.pow(10, dp);
-    return String(Math.round(num * factor) / factor);
+    if (!MathOps.isValid(value)) return '';
+    return MathOps.round(value, dp);
   }
 
   function formatCacheAge(rates) {
@@ -29,16 +27,17 @@ const NumberFormatter = (() => {
     const s = str.replace(/\s/g, '');
     const lastComma = s.lastIndexOf(',');
     const lastDot = s.lastIndexOf('.');
-    let result;
+    let normalized;
     if (lastComma > lastDot) {
-      result = parseFloat(s.replace(/\./g, '').replace(',', '.'));
+      normalized = s.replace(/\./g, '').replace(',', '.');
     } else if (lastDot > lastComma) {
-      result = parseFloat(s.replace(/,/g, ''));
+      normalized = s.replace(/,/g, '');
     } else {
-      result = parseFloat(s.replace(',', '.'));
+      normalized = s.replace(',', '.');
     }
-    if (isNaN(result) || !isFinite(result)) return null;
-    return String(result);
+    const n = new BigNumber(normalized);
+    if (n.isNaN() || !n.isFinite()) return null;
+    return n.toString();
   }
 
   return { formatNumber, formatRate, formatCacheAge, parsePriceText };
