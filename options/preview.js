@@ -1,4 +1,8 @@
 const Preview = (() => {
+  let _cachedRates = null;
+
+  RateFetch.getCachedRates().then(r => { _cachedRates = r; });
+
   function render(previewContentEl, settings) {
     if (!previewContentEl || !settings) return;
 
@@ -14,6 +18,7 @@ const Preview = (() => {
     const sources = Object.keys(sourceMap).slice(0, 2);
     const examples = [];
     const nf = settings ? settings.numberFormat : null;
+    const effectiveRates = _cachedRates ? RateTables.getEffectiveRates(settings, _cachedRates) : null;
 
     for (const srcCode of sources) {
       const amount = 12345;
@@ -22,8 +27,13 @@ const Preview = (() => {
       for (const tc of sourceMap[srcCode]) {
         const tcCur = currencies[tc] || {};
         const tcSymbol = tcCur.symbol || tc;
-        const converted = amount * (1 + Math.random() * 0.5);
-        // New pill format: amount FROM = rate TO
+        let converted;
+        if (effectiveRates) {
+          converted = RateTables.convert(amount, srcCode, tc, effectiveRates, settings.rateSourceSelections);
+        }
+        if (converted == null) {
+          converted = amount * 1.37;
+        }
         html += ` <span class="db-pill">${amount} ${srcCode} = ${tcSymbol}${NumberFormatter.formatNumber(converted, 2, nf)}</span>`;
       }
       examples.push(html);
