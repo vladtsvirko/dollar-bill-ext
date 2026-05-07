@@ -34,10 +34,10 @@ const ContentConverter = (() => {
   function processTextNode(textNode, ratesData, conversionMap, ambiguousCurrency, currentSettings, compiledUnambiguous, compiledAmbiguous) {
     const { rates, displayInfo, usedSources, selections, conflicts } = ratesData;
     const text = textNode.nodeValue;
-    if (!text || text.length < 2) return;
+    if (!text || text.length < 2) return false;
 
     const parent = textNode.parentElement;
-    if (!parent || parent.hasAttribute(INJECTED_ATTR)) return;
+    if (!parent || parent.hasAttribute(INJECTED_ATTR)) return false;
 
     const matches = [];
 
@@ -61,7 +61,7 @@ const ContentConverter = (() => {
       pattern.regex.lastIndex = 0;
     }
 
-    if (matches.length === 0) return;
+    if (matches.length === 0) return false;
 
     const fragment = document.createDocumentFragment();
     let lastIndex = 0;
@@ -142,6 +142,8 @@ const ContentConverter = (() => {
       container.appendChild(fragment);
       parent.replaceChild(container, textNode);
     }
+
+    return matches.length > 0;
   }
 
   return { parseAmount, detectPrecision, processTextNode };
