@@ -1,13 +1,26 @@
 const NumberFormatter = (() => {
+  // Cache Intl.NumberFormat instances keyed by (locale, decimals)
+  const _intlCache = new Map();
+
+  function _getIntlFormatter(locale, decimals) {
+    const key = locale + '|' + decimals;
+    let fmt = _intlCache.get(key);
+    if (!fmt) {
+      fmt = new Intl.NumberFormat(locale, {
+        minimumFractionDigits: decimals,
+        maximumFractionDigits: decimals,
+      });
+      _intlCache.set(key, fmt);
+    }
+    return fmt;
+  }
+
   function formatNumber(value, decimals, numberFormat) {
     if (value == null) return '';
     const num = new BigNumber(value);
     if (num.isNaN() || !num.isFinite()) return '';
     const locale = numberFormat || undefined;
-    return new Intl.NumberFormat(locale, {
-      minimumFractionDigits: decimals,
-      maximumFractionDigits: decimals,
-    }).format(num.toNumber());
+    return _getIntlFormatter(locale, decimals).format(num.toNumber());
   }
 
   function formatRate(value, decimals) {
@@ -15,12 +28,6 @@ const NumberFormatter = (() => {
     const dp = decimals != null ? decimals : 4;
     if (!MathOps.isValid(value)) return '';
     return MathOps.round(value, dp);
-  }
-
-  function formatCacheAge(rates) {
-    if (!rates || !rates.timestamp) return '';
-    const ageMin = Math.round((Date.now() - rates.timestamp) / 60000);
-    return ageMin < 1 ? '< 1 min' : ageMin + ' min';
   }
 
   function parsePriceText(str) {
@@ -40,5 +47,5 @@ const NumberFormatter = (() => {
     return n.toString();
   }
 
-  return { formatNumber, formatRate, formatCacheAge, parsePriceText };
+  return { formatNumber, formatRate, parsePriceText };
 })();

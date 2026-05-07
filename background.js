@@ -43,9 +43,17 @@ chrome.alarms.onAlarm.addListener((alarm) => {
   }
 });
 
+const _messageHandlers = {
+  getRates: () => RatesUtil.getCachedRates(),
+  getSettings: () => RatesUtil.getSettings(),
+  getFetchStatus: () => RatesUtil.getFetchStatus(),
+  getLoadedRates: () => RatesUtil.getLoadedRates(),
+};
+
 chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
-  if (msg.type === 'getRates') {
-    RatesUtil.getCachedRates().then(sendResponse);
+  const handler = _messageHandlers[msg.type];
+  if (handler) {
+    handler().then(sendResponse);
     return true;
   }
   if (msg.type === 'updateRates') {
@@ -57,18 +65,6 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
       ]);
       sendResponse({ rates, fetchStatus, loadedRates });
     }).catch(() => sendResponse({ rates: null, fetchStatus: null, loadedRates: null }));
-    return true;
-  }
-  if (msg.type === 'getSettings') {
-    RatesUtil.getSettings().then(sendResponse);
-    return true;
-  }
-  if (msg.type === 'getFetchStatus') {
-    RatesUtil.getFetchStatus().then(sendResponse);
-    return true;
-  }
-  if (msg.type === 'getLoadedRates') {
-    RatesUtil.getLoadedRates().then(sendResponse);
     return true;
   }
 });

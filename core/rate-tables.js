@@ -213,29 +213,35 @@ const RateTables = (() => {
   // --- Effective rates ---
 
   function getEffectiveRates(settings, cachedApiRates) {
+    // Check if any custom rates exist — if not, skip cloning entirely
+    const customRates = settings.customRates || {};
+    const hasCustom = Object.values(customRates).some(v => v != null);
+
     let base;
     if (cachedApiRates && isCacheValid(cachedApiRates)) {
-      base = deepCloneRateTable(cachedApiRates);
+      base = hasCustom ? deepCloneRateTable(cachedApiRates) : cachedApiRates;
     } else {
       base = {};
     }
 
-    // Merge custom rates
-    const customNormalized = getCustomRates(settings);
-    for (const [from, toMap] of Object.entries(customNormalized)) {
-      if (!base[from]) base[from] = {};
-      for (const [to, customSourceMap] of Object.entries(toMap)) {
-        if (!base[from][to]) base[from][to] = {};
-        Object.assign(base[from][to], customSourceMap);
+    // Merge custom rates only when they exist
+    if (hasCustom) {
+      const customNormalized = getCustomRates(settings);
+      for (const [from, toMap] of Object.entries(customNormalized)) {
+        if (!base[from]) base[from] = {};
+        for (const [to, customSourceMap] of Object.entries(toMap)) {
+          if (!base[from][to]) base[from][to] = {};
+          Object.assign(base[from][to], customSourceMap);
+        }
+      }
+
+      // Update _usedSources to include custom source
+      if (base._usedSources && !base._usedSources.includes(CUSTOM_SOURCE)) {
+        base._usedSources = [...base._usedSources, CUSTOM_SOURCE];
       }
     }
 
-    // Update _usedSources to include custom source if any custom rates exist
-    const hasCustom = Object.values(settings.customRates || {}).some(v => v != null);
-    if (hasCustom && base._usedSources && !base._usedSources.includes(CUSTOM_SOURCE)) {
-      base._usedSources = [...base._usedSources, CUSTOM_SOURCE];
-    }
-
+    // When hasCustom is false, base aliases cachedApiRates — callers must not mutate
     return base;
   }
 

@@ -1,6 +1,9 @@
 const FormatUtils = (() => {
+  const _escapeMap = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' };
+  const _escapeRe = /[&<>"]/g;
+
   function escapeHtml(str) {
-    return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    return str.replace(_escapeRe, ch => _escapeMap[ch]);
   }
 
   let _detectedHourCycle = null;
@@ -40,9 +43,17 @@ const FormatUtils = (() => {
     return ageMin < 1 ? '< 1 min' : ageMin + ' min';
   }
 
+  const _regexCache = new Map();
+
   function matchesHost(hostname, pattern) {
     try {
-      return hostname === pattern || hostname.endsWith('.' + pattern) || new RegExp(pattern).test(hostname);
+      if (hostname === pattern || hostname.endsWith('.' + pattern)) return true;
+      let re = _regexCache.get(pattern);
+      if (!re) {
+        re = new RegExp(pattern);
+        _regexCache.set(pattern, re);
+      }
+      return re.test(hostname);
     } catch {
       return hostname.includes(pattern);
     }

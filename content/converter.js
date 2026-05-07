@@ -3,19 +3,9 @@ const ContentConverter = (() => {
   const PILL_CLASS = 'db-pill';
 
   function parseAmount(str) {
-    const s = str.replace(/\s/g, '');
-    const lastComma = s.lastIndexOf(',');
-    const lastDot = s.lastIndexOf('.');
-    let normalized;
-    if (lastComma > lastDot) {
-      normalized = s.replace(/\./g, '').replace(',', '.');
-    } else if (lastDot > lastComma) {
-      normalized = s.replace(/,/g, '');
-    } else {
-      normalized = s.replace(',', '.');
-    }
-    const n = new BigNumber(normalized);
-    return n.isNaN() || !n.isFinite() ? NaN : n.toNumber();
+    const result = NumberFormatter.parsePriceText(str);
+    if (result === null) return NaN;
+    return BigNumber(result).toNumber();
   }
 
   function detectPrecision(str) {

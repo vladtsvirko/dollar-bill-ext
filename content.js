@@ -92,15 +92,15 @@
       new Promise((resolve) => chrome.runtime.sendMessage({ type: 'getRates' }, resolve)),
     ]);
 
-    if (!settings) return;
-    if (!shouldProcessPage(settings)) return;
+    if (!settings) return [null, null];
+    if (!shouldProcessPage(settings)) return [settings, cachedRates];
 
     await I18n.init(settings.language);
 
     compilePatterns(settings);
 
     const ratesData = getRatesForConversion(settings, cachedRates);
-    if (!ratesData || !ratesData.rates) return;
+    if (!ratesData || !ratesData.rates) return [settings, cachedRates];
 
     const conversionMap = RatesUtil.buildConversionMap(settings);
     const ambiguousCurrency = PickerBar.resolveAmbiguousCurrency(settings, compiledDomainMap);
@@ -109,20 +109,37 @@
     if (!ambiguousCurrency && Scanner.hasAmbiguousMatches(document.body, compiledAmbiguous)) {
       PickerBar.showCurrencyPicker(settings, compiledDomainMap, runConversion);
     }
+
+    return [settings, cachedRates];
+  }
+
+  // Cached rates to avoid re-fetching on every mutation batch
+  // (settings are tracked by currentSettings via compilePatterns)
+  let _cachedRates = null;
+
+  function _cacheResult(result) {
+    if (result) {
+      _cachedRates = result[1];
+      // currentSettings is updated by compilePatterns inside runConversion
+    }
   }
 
   // Initial scan
-  runConversion().catch(err => {
+  runConversion().then(_cacheResult).catch(err => {
     if (chrome.runtime?.id) console.warn('[DollarBill] Initial scan failed:', err?.message || err);
   });
 
   // React to live settings changes (e.g. popup toggle, options page saves)
   let rescanTimer = null;
   chrome.storage.onChanged.addListener((changes, area) => {
-    if (area !== 'local' || !changes[Settings.SETTINGS_KEY]) return;
+    if (area !== 'local') return;
+    if (changes[Settings.SETTINGS_KEY] || changes[RateFetch.CACHE_KEY]) {
+      _cachedRates = null;
+    }
+    if (!changes[Settings.SETTINGS_KEY]) return;
     clearTimeout(rescanTimer);
     rescanTimer = setTimeout(() => {
-      runConversion().catch(err => {
+      runConversion().then(_cacheResult).catch(err => {
         if (chrome.runtime?.id) console.warn('[DollarBill] Re-scan failed:', err?.message || err);
       });
     }, 300);
@@ -134,10 +151,8 @@
       ContentObserver.stop();
       return;
     }
-    Promise.all([
-      new Promise((resolve) => chrome.runtime.sendMessage({ type: 'getSettings' }, resolve)),
-      new Promise((resolve) => chrome.runtime.sendMessage({ type: 'getRates' }, resolve)),
-    ]).then(([settings, cachedRates]) => {
+
+    const doScan = (settings, cachedRates) => {
       if (!shouldProcessPage(settings)) return;
       compilePatterns(settings);
       const ratesData = getRatesForConversion(settings, cachedRates);
@@ -149,8 +164,20 @@
           Scanner.scanNode(node, ratesData, conversionMap, ambiguousCurrency, currentSettings, compiledUnambiguous, compiledAmbiguous);
         }
       }
-    }).catch(() => {
-      ContentObserver.stop();
-    });
+    };
+
+    if (currentSettings && _cachedRates) {
+      doScan(currentSettings, _cachedRates);
+    } else {
+      Promise.all([
+        new Promise((resolve) => chrome.runtime.sendMessage({ type: 'getSettings' }, resolve)),
+        new Promise((resolve) => chrome.runtime.sendMessage({ type: 'getRates' }, resolve)),
+      ]).then(([settings, cachedRates]) => {
+        _cachedRates = cachedRates;
+        doScan(settings, cachedRates);
+      }).catch(() => {
+        ContentObserver.stop();
+      });
+    }
   });
 })();

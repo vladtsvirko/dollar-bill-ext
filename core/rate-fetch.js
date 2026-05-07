@@ -118,6 +118,7 @@ const RateFetch = (() => {
   }
 
   return {
+    CACHE_KEY,
     getSettings,
     saveSettings,
     getCachedRates,

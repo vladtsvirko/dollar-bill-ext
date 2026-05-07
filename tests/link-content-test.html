@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<title>Dollar Bill — Link Content Preservation Test</title>
+<style>
+  body { font-family: sans-serif; padding: 20px; }
+  .listing-item { border: 1px solid #ccc; padding: 16px; margin: 12px 0; border-radius: 8px; }
+  .listing-item__price-primary { font-size: 20px; font-weight: bold; }
+  .listing-item__finance { margin-top: 4px; font-size: 14px; color: #666; }
+  .listing-item__finance a { color: #1a73e8; text-decoration: none; }
+  .test-case { margin-bottom: 32px; }
+  .test-case h3 { color: #333; }
+  #results { margin-top: 20px; padding: 16px; background: #f5f5f5; border-radius: 8px; font-family: monospace; white-space: pre-wrap; }
+  .pass { color: green; }
+  .fail { color: red; }
+</style>
+</head>
+<body>
+<h1>Link Content Preservation Test</h1>
+<p>Open this page with the Dollar Bill extension enabled (BYN→USD conversion active).
+   Then click <strong>"Run Check"</strong> to verify link content is preserved.</p>
+
+<button onclick="runCheck()">Run Check</button>
+<div id="results"></div>
+
+<div class="test-case">
+  <h3>Test 1: Price inside link (exact reproduction from report)</h3>
+  <div class="listing-item" id="test1">
+    <div class="listing-item__prices">
+      <div class="listing-item__price-primary">143&nbsp;833&nbsp;р.</div>
+      <div class="listing-item__finance">
+        <a rel="nofollow" href="/audi/a6-allroad/129112432">Лизинг от 2&nbsp;731&nbsp;BYN в&nbsp;месяц</a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="test-case">
+  <h3>Test 2: Price at start of link</h3>
+  <div class="listing-item" id="test2">
+    <div class="listing-item__finance">
+      <a href="/test">2&nbsp;731&nbsp;BYN per month</a>
+    </div>
+  </div>
+</div>
+
+<div class="test-case">
+  <h3>Test 3: Price at end of link</h3>
+  <div class="listing-item" id="test3">
+    <div class="listing-item__finance">
+      <a href="/test">Monthly payment 2&nbsp;731&nbsp;BYN</a>
+    </div>
+  </div>
+</div>
+
+<div class="test-case">
+  <h3>Test 4: Multiple prices in one link</h3>
+  <div class="listing-item" id="test4">
+    <div class="listing-item__finance">
+      <a href="/test">от 2&nbsp;731&nbsp;BYN до 5&nbsp;000&nbsp;BYN</a>
+    </div>
+  </div>
+</div>
+
+<div class="test-case">
+  <h3>Test 5: Link wrapped around span with price</h3>
+  <div class="listing-item" id="test5">
+    <div class="listing-item__finance">
+      <a href="/test">Лизинг от <span>2&nbsp;731</span>&nbsp;BYN в месяц</a>
+    </div>
+  </div>
+</div>
+
+<div class="test-case">
+  <h3>Test 6: No price in link (control)</h3>
+  <div class="listing-item" id="test6">
+    <div class="listing-item__finance">
+      <a href="/test">Подробнее об условиях лизинга</a>
+    </div>
+  </div>
+</div>
+
+<script>
+// Wait a few seconds for extension to process the page
+function runCheck() {
+  // Give extension 2s to finish if just loaded
+  setTimeout(_doCheck, 2000);
+}
+
+function _doCheck() {
+  const out = document.getElementById('results');
+  const lines = [];
+
+  // Test helper
+  function check(testId, description, fn) {
+    const el = document.getElementById(testId);
+    const finance = el.querySelector('.listing-item__finance');
+    const link = finance.querySelector('a');
+    const pass = fn(link, finance);
+    lines.push(`[${pass ? 'PASS' : 'FAIL'}] ${description}`);
+    if (!pass) {
+      lines.push(`       finance.innerHTML = ${JSON.stringify(finance.innerHTML)}`);
+    }
+  }
+
+  // Test 1: link should still exist and have text content
+  check('test1', 'Link preserved with leasing text', (link) => {
+    if (!link) return false;
+    const text = link.textContent;
+    return text.includes('Лизинг') && text.includes('месяц');
+  });
+
+  // Test 2: link should exist with text
+  check('test2', 'Link preserved with price at start', (link) => {
+    if (!link) return false;
+    return link.textContent.includes('per month');
+  });
+
+  // Test 3: link should exist with text
+  check('test3', 'Link preserved with price at end', (link) => {
+    if (!link) return false;
+    return link.textContent.includes('Monthly payment');
+  });
+
+  // Test 4: link should exist with text
+  check('test4', 'Link preserved with multiple prices', (link) => {
+    if (!link) return false;
+    return link.textContent.includes('от') && link.textContent.includes('до');
+  });
+
+  // Test 5: link should exist with text
+  check('test5', 'Link preserved with span inside', (link) => {
+    if (!link) return false;
+    return link.textContent.includes('Лизинг') && link.textContent.includes('месяц');
+  });
+
+  // Test 6: control — link should exist unchanged
+  check('test6', 'Control: link unchanged (no price)', (link) => {
+    if (!link) return false;
+    return link.textContent === 'Подробнее об условиях лизинга';
+  });
+
+  const total = lines.length;
+  const passed = lines.filter(l => l.startsWith('[PASS]')).length;
+  lines.push(`\n${passed}/${total} tests passed`);
+
+  out.innerHTML = lines.map(l => {
+    if (l.startsWith('[PASS]')) return `<span class="pass">${l}</span>`;
+    if (l.startsWith('[FAIL]')) return `<span class="fail">${l}</span>`;
+    return l;
+  }).join('\n');
+
+  console.log(lines.join('\n'));
+}
+</script>
+</body>
+</html>
