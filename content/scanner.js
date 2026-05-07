@@ -15,17 +15,8 @@ const Scanner = (() => {
     if (n.parentElement.hasAttribute(INJECTED_ATTR)) return NodeFilter.FILTER_REJECT;
     if (n.parentElement.classList.contains(INJECTED_CLASS)) return NodeFilter.FILTER_REJECT;
     if (n.parentElement.classList.contains(PILL_CLASS)) return NodeFilter.FILTER_REJECT;
+    if (n._dbMerged) return NodeFilter.FILTER_REJECT;
     return NodeFilter.FILTER_ACCEPT;
-  }
-
-  // Walk up through inline parents, return the topmost inline element
-  // (or the text node itself if parent is block-level)
-  function findInlineBoundary(textNode) {
-    let node = textNode;
-    while (node.parentElement && INLINE_TAGS.has(node.parentElement.tagName)) {
-      node = node.parentElement;
-    }
-    return node;
   }
 
   // Find the nearest block-level ancestor (skipping inline wrappers)
@@ -106,30 +97,37 @@ const Scanner = (() => {
         const lastIdx = tryMultiNodeMerge(textNodes, i, blockParent, compiledUnambiguous, compiledAmbiguous, 4);
 
         if (lastIdx > i) {
-          // Merge all nodes from i to lastIdx into tn
+          // Build combined text for matching only — no DOM modification
           const parts = [];
           for (let j = i; j <= lastIdx; j++) {
             parts.push(textNodes[j].nodeValue || '');
           }
-          tn.nodeValue = parts.join('');
+          const combined = parts.join('');
 
-          // Remove the DOM boundaries of merged nodes (i+1 through lastIdx)
-          for (let j = i + 1; j <= lastIdx; j++) {
-            const mergedNode = textNodes[j];
-            if (mergedNode.parentElement) {
-              const boundary = findInlineBoundary(mergedNode);
-              boundary.remove();
-            }
-            skip.add(j);
-          }
-
-          console.log('[DB split]', JSON.stringify(parts[0]), '+', JSON.stringify(parts.slice(1).join('')), '→ merge');
-
-          // Re-process the now-combined node
-          ContentConverter.processTextNode(
-            tn, ratesData, conversionMap, ambiguousCurrency,
+          const { pills, hasConversion } = ContentConverter.createPillsFromText(
+            combined, ratesData, conversionMap, ambiguousCurrency,
             currentSettings, compiledUnambiguous, compiledAmbiguous
           );
+
+          if (hasConversion && pills.length > 0) {
+            // Insert pills after the last text node in the merge range
+            const lastNode = textNodes[lastIdx];
+            const parent = lastNode.parentElement;
+            if (parent) {
+              const nextSibling = lastNode.nextSibling;
+              for (let p = pills.length - 1; p >= 0; p--) {
+                parent.insertBefore(pills[p], nextSibling);
+              }
+            }
+
+            console.log('[DB split]', JSON.stringify(parts[0]), '+', JSON.stringify(parts.slice(1).join('')), '→ pills');
+          }
+
+          // Mark all nodes in the range so re-scan skips them
+          for (let j = i; j <= lastIdx; j++) {
+            textNodes[j]._dbMerged = true;
+            skip.add(j);
+          }
         }
       }
     }

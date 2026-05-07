@@ -31,16 +31,10 @@ const ContentConverter = (() => {
     return `${info.symbol}${NumberFormatter.formatNumber(amount, decimals, currentSettings.numberFormat)}`;
   }
 
-  function processTextNode(textNode, ratesData, conversionMap, ambiguousCurrency, currentSettings, compiledUnambiguous, compiledAmbiguous) {
-    const { rates, displayInfo, usedSources, selections, conflicts } = ratesData;
-    const text = textNode.nodeValue;
-    if (!text || text.length < 2) return false;
-
-    const parent = textNode.parentElement;
-    if (!parent || parent.hasAttribute(INJECTED_ATTR)) return false;
-
+  // Run all compiled patterns against text, return deduplicated match list.
+  function findMatches(text, compiledUnambiguous, compiledAmbiguous, ambiguousCurrency) {
+    if (!text || text.length < 2) return [];
     const matches = [];
-
     const allPatterns = compiledUnambiguous;
     for (let pi = 0; pi < allPatterns.length + (ambiguousCurrency ? compiledAmbiguous.length : 0); pi++) {
       const pattern = pi < allPatterns.length ? allPatterns[pi] : compiledAmbiguous[pi - allPatterns.length];
@@ -60,14 +54,69 @@ const ContentConverter = (() => {
       }
       pattern.regex.lastIndex = 0;
     }
+    return matches;
+  }
 
+  // Build a single pill element with tooltip for a match → target conversion.
+  function buildPill(m, tc, ratesData, currentSettings) {
+    const { rates, displayInfo, usedSources, selections, conflicts } = ratesData;
+    const converted = RateTables.convert(m.amount, m.currency, tc, rates, selections);
+    if (converted === null || converted <= 0) return null;
+
+    const pairKey = `${m.currency}:${tc}`;
+    const reversePairKey = `${tc}:${m.currency}`;
+    const info = displayInfo[pairKey] || displayInfo[reversePairKey];
+
+    const conflictData = conflicts[pairKey] || conflicts[reversePairKey];
+    const hasConflict = !!conflictData;
+    const sel = RateTables.findSelection(m.currency, tc, selections);
+    const isResolved = hasConflict && !!sel;
+
+    const pill = document.createElement('span');
+    pill.className = PILL_CLASS + (hasConflict && !isResolved ? ' db-pill-conflict' : '');
+    const dp = Math.max(m.precision, 2);
+
+    pill.textContent = formatConverted(converted, tc, dp, currentSettings);
+
+    const nf = currentSettings ? currentSettings.numberFormat : null;
+    const curInfo = currentSettings.currencies[tc] || {};
+    const symbol = curInfo ? curInfo.symbol : tc;
+    let rateStr = '';
+    if (info) {
+      const sourceName = RateSources.getSourceDisplayName(info.source);
+      rateStr = ` (${info.amount} ${info.from} = ${NumberFormatter.formatNumber(info.rate, 4, nf)} ${info.to} \u00B7 ${sourceName}, ${info.type})`;
+    }
+
+    if (hasConflict) {
+      const activeSource = info ? info.source : (usedSources[0] || '');
+      const sourceName = RateSources.getSourceDisplayName(activeSource);
+      if (!isResolved) {
+        rateStr += ' ' + I18n.t('converter.conflictUsing', { source: sourceName });
+      } else {
+        rateStr += ' ' + I18n.t('converter.source', { source: sourceName });
+      }
+    }
+
+    pill.setAttribute('data-db-tooltip',
+      `${NumberFormatter.formatNumber(m.amount, dp, nf)} ${m.currency} \u2192 ${symbol}${NumberFormatter.formatNumber(converted, dp, nf)} ${tc}${rateStr}`
+    );
+
+    return pill;
+  }
+
+  function processTextNode(textNode, ratesData, conversionMap, ambiguousCurrency, currentSettings, compiledUnambiguous, compiledAmbiguous) {
+    const text = textNode.nodeValue;
+    if (!text || text.length < 2) return false;
+
+    const parent = textNode.parentElement;
+    if (!parent || parent.hasAttribute(INJECTED_ATTR)) return false;
+
+    const matches = findMatches(text, compiledUnambiguous, compiledAmbiguous, ambiguousCurrency);
     if (matches.length === 0) return false;
 
     const fragment = document.createDocumentFragment();
     let lastIndex = 0;
     let hasConversion = false;
-
-    const nf = currentSettings ? currentSettings.numberFormat : null;
 
     for (const m of matches) {
       if (m.index < lastIndex) continue;
@@ -81,50 +130,9 @@ const ContentConverter = (() => {
 
       const targets = conversionMap[m.currency] || [];
       for (const tc of targets) {
-        const converted = RateTables.convert(m.amount, m.currency, tc, rates, selections);
-        if (converted !== null && converted > 0) {
+        const pill = buildPill(m, tc, ratesData, currentSettings);
+        if (pill) {
           hasConversion = true;
-          const pill = document.createElement('span');
-
-          // Look up display info for this pair
-          const pairKey = `${m.currency}:${tc}`;
-          const reversePairKey = `${tc}:${m.currency}`;
-          const info = displayInfo[pairKey] || displayInfo[reversePairKey];
-
-          // Detect conflict
-          const conflictData = conflicts[pairKey] || conflicts[reversePairKey];
-          const hasConflict = !!conflictData;
-          const sel = RateTables.findSelection(m.currency, tc, selections);
-          const isResolved = hasConflict && !!sel;
-
-          pill.className = PILL_CLASS + (hasConflict && !isResolved ? ' db-pill-conflict' : '');
-          const dp = Math.max(m.precision, 2);
-
-          pill.textContent = formatConverted(converted, tc, dp, currentSettings);
-
-          // Build tooltip
-          const curInfo = currentSettings.currencies[tc] || {};
-          const symbol = curInfo ? curInfo.symbol : tc;
-          let rateStr = '';
-          if (info) {
-            const sourceName = RateSources.getSourceDisplayName(info.source);
-            rateStr = ` (${info.amount} ${info.from} = ${NumberFormatter.formatNumber(info.rate, 4, nf)} ${info.to} \u00B7 ${sourceName}, ${info.type})`;
-          }
-
-          if (hasConflict) {
-            const activeSource = info ? info.source : (usedSources[0] || '');
-            const sourceName = RateSources.getSourceDisplayName(activeSource);
-            if (!isResolved) {
-              rateStr += ' ' + I18n.t('converter.conflictUsing', { source: sourceName });
-            } else {
-              rateStr += ' ' + I18n.t('converter.source', { source: sourceName });
-            }
-          }
-
-          pill.setAttribute('data-db-tooltip',
-            `${NumberFormatter.formatNumber(m.amount, dp, nf)} ${m.currency} \u2192 ${symbol}${NumberFormatter.formatNumber(converted, dp, nf)} ${tc}${rateStr}`
-          );
-
           fragment.appendChild(pill);
         }
       }
@@ -146,5 +154,31 @@ const ContentConverter = (() => {
     return matches.length > 0;
   }
 
-  return { parseAmount, detectPrecision, processTextNode };
+  // Create pill elements from a raw text string (no DOM modification).
+  // Returns { pills: HTMLElement[], hasConversion: boolean }.
+  function createPillsFromText(text, ratesData, conversionMap, ambiguousCurrency, currentSettings, compiledUnambiguous, compiledAmbiguous) {
+    const matches = findMatches(text, compiledUnambiguous, compiledAmbiguous, ambiguousCurrency);
+    if (matches.length === 0) return { pills: [], hasConversion: false };
+
+    const pills = [];
+    let hasConversion = false;
+    let lastIndex = 0;
+
+    for (const m of matches) {
+      if (m.index < lastIndex) continue;
+      const targets = conversionMap[m.currency] || [];
+      for (const tc of targets) {
+        const pill = buildPill(m, tc, ratesData, currentSettings);
+        if (pill) {
+          hasConversion = true;
+          pills.push(pill);
+        }
+      }
+      lastIndex = m.index + m.length;
+    }
+
+    return { pills, hasConversion };
+  }
+
+  return { parseAmount, detectPrecision, processTextNode, createPillsFromText };
 })();
