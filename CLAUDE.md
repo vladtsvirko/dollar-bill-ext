@@ -18,7 +18,10 @@ dollar-bill-ext/
 ├── lib/
 │   └── bignumber.js            (BigNumber.js v9.1.2 — arbitrary-precision decimal arithmetic)
 ├── locales/
-│   └── en.json                  (flat key-value English strings for i18n)
+│   ├── en.json                  (English — base locale)
+│   ├── be.json                  (Belarusian)
+│   ├── pl.json                  (Polish)
+│   └── ru.json                  (Russian)
 ├── core/
 │   ├── currencies.js            (Currencies IIFE — 150+ currency database)
 │   ├── math.js                  (MathOps IIFE — BigNumber-backed string-safe arithmetic, all rate values are strings)
@@ -57,15 +60,24 @@ dollar-bill-ext/
 │   ├── popup.js                 (init, toggle, source dropdown, conflict banner)
 │   ├── rate-cards.js            (RateCards IIFE — rate card rendering)
 │   └── converter.js             (PopupConverter IIFE — quick converter widget)
-└── styles/
-    ├── tokens.css               (design tokens — CSS custom properties)
-    ├── components.css           (shared component styles)
-    └── injected.css             (pill + picker styles for injected pages)
+├── styles/
+│   ├── tokens.css               (design tokens — CSS custom properties)
+│   ├── components.css           (shared component styles)
+│   └── injected.css             (pill + picker styles for injected pages)
+├── icons/
+│   └── icon*.png                (16/48/128 extension icons)
+├── tests/
+│   └── link-content-test.html   (manual test page for content script)
+├── docs/
+│   └── rate-pipeline.md         (rate fetching pipeline documentation)
+├── build/                       (output — ZIP/CRX packages, screenshots)
+├── package.sh                   (packaging script — ZIP/CRX for distribution)
+├── privacy-policy.html          (Chrome Web Store required policy page)
 ```
 
 ### Data flow
 
-1. **Rates**: Central bank APIs → `RateFetch.fetchAndCacheRates()` → `chrome.storage.local` → cached as merged rate table with conflict tracking
+1. **Rates**: Central bank APIs → `RateFetch.fetchAndCacheRates()` → `chrome.storage.local` → cached as merged rate table with conflict tracking. Background refreshes rates every 30 minutes via `chrome.alarms` (also on install).
 2. **Settings**: `chrome.storage.local` under `dollarbill_settings` key. Schema versioned (`_settingsVersion: 3`) with migration chain in `core/migrations.js`.
 3. **Content script**: Loads core modules, then content modules, then `content.js`. Sends `getSettings`/`getRates` messages to background. Compiles regex patterns from currency identifiers. Ambiguous currencies resolved via domain TLD mapping or picker bar.
 
@@ -109,7 +121,25 @@ Load the extension directly in Chrome via `chrome://extensions` → "Load unpack
 
 - **Content script changes**: Must reload the extension on `chrome://extensions`, then refresh the target page.
 - **Background script changes**: Must reload the extension. Check service worker logs via "Inspect views: service worker" on `chrome://extensions`.
-- **Rate fetching**: Use background console to inspect `fetchAndCacheRates()` results.
+- **Rate fetching**: Use background console to inspect `fetchAndCacheRates()` results. Rates auto-refresh every 30 minutes via `chrome.alarms`.
+
+## Packaging
+
+```bash
+./package.sh              # creates ZIP in build/ (for Chrome Web Store)
+./package.sh --crx        # creates ZIP + CRX
+./package.sh --crx-only   # creates CRX only (for private distribution)
+./package.sh --key <pem>  # use existing signing key
+```
+
+Output goes to `build/`. The script excludes dev files (CLAUDE.md, docs, .git, tests).
+
+## Testing
+
+No automated test runner. Manual testing:
+1. Load extension unpacked, open `tests/link-content-test.html` in browser to verify content script detection
+2. Use `build/test-page.html` for additional content script scenarios
+3. Check popup/options pages by clicking the extension icon or right-click → Options
 - **Storage inspection**: `chrome.storage.local` is viewable via DevTools → Application → Storage → Chrome Extension Storage.
 
 ### Gotchas

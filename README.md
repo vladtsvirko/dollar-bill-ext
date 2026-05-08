@@ -110,7 +110,11 @@ dollar-bill-ext/
 ├── options/                   Settings page (HTML, CSS, JS)
 ├── styles/                    Design tokens, shared styles, injected pill styles
 ├── locales/                   Translation JSON files
-└── icons/                     Extension icons (16, 48, 128px)
+├── icons/                     Extension icons (16, 48, 128px)
+├── tests/                     Manual test pages for content script
+├── docs/                      Internal documentation
+├── build/                     Build output (ZIP/CRX packages, screenshots)
+└── package.sh                 Packaging script for distribution
 ```
 
 The project uses vanilla JavaScript with IIFE modules — no bundler, no npm, no build step.
@@ -145,6 +149,16 @@ The project uses vanilla JavaScript with IIFE modules — no bundler, no npm, no
 1. Add a new entry to `RATE_SOURCES` in `core/rate-sources.js` with a `fetchBaseRates` async function
 2. Add the API hostname to `host_permissions` in `manifest.json`
 3. The source will appear in the rate source picker in settings
+
+### Packaging for distribution
+
+```bash
+./package.sh              # creates ZIP in build/ (for Chrome Web Store)
+./package.sh --crx        # creates ZIP + CRX (for private distribution)
+./package.sh --key <pem>  # use an existing signing key
+```
+
+Output goes to `build/`. Dev files (docs, tests, .git) are excluded automatically.
 
 ## Privacy
 
