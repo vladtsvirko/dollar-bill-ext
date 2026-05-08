@@ -6,16 +6,18 @@
 
   document.getElementById('ctaBtn').addEventListener('click', () => {
     chrome.action.openPopup();
-    chrome.tabs.getCurrent((tab) => {
-      chrome.tabs.remove(tab.id);
-    });
+    setTimeout(() => {
+      chrome.tabs.getCurrent((tab) => {
+        if (tab) chrome.tabs.remove(tab.id);
+      });
+    }, 300);
   });
 
   document.getElementById('settingsLink').addEventListener('click', (e) => {
     e.preventDefault();
+    chrome.runtime.openOptionsPage();
     chrome.tabs.getCurrent((tab) => {
       chrome.tabs.remove(tab.id);
-      chrome.runtime.openOptionsPage();
     });
   });
 })();
