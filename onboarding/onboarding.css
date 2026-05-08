@@ -1,0 +1,191 @@
+/* Dollar Bill — Onboarding Page */
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  font-family: var(--db-font);
+  color: var(--text-primary);
+  background: var(--bg-app);
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.3s ease, color 0.3s ease;
+}
+
+.onboarding {
+  max-width: 520px;
+  width: 100%;
+  padding: 48px 32px;
+  text-align: center;
+}
+
+/* ---- Hero ---- */
+
+.hero {
+  margin-bottom: 40px;
+}
+
+.hero-icon {
+  width: 72px;
+  height: 72px;
+  margin-bottom: 16px;
+  border-radius: 16px;
+}
+
+.hero-title {
+  font-size: 28px;
+  font-weight: 700;
+  margin-bottom: 8px;
+}
+
+.hero-subtitle {
+  font-size: 16px;
+  color: var(--text-secondary);
+}
+
+/* ---- Steps ---- */
+
+.steps {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  text-align: left;
+  margin-bottom: 40px;
+}
+
+.step {
+  display: flex;
+  gap: 16px;
+  align-items: flex-start;
+}
+
+.step-number {
+  flex-shrink: 0;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: var(--text-on-accent);
+  font-weight: 700;
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.step-content h2 {
+  font-size: 16px;
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+
+.step-content p {
+  font-size: 14px;
+  color: var(--text-secondary);
+  line-height: 1.5;
+}
+
+/* ---- Toolbar mock ---- */
+
+.step-visual {
+  margin-top: 12px;
+  background: var(--bg-section);
+  border: 1px solid var(--border-default);
+  border-radius: var(--db-radius);
+  padding: 12px 16px;
+}
+
+.toolbar-mock {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.toolbar-item {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 4px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  color: var(--text-secondary);
+}
+
+.toolbar-item svg {
+  width: 16px;
+  height: 16px;
+}
+
+.toolbar-extension {
+  width: auto;
+  padding: 0 10px;
+  gap: 6px;
+}
+
+.extension-icon img {
+  width: 16px;
+  height: 16px;
+}
+
+.extension-name {
+  font-size: 12px;
+  color: var(--text-primary);
+  white-space: nowrap;
+}
+
+.toolbar-pin-btn {
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  color: var(--accent);
+  cursor: default;
+}
+
+.toolbar-pin-btn svg {
+  width: 14px;
+  height: 14px;
+}
+
+/* ---- CTA ---- */
+
+.cta {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+
+.cta-btn {
+  background: var(--accent);
+  color: var(--text-on-accent);
+  border: none;
+  border-radius: var(--db-radius-pill);
+  padding: 12px 40px;
+  font-family: var(--db-font);
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s ease, transform 0.15s ease;
+}
+
+.cta-btn:hover {
+  background: var(--accent-light);
+  transform: translateY(-1px);
+}
+
+.cta-link {
+  font-size: 13px;
+  color: var(--text-secondary);
+  text-decoration: none;
+  transition: color 0.2s ease;
+}
+
+.cta-link:hover {
+  color: var(--accent);
+}

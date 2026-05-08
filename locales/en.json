@@ -185,5 +185,16 @@
   "source.bcb": "Central Bank of Brazil",
   "source.boe": "Bank of England",
   "source.hkma": "Hong Kong Monetary Authority",
-  "source.nbk": "National Bank of Kazakhstan"
+  "source.nbk": "National Bank of Kazakhstan",
+
+  "onboarding.welcome": "Welcome to Dollar Bill",
+  "onboarding.subtitle": "Prices on any webpage, converted instantly.",
+  "onboarding.pinTitle": "Pin the extension",
+  "onboarding.pinDesc": "Click the puzzle piece icon in your toolbar, then click the pin next to Dollar Bill.",
+  "onboarding.browseTitle": "Browse any page",
+  "onboarding.browseDesc": "Visit any website with prices — Dollar Bill detects and converts them automatically inline.",
+  "onboarding.customizeTitle": "Customize",
+  "onboarding.customizeDesc": "Open the popup to set your conversion pairs, choose rate sources, and tweak appearance.",
+  "onboarding.getStarted": "Get Started",
+  "onboarding.openSettings": "Open all settings"
 }

@@ -185,5 +185,16 @@
   "source.bcb": "Bank Centralny Brazylii",
   "source.boe": "Bank Anglii",
   "source.hkma": "W\u0142adza Walutowa Hongkongu",
-  "source.nbk": "Narodowy Bank Kazachstanu"
+  "source.nbk": "Narodowy Bank Kazachstanu",
+
+  "onboarding.welcome": "Witaj w Dollar Bill",
+  "onboarding.subtitle": "Ceny na każdej stronie, natychmiast przeliczone.",
+  "onboarding.pinTitle": "Przypnij rozszerzenie",
+  "onboarding.pinDesc": "Kliknij ikonę puzzla na pasku narzędzi, a następnie kliknij pinezkę obok Dollar Bill.",
+  "onboarding.browseTitle": "Przeglądaj dowolne strony",
+  "onboarding.browseDesc": "Odwiedź dowolną stronę z cenami — Dollar Bill automatycznie wykryje je i przeliczy.",
+  "onboarding.customizeTitle": "Dostosuj",
+  "onboarding.customizeDesc": "Otwórz popup, aby ustawić pary konwersji, wybrać źródła kursów i zmienić wygląd.",
+  "onboarding.getStarted": "Zaczynamy",
+  "onboarding.openSettings": "Otwórz wszystkie ustawienia"
 }

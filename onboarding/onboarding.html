@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../styles/tokens.css">
+  <link rel="stylesheet" href="onboarding.css">
+  <title>Dollar Bill - Welcome</title>
+</head>
+<body>
+  <div class="onboarding">
+    <div class="hero">
+      <img class="hero-icon" src="../icons/icon128.png" alt="Dollar Bill">
+      <h1 class="hero-title" data-i18n="onboarding.welcome">Welcome to Dollar Bill</h1>
+      <p class="hero-subtitle" data-i18n="onboarding.subtitle">Prices on any webpage, converted instantly.</p>
+    </div>
+
+    <div class="steps">
+      <div class="step">
+        <div class="step-number">1</div>
+        <div class="step-content">
+          <h2 data-i18n="onboarding.pinTitle">Pin the extension</h2>
+          <p data-i18n="onboarding.pinDesc">Click the puzzle piece icon in your toolbar, then click the pin next to Dollar Bill.</p>
+          <div class="step-visual">
+            <div class="toolbar-mock">
+              <div class="toolbar-item toolbar-puzzle">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 4a2 2 0 0 1 2 2v1a2 2 0 0 1-2 2h-1v6h1a2 2 0 0 1 2 2v1a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-1a2 2 0 0 1 2-2h1V9H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v1a2 2 0 0 0 2 0V6a2 2 0 0 1 2-2z"/></svg>
+              </div>
+              <div class="toolbar-item toolbar-extension">
+                <div class="extension-icon">
+                  <img src="../icons/icon16.png" alt="$">
+                </div>
+                <span class="extension-name">Dollar Bill</span>
+              </div>
+              <div class="toolbar-pin-btn" title="Pin">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="17" x2="12" y2="3"/><path d="M5 17h14"/><path d="M5 17a7 7 0 0 0 14 0"/></svg>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="step">
+        <div class="step-number">2</div>
+        <div class="step-content">
+          <h2 data-i18n="onboarding.browseTitle">Browse any page</h2>
+          <p data-i18n="onboarding.browseDesc">Visit any website with prices — Dollar Bill detects and converts them automatically inline.</p>
+        </div>
+      </div>
+
+      <div class="step">
+        <div class="step-number">3</div>
+        <div class="step-content">
+          <h2 data-i18n="onboarding.customizeTitle">Customize</h2>
+          <p data-i18n="onboarding.customizeDesc">Open the popup to set your conversion pairs, choose rate sources, and tweak appearance.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="cta">
+      <button class="cta-btn" id="ctaBtn" data-i18n="onboarding.getStarted">Get Started</button>
+      <a href="#" class="cta-link" id="settingsLink" data-i18n="onboarding.openSettings">Open settings instead</a>
+    </div>
+  </div>
+  <script src="../lib/bignumber.js"></script>
+  <script src="../core/currencies.js"></script>
+  <script src="../core/math.js"></script>
+  <script src="../core/rate-sources.js"></script>
+  <script src="../core/migrations.js"></script>
+  <script src="../core/settings.js"></script>
+  <script src="../core/i18n.js"></script>
+  <script src="onboarding.js"></script>
+</body>
+</html>

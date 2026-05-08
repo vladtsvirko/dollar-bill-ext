@@ -562,9 +562,13 @@ body {
   font-size: 11px;
   font-weight: 500;
   color: var(--text-secondary);
-  cursor: default;
+  cursor: pointer;
   transition: all 0.15s ease;
   font-family: var(--db-mono);
+}
+
+.pair-chip--glow {
+  animation: db-glow-ring 587ms ease forwards;
 }
 
 .pair-chip-arrow {
@@ -779,6 +783,11 @@ body {
   border-color: var(--accent);
 }
 
+.converter-select--glow {
+  animation: db-glow-ring 587ms ease forwards;
+  animation-delay: 53ms;
+}
+
 .converter-arrow {
   color: var(--text-tertiary);
   font-size: 12px;
@@ -957,4 +966,10 @@ body {
 @keyframes db-pulse-border {
   0%, 100% { border-bottom-color: var(--accent); }
   50% { border-bottom-color: var(--border-subtle); }
+}
+
+@keyframes db-glow-ring {
+  0% { box-shadow: 0 0 0 2px transparent; }
+  15%, 80% { box-shadow: 0 0 0 2px var(--accent-glow); }
+  100% { box-shadow: 0 0 0 2px transparent; }
 }

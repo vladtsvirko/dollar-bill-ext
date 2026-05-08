@@ -261,7 +261,24 @@ function renderPairChips(settings) {
     RateCards.render({ rateCardsEl, rateSearchEl, cachedRates: currentRates, settings: currentSettings, currentConflicts, isRefreshing, onCustomRateChange: handleCustomRateChange, onSourcePickerClick: handleSourcePickerClick });
     renderConflictBanner();
     PopupConverter.populateSelects({ converterFrom, converterTo, settings: currentSettings });
-  }, () => toggleAddPairForm());
+  }, () => toggleAddPairForm(), (from, to, chipEl) => {
+    const alreadySet = converterFrom.value === from && converterTo.value === to;
+    if (alreadySet) {
+      PopupConverter.populateSelects({ converterFrom, converterTo, settings: currentSettings });
+    } else {
+      converterFrom.value = from;
+      converterTo.value = to;
+      PopupConverter.render({ converterFrom, converterTo, converterInput, converterResult, cachedRates: currentRates, settings: currentSettings, getEffectiveRates: RateCards.getEffectiveRates });
+    }
+    chipEl.classList.remove('pair-chip--glow');
+    void chipEl.offsetWidth;
+    chipEl.classList.add('pair-chip--glow');
+    converterFrom.classList.remove('converter-select--glow');
+    converterTo.classList.remove('converter-select--glow');
+    void converterFrom.offsetWidth;
+    converterFrom.classList.add('converter-select--glow');
+    converterTo.classList.add('converter-select--glow');
+  });
 }
 
 // --- Add Pair Form ---
@@ -448,10 +465,12 @@ async function loadPopup() {
 
 function updateSiteToggle(settings) {
   if (!currentHostname) {
-    siteToggleLabel.textContent = '';
+    siteToggleLabel.textContent = I18n.t('popup.enabledOnSite');
+    siteToggleLabel.style.color = 'var(--accent)';
     siteToggleHost.textContent = '';
+    siteToggleHost.style.color = '';
     siteToggleMode.textContent = '';
-    enabledEl.checked = false;
+    enabledEl.checked = true;
     enabledEl.disabled = true;
     return;
   }

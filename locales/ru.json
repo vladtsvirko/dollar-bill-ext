@@ -185,5 +185,16 @@
   "source.bcb": "Центральный банк Бразилии",
   "source.boe": "Банк Англии",
   "source.hkma": "Валютное управление Гонконга",
-  "source.nbk": "Национальный банк Казахстана"
+  "source.nbk": "Национальный банк Казахстана",
+
+  "onboarding.welcome": "Добро пожаловать в Dollar Bill",
+  "onboarding.subtitle": "Цены на любой странице, мгновенно конвертированные.",
+  "onboarding.pinTitle": "Закрепите расширение",
+  "onboarding.pinDesc": "Нажмите на иконку пазла на панели инструментов, затем нажмите на скрепку рядом с Dollar Bill.",
+  "onboarding.browseTitle": "Просматривайте любые страницы",
+  "onboarding.browseDesc": "Посетите любой сайт с ценами — Dollar Bill автоматически найдёт и конвертирует их.",
+  "onboarding.customizeTitle": "Настройте",
+  "onboarding.customizeDesc": "Откройте всплывающее окно, чтобы задать пары конвертации, выбрать источники курсов и изменить внешний вид.",
+  "onboarding.getStarted": "Начать",
+  "onboarding.openSettings": "Открыть все настройки"
 }

@@ -32,9 +32,12 @@ async function updateRates() {
   }
 }
 
-chrome.runtime.onInstalled.addListener(async () => {
+chrome.runtime.onInstalled.addListener(async (details) => {
   await updateRates();
   chrome.alarms.create(ALARM_NAME, { periodInMinutes: ALARM_INTERVAL_MIN });
+  if (details.reason === 'install') {
+    chrome.tabs.create({ url: chrome.runtime.getURL('onboarding/onboarding.html') });
+  }
 });
 
 chrome.alarms.onAlarm.addListener((alarm) => {

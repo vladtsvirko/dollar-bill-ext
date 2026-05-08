@@ -1,13 +1,22 @@
 const PairChips = (() => {
-  function renderPopupChips(pairs, container, onRemove, onAdd) {
+  function renderPopupChips(pairs, container, onRemove, onAdd, onChipClick) {
     container.innerHTML = pairs.map((p, i) => `
-      <span class="pair-chip">${p.from} <span class="pair-chip-arrow">&rarr;</span> ${p.to}
+      <span class="pair-chip" data-from="${p.from}" data-to="${p.to}">${p.from} <span class="pair-chip-arrow">&rarr;</span> ${p.to}
         <button class="pair-chip-remove" data-index="${i}" title="${I18n.t('options.cancel')}">&times;</button>
       </span>
     `).join('') + `<button class="pair-chip-add" id="addPairPopup" title="${I18n.t('options.addBtn')}">+</button>`;
 
     container.querySelectorAll('.pair-chip-remove').forEach(btn => {
-      btn.addEventListener('click', () => onRemove(parseInt(btn.dataset.index)));
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        onRemove(parseInt(btn.dataset.index));
+      });
+    });
+
+    container.querySelectorAll('.pair-chip').forEach(chip => {
+      chip.addEventListener('click', () => {
+        if (onChipClick) onChipClick(chip.dataset.from, chip.dataset.to, chip);
+      });
     });
 
     document.getElementById('addPairPopup').addEventListener('click', onAdd);
