@@ -182,7 +182,7 @@ html {
     flex: 1 1 100%;
   }
 
-  .domain-add-row select {
+  .domain-add-row .currency-picker {
     flex: 1;
   }
 
@@ -1570,13 +1570,9 @@ textarea {
   color: var(--text-primary);
 }
 
-.domain-add-row select {
-  padding: 4px 8px;
-  font-size: 0.85rem;
-  border: 1px solid var(--border-default);
-  border-radius: 4px;
-  background: var(--bg-input);
-  color: var(--text-primary);
+.domain-add-row .currency-picker {
+  flex: 1;
+  min-width: 120px;
 }
 
 .btn-small {

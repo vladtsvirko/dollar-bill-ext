@@ -269,7 +269,16 @@
             <div id="domainOverridesList" class="domain-list"></div>
             <div class="domain-add-row">
               <input type="text" id="domainAddInput" data-i18n-placeholder="options.domainPlaceholder" placeholder="e.g. amazon.ca" />
-              <select id="domainAddCurrency"></select>
+              <div class="currency-picker" id="domainAddCurrencyPicker">
+                <button class="currency-picker-trigger" id="domainAddCurrencyTrigger" type="button">
+                  <span class="currency-picker-text placeholder" id="domainAddCurrencyText">Select...</span>
+                  <span class="currency-picker-chevron">&#9662;</span>
+                </button>
+                <div class="currency-picker-dropdown" id="domainAddCurrencyDropdown">
+                  <input type="text" class="currency-picker-search" id="domainAddCurrencySearch" placeholder="Search currency...">
+                  <div class="currency-picker-list" id="domainAddCurrencyList"></div>
+                </div>
+              </div>
               <button id="domainAddBtn" class="btn-small" data-i18n="options.addBtn">Add</button>
             </div>
           </div>

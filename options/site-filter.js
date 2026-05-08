@@ -30,13 +30,8 @@ const SiteFilter = (() => {
     });
   }
 
-  function populateDomainCurrencySelect(selectEl, currencies) {
-    const codes = Object.keys(currencies).sort();
-    selectEl.innerHTML = codes.map((code) => {
-      const cur = currencies[code];
-      const label = cur ? `${code} (${cur.name})` : code;
-      return `<option value="${code}">${FormatUtils.escapeHtml(label)}</option>`;
-    }).join('');
+  function populateDomainCurrencySelect(listEl, currencies) {
+    listEl.innerHTML = UICommon.renderCurrencyListHTML(currencies, null);
   }
 
   return { renderSiteChips, renderDomainOverrides, populateDomainCurrencySelect };

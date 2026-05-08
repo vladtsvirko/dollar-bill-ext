@@ -81,6 +81,10 @@ let currentFetchStatus = null;
 let editingCurrency = null;
 let autoSaveTimer = null;
 
+let domainSelectedCurrency = null;
+let optPickerClose = null;
+let mrPickerClose = null;
+
 // ---- Auto-save ----
 
 function showSaveToast() {
@@ -274,7 +278,7 @@ function initOptPickerEvents() {
   if (optPickerEventsInitialized) return;
   optPickerEventsInitialized = true;
 
-  CurrencyPicker.bindPickerEvents({
+  optPickerClose = CurrencyPicker.bindPickerEvents({
     fromTrigger, fromDropdown, fromSearch, fromList,
     toTrigger, toDropdown, toSearch, toList,
     getFrom: () => optSelectedFrom,
@@ -325,7 +329,7 @@ function initMrPickerEvents() {
   if (mrPickerEventsInitialized) return;
   mrPickerEventsInitialized = true;
 
-  CurrencyPicker.bindPickerEvents({
+  mrPickerClose = CurrencyPicker.bindPickerEvents({
     fromTrigger, fromDropdown, fromSearch, fromList,
     toTrigger, toDropdown, toSearch, toList,
     getFrom: () => mrSelectedFrom,
@@ -632,10 +636,25 @@ function closeNumberFormatDropdown() {
   numberFormatTrigger.classList.remove('active');
 }
 
+function closeDomainCurrencyDropdown() {
+  const dd = document.getElementById('domainAddCurrencyDropdown');
+  const trig = document.getElementById('domainAddCurrencyTrigger');
+  if (dd) dd.classList.remove('open');
+  if (trig) trig.classList.remove('active');
+}
+
+function closeAllDropdowns() {
+  closeNumberFormatDropdown();
+  closeLangDropdown();
+  closeDomainCurrencyDropdown();
+  if (optPickerClose) optPickerClose.closeDropdowns();
+  if (mrPickerClose) mrPickerClose.closeDropdowns();
+}
+
 numberFormatTrigger.addEventListener('click', (e) => {
   e.stopPropagation();
   const isOpen = numberFormatDropdown.classList.contains('open');
-  closeNumberFormatDropdown();
+  closeAllDropdowns();
   if (!isOpen) {
     numberFormatDropdown.classList.add('open');
     numberFormatTrigger.classList.add('active');
@@ -652,7 +671,7 @@ numberFormatSearch.addEventListener('input', () => {
 numberFormatList.addEventListener('click', async (e) => {
   const item = e.target.closest('.num-fmt-item');
   if (!item || item.classList.contains('empty')) return;
-  closeNumberFormatDropdown();
+  closeAllDropdowns();
   const value = item.dataset.numLocale;
   currentSettings.numberFormat = value === '' ? null : value;
   renderNumberFormatSelector();
@@ -664,6 +683,8 @@ numberFormatList.addEventListener('click', async (e) => {
 
 document.addEventListener('click', (e) => {
   if (!e.target.closest('#numberFormatPicker')) closeNumberFormatDropdown();
+  if (!e.target.closest('#langPicker')) closeLangDropdown();
+  if (!e.target.closest('#domainAddCurrencyPicker')) closeDomainCurrencyDropdown();
 });
 
 // Sync with popup changes
@@ -744,14 +765,64 @@ function renderDomainOverrides() {
   );
 }
 
+// ---- Domain currency picker ----
+
+const domainAddCurrencyTrigger = document.getElementById('domainAddCurrencyTrigger');
+const domainAddCurrencyDropdown = document.getElementById('domainAddCurrencyDropdown');
+const domainAddCurrencySearch = document.getElementById('domainAddCurrencySearch');
+const domainAddCurrencyListEl = document.getElementById('domainAddCurrencyList');
+const domainAddCurrencyText = document.getElementById('domainAddCurrencyText');
+
+if (domainAddCurrencyTrigger) {
+  domainAddCurrencyTrigger.addEventListener('click', (e) => {
+    e.stopPropagation();
+    const isOpen = domainAddCurrencyDropdown.classList.contains('open');
+    closeAllDropdowns();
+    if (!isOpen) {
+      domainAddCurrencyDropdown.classList.add('open');
+      domainAddCurrencyTrigger.classList.add('active');
+      domainAddCurrencySearch.value = '';
+      domainAddCurrencyListEl.innerHTML = UICommon.renderCurrencyListHTML(
+        currentSettings.currencies || {}, domainSelectedCurrency
+      );
+      domainAddCurrencySearch.focus();
+    }
+  });
+}
+
+if (domainAddCurrencySearch) {
+  domainAddCurrencySearch.addEventListener('input', () => {
+    domainAddCurrencyListEl.innerHTML = UICommon.renderCurrencyListHTML(
+      currentSettings.currencies || {}, domainSelectedCurrency, domainAddCurrencySearch.value
+    );
+  });
+}
+
+if (domainAddCurrencyListEl) {
+  domainAddCurrencyListEl.addEventListener('click', (e) => {
+    const item = e.target.closest('.currency-picker-item');
+    if (!item || item.classList.contains('empty')) return;
+    domainSelectedCurrency = item.dataset.code || null;
+    if (domainAddCurrencyText) {
+      domainAddCurrencyText.textContent = domainSelectedCurrency || 'Select...';
+      domainAddCurrencyText.classList.toggle('placeholder', !domainSelectedCurrency);
+    }
+    closeDomainCurrencyDropdown();
+  });
+}
+
 document.getElementById('domainAddBtn').addEventListener('click', () => {
   const input = document.getElementById('domainAddInput');
-  const select = document.getElementById('domainAddCurrency');
   const domain = input.value.trim().toLowerCase();
-  if (!domain || !select.value) return;
+  if (!domain || !domainSelectedCurrency) return;
   if (!currentSettings.domainCurrencyMap) currentSettings.domainCurrencyMap = {};
-  currentSettings.domainCurrencyMap[domain] = select.value;
+  currentSettings.domainCurrencyMap[domain] = domainSelectedCurrency;
   input.value = '';
+  domainSelectedCurrency = null;
+  if (domainAddCurrencyText) {
+    domainAddCurrencyText.textContent = 'Select...';
+    domainAddCurrencyText.classList.add('placeholder');
+  }
   renderDomainOverrides();
   scheduleAutoSave();
 });
@@ -959,7 +1030,7 @@ async function loadSettings() {
 
   renderDomainOverrides();
   SiteFilter.populateDomainCurrencySelect(
-    document.getElementById('domainAddCurrency'),
+    document.getElementById('domainAddCurrencyList'),
     currentSettings.currencies || {}
   );
   updateVisibility({ skipSave: true });
@@ -1021,7 +1092,7 @@ async function applyLanguageChange(value) {
 langTrigger.addEventListener('click', (e) => {
   e.stopPropagation();
   const isOpen = langDropdown.classList.contains('open');
-  closeLangDropdown();
+  closeAllDropdowns();
   if (!isOpen) {
     langDropdown.classList.add('open');
     langTrigger.classList.add('active');
@@ -1042,12 +1113,8 @@ langSearch.addEventListener('input', () => {
 langList.addEventListener('click', async (e) => {
   const item = e.target.closest('.currency-picker-item');
   if (!item || item.classList.contains('empty')) return;
-  closeLangDropdown();
+  closeAllDropdowns();
   await applyLanguageChange(item.dataset.lang || null);
-});
-
-document.addEventListener('click', (e) => {
-  if (!e.target.closest('#langPicker')) closeLangDropdown();
 });
 
 loadSettings();
